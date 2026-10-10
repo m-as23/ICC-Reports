@@ -15,7 +15,11 @@ body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:16px/
 header{background:var(--ink);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:18px;margin:0;font-weight:600}
 .tag{background:var(--tag);color:var(--ink);font-weight:800;font-size:24px;padding:0 14px;border-radius:4px;direction:ltr}
-main{max-width:560px;margin:0 auto;padding:6px 14px 100px}
+#bar{display:none;justify-content:space-between;background:#2a3d50;color:#fff;padding:6px 16px;font-size:14px}
+#bar a,#cback{color:var(--main);text-decoration:underline;cursor:pointer}
+#bar a{color:#fff}
+.wrap,main{max-width:560px;margin:0 auto;padding:0 14px}
+main{padding-bottom:100px}
 label{display:block;font-weight:600;margin:14px 0 4px}
 input,select,textarea{width:100%;max-width:100%;min-width:0;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
 textarea{min-height:92px;resize:vertical}
@@ -29,14 +33,34 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,183,5,.5);bor
 #msg.err{display:block;background:#fbe3e1;color:var(--bad)}
 #pend{display:none;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;border-radius:6px;background:#fff3c4;font-weight:600}
 #now{color:var(--main);text-decoration:underline;cursor:pointer}
-button#send{position:fixed;left:0;right:0;bottom:0;border:0;background:var(--main);color:#fff;font:inherit;font-weight:800;font-size:18px;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.btn,button#send{border:0;background:var(--main);color:#fff;font:inherit;font-weight:800;font-size:18px}
+.btn{width:100%;margin-top:20px;padding:14px;border-radius:6px}
+button#send{position:fixed;left:0;right:0;bottom:0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
 <header><h1>بلاغ عطل جديد</h1><span class="tag" id="wo">—</span></header>
-<main>
+<div id="bar"><span id="who"></span><span><a id="chg">تغيير الباسورد</a> &nbsp;·&nbsp; <a id="out">خروج</a></span></div>
+<div class="wrap">
   <div id="pend"><span>بلاغات في الانتظار: <b id="pn">0</b></span><a id="now">إرسال الآن</a></div>
   <div id="msg"></div>
+</div>
+
+<main id="login" style="display:none">
+  <label for="lcode">كود الموظف</label><input id="lcode" inputmode="numeric" autocomplete="username">
+  <label for="lpw">الباسورد</label><input id="lpw" type="password" autocomplete="current-password">
+  <button class="btn" id="lgo">دخول</button>
+</main>
+
+<main id="change" style="display:none">
+  <div id="oldBox"><label for="op">الباسورد الحالي</label><input id="op" type="password"></div>
+  <label for="np">الباسورد الجديد (6 خانات على الأقل)</label><input id="np" type="password">
+  <label for="np2">تأكيد الباسورد الجديد</label><input id="np2" type="password">
+  <button class="btn" id="cgo">حفظ الباسورد</button>
+  <p><a id="cback">رجوع</a></p>
+</main>
+
+<main id="form" style="display:none">
   <label for="section">القسم</label><select id="section"></select>
   <label for="machine">الماكينة</label><select id="machine"></select>
   <label for="comp">الجزء المعطل</label><select id="comp"></select>
@@ -48,26 +72,36 @@ button#send{position:fixed;left:0;right:0;bottom:0;border:0;background:var(--mai
     <div><label for="t2">بداية العمل</label><input type="time" id="t2"></div>
     <div><label for="t3">نهاية العمل</label><input type="time" id="t3"></div>
   </div>
-  <label for="tech">الفني / المهندس</label><select id="tech"></select>
   <label for="spare">قطع الغيار (اختياري)</label><input id="spare">
   <label for="status">الحالة</label><select id="status"></select>
   <label for="cat">تصنيف العطل</label><select id="cat"></select>
-  <div id="codeBox" style="display:none"><label for="code">كود الدخول</label><input id="code" inputmode="numeric"></div>
 </main>
-<button id="send">حفظ البلاغ</button>
+<button id="send" style="display:none">حفظ البلاغ</button>
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbybkwat1TAGL1cAUQPXdaXchnCrILQAPTnkCbei7LbHNmttM9tv5AcZfbCZfi8_-qTt/exec';
 const $ = id => document.getElementById(id);
-const REQ = ['section','machine','comp','desc','solution','date','t1','t2','t3','tech','status','cat'];
-const ALL = REQ.concat(['spare','code']);
-let D = null, busy = false;
+const REQ = ['section','machine','comp','desc','solution','date','t1','t2','t3','status','cat'];
+const ALL = REQ.concat(['spare']);
+let D = null, busy = false, S = JSON.parse(localStorage.getItem('s') || 'null');
 
 const getQ = () => JSON.parse(localStorage.getItem('q') || '[]');
 function setQ(q) { localStorage.setItem('q', JSON.stringify(q)); pend(); }
 function pend() { const n = getQ().length; $('pend').style.display = n ? 'flex' : 'none'; $('pn').textContent = n; }
-function note(t, c) { const m = $('msg'); m.textContent = t; m.className = c || ''; }
+function note(t, c) { const m = $('msg'); m.textContent = t || ''; m.className = t ? c : ''; }
 function fill(sel, arr, ph) { sel.length = 0; if (ph) sel.add(new Option(ph, '')); arr.forEach(x => sel.add(new Option(x, x))); }
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+const post = b => fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(b) }).then(r => r.json());
+
+function show(v) {
+  ['login', 'change', 'form'].forEach(x => $(x).style.display = x === v ? 'block' : 'none');
+  $('send').style.display = v === 'form' ? 'block' : 'none';
+  $('bar').style.display = S && v !== 'login' ? 'flex' : 'none';
+  $('who').textContent = S ? S.name : '';
+  window.scrollTo(0, 0);
+}
+function save(d) { S = { token: d.token, code: d.code, name: d.name }; localStorage.setItem('s', JSON.stringify(S)); }
+function logout() { localStorage.removeItem('s'); localStorage.removeItem('d'); S = null; show('login'); }
+function showChange(forced) { $('oldBox').style.display = forced ? 'none' : 'block'; $('cback').style.display = forced ? 'none' : 'inline'; show('change'); }
 
 function init(d) {
   D = d;
@@ -75,18 +109,18 @@ function init(d) {
   fill($('section'), d.sections, 'اختر القسم');
   fill($('machine'), [], 'اختر القسم أولا');
   fill($('comp'), [], 'اختر القسم أولا');
-  fill($('tech'), d.techs, 'اختر الفني');
   fill($('status'), d.status);
   fill($('cat'), d.cats);
   if (d.cats.indexOf('كهربائي') > -1) $('cat').value = 'كهربائي';
   $('date').value = today();
-  $('codeBox').style.display = d.needCode ? 'block' : 'none';
 }
 
 async function load() {
   try {
-    const d = await (await fetch(API)).json();
+    const d = await (await fetch(API + '?t=' + encodeURIComponent(S.token))).json();
+    if (d.error === 'AUTH') return logout();
     if (d.error) throw new Error(d.error);
+    if (d.must) return showChange(true);
     localStorage.setItem('d', JSON.stringify(d));
     init(d);
   } catch (e) {
@@ -95,19 +129,19 @@ async function load() {
     else note('افتح التطبيق مرة واحدة مع اتصال بالإنترنت لتحميل القوائم', 'err');
   }
 }
+async function start() { show('form'); await load(); flush(); }
 
 async function flush() {
-  if (busy) return;
+  if (busy || !S) return;
   busy = true;
   const ok = [];
   try {
     for (const f of getQ()) {
-      if (f.err) continue;
+      if (f.err || f.u !== S.code) continue;
       let d;
-      try {
-        const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(f) });
-        d = await r.json();
-      } catch (e) { break; } // لا يوجد اتصال: نعيد المحاولة لاحقا
+      try { d = await post(Object.assign({ action: 'submit', token: S.token }, f)); }
+      catch (e) { break; } // لا يوجد اتصال: نعيد المحاولة لاحقا
+      if (d.error === 'AUTH') { logout(); break; }
       const q = getQ(), it = q.find(x => x.cid === f.cid);
       if (d.error) { it.err = d.error; note('بلاغ مرفوض: ' + d.error, 'err'); }
       else { q.splice(q.indexOf(it), 1); ok.push(d.id); }
@@ -116,6 +150,33 @@ async function flush() {
     if (ok.length) note('تم حفظ: ' + ok.join('، '), 'ok');
   } finally { busy = false; }
 }
+
+$('lgo').onclick = async () => {
+  note('جاري الدخول...', 'ok');
+  try {
+    const d = await post({ action: 'login', code: $('lcode').value.trim(), pw: $('lpw').value });
+    if (d.error) return note(d.error, 'err');
+    save(d); $('lpw').value = ''; note('');
+    if (d.must) return showChange(true);
+    start();
+  } catch (e) { note('لا يوجد اتصال بالإنترنت. تسجيل الدخول يحتاج نت', 'err'); }
+};
+$('cgo').onclick = async () => {
+  if ($('np').value !== $('np2').value) return note('الباسورد الجديد غير متطابق', 'err');
+  try {
+    const d = await post({ action: 'change', token: S.token, old: $('op').value, pw: $('np').value });
+    if (d.error === 'AUTH') return logout();
+    if (d.error) return note(d.error, 'err');
+    save(d); ['op', 'np', 'np2'].forEach(k => $(k).value = '');
+    await start(); note('تم حفظ الباسورد', 'ok');
+  } catch (e) { note('لا يوجد اتصال بالإنترنت', 'err'); }
+};
+$('chg').onclick = () => { note(''); showChange(false); };
+$('cback').onclick = () => { note(''); show('form'); };
+$('out').onclick = () => {
+  if (getQ().length && !confirm('فيه بلاغات في الانتظار لم تُرسل. هتفضل محفوظة لحد ما تدخل بنفس الكود. تكمل؟')) return;
+  logout();
+};
 
 $('section').onchange = () => {
   const s = $('section').value;
@@ -129,12 +190,13 @@ $('send').onclick = () => {
   let bad = 0;
   REQ.forEach(k => { const miss = !f[k]; $(k).classList.toggle('bad', miss); if (miss) bad++; });
   if (bad) { note('كمّل الخانات المعلّمة بالأحمر', 'err'); window.scrollTo(0, 0); return; }
+  f.u = S.code;
   f.cid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random());
   setQ(getQ().concat([f]));
   ALL.forEach(k => { if (k !== 'date') $(k).value = ''; });
   fill($('machine'), [], 'اختر القسم أولا');
   fill($('comp'), [], 'اختر القسم أولا');
-  note('تم تسجيل البلاغ على الجهاز، جاري الإرسال...', '');
+  note('تم تسجيل البلاغ على الجهاز، جاري الإرسال...', 'ok');
   window.scrollTo(0, 0);
   flush().then(load);
 };
@@ -144,7 +206,7 @@ window.addEventListener('online', flush);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) flush(); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 pend();
-load().then(flush);
+if (S) start(); else show('login');
 </script>
 </body>
 </html>
