@@ -1,5 +1,5 @@
 // Cache version bumped so installed BD Log clients fetch the dashboard-enabled UI.
-const C = 'bd-v7-dashboard';
+const C = 'maintrack-v8-notifications';
 const F = ['./', 'index.html', 'manifest.webmanifest', 'bd-192.png', 'bd-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(C).then(c => c.addAll(F)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== C).map(x => caches.delete(x)))).then(() => clients.claim())));
