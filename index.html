@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#1b2a38">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<title>BreakdownLog</title>
+<link rel="icon" href="bd-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<title>BD Log</title>
 <style>
 :root{--bg:#eef1f4;--ink:#1b2a38;--line:#c9d2db;--main:#0f5c63;--bad:#b3261e;--tag:#f2b705}
 html{overflow-x:hidden;-webkit-text-size-adjust:100%}
 *{box-sizing:border-box}
-body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}
+body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:16px/1.5 Cairo,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}
 header{background:var(--ink);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:18px;margin:0;font-weight:600}
 .tag{background:var(--tag);color:var(--ink);font-weight:800;font-size:24px;padding:0 14px;border-radius:4px;direction:ltr}
@@ -50,8 +53,7 @@ button#send{position:fixed;left:0;right:0;bottom:0;padding:16px 16px calc(16px +
   <label for="lcode">كود الموظف</label><input id="lcode" inputmode="numeric" autocomplete="username">
   <label for="lpw">الباسورد</label><input id="lpw" type="password" autocomplete="current-password">
   <button class="btn" id="lgo">دخول</button>
-  <p><a id="forgot">نسيت الباسورد؟</a></p>
-  <div id="fbox" style="display:none"><p>لو نسيت الباسورد أو بدّلته، اطلب من المسؤول <b>إعادة تعيين الباسورد</b>. هيديك باسورد مؤقت جديد، وتختار منه باسورد جديد أول ما تدخل.</p><a id="wa" target="_blank" rel="noopener" style="display:none;margin-top:6px;padding:10px 14px;border-radius:6px;background:#1f7a4d;color:#fff;text-decoration:none;font-weight:600">راسل المسؤول على واتساب</a></div>
+  <div id="fbox" style="display:none"><p id="ftxt"></p><a id="wa" target="_blank" rel="noopener" style="display:none;margin-top:6px;padding:10px 14px;border-radius:6px;background:#1f7a4d;color:#fff;text-decoration:none;font-weight:600">راسل المسؤول على واتساب</a></div>
 </main>
 
 <main id="change" style="display:none">
@@ -161,22 +163,41 @@ async function flush() {
   } finally { busy = false; }
 }
 
+const HELP = {
+  BAD_PW:   { m: 'الباسورد غلط.', t: 'لو نسيت الباسورد، اطلب من المسؤول إعادة تعيينه. هيديك باسورد مؤقت جديد، وتختار منه باسورد جديد أول ما تدخل.', w: 'نسيت الباسورد بتاعي. كودي: ' },
+  NO_USER:  { m: 'الكود ده مش مسجل في النظام. اتأكد منه تاني.', t: 'لو متأكد إن الكود صح، اطلب من المسؤول يتأكد إنه مسجل.', w: 'الكود مش شغال معايا. كودي: ' },
+  INACTIVE: { m: 'الحساب ده متوقف.', t: 'كلّم المسؤول لتفعيله.', w: 'حسابي متوقف. كودي: ' },
+  LOCKED:   { m: 'محاولات كتير غلط.', t: 'الحساب اتقفل مؤقتا. استنى 5 دقايق أو كلّم المسؤول.', w: 'الحساب اتقفل معايا. كودي: ' }
+};
+let helpKind = null;
+function help(k) {
+  helpKind = k;
+  $('ftxt').textContent = HELP[k].t;
+  $('fbox').style.display = 'block';
+  if (ADMIN_WA) {
+    const w = $('wa');
+    w.style.display = 'inline-block';
+    w.href = 'https://wa.me/' + ADMIN_WA + '?text=' + encodeURIComponent(HELP[k].w + norm($('lcode').value.trim()));
+  }
+}
+$('lcode').oninput = () => { if (helpKind) help(helpKind); };
+
 $('lgo').onclick = async () => {
+  const code = norm($('lcode').value.trim()), pw = $('lpw').value;
+  if (!code) { note('اكتب كود الموظف', 'err'); $('lcode').focus(); return; }
+  if (!pw) { note('اكتب الباسورد', 'err'); $('lpw').focus(); return; }
   note('جاري الدخول...', 'ok');
   try {
-    const d = await post({ action: 'login', code: norm($('lcode').value.trim()), pw: $('lpw').value });
-    if (d.error) { forgot(); return note(d.error, 'err'); }
-    save(d); $('lpw').value = ''; note('');
+    const d = await post({ action: 'login', code: code, pw: pw });
+    if (d.error) {
+      if (HELP[d.error]) { note(HELP[d.error].m, 'err'); return help(d.error); }
+      return note(d.error, 'err');
+    }
+    save(d); $('lpw').value = ''; helpKind = null; $('fbox').style.display = 'none'; note('');
     if (d.must) return showChange(true);
     start();
   } catch (e) { note(netMsg(e), 'err'); }
 };
-function forgot() {
-  $('fbox').style.display = 'block';
-  if (ADMIN_WA) { const w = $('wa'); w.style.display = 'inline-block'; w.href = 'https://wa.me/' + ADMIN_WA + '?text=' + encodeURIComponent('نسيت الباسورد بتاعي. كودي: ' + norm($('lcode').value.trim())); }
-}
-$('forgot').onclick = forgot;
-$('lcode').oninput = () => { if ($('fbox').style.display === 'block') forgot(); };
 $('cgo').onclick = async () => {
   if ($('np').value !== $('np2').value) return note('الباسورد الجديد غير متطابق', 'err');
   try {
