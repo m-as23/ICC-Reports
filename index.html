@@ -11,238 +11,92 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
 <title>BD Log</title>
 <style>
-:root{--bg:#eef1f4;--ink:#1b2a38;--line:#c9d2db;--main:#0f5c63;--bad:#b3261e;--tag:#f2b705}
-html{overflow-x:hidden;-webkit-text-size-adjust:100%}
-*{box-sizing:border-box}
-body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:16px/1.5 Cairo,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}
-header{background:var(--ink);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
-header h1{font-size:18px;margin:0;font-weight:600}
-.tag{background:var(--tag);color:var(--ink);font-weight:800;font-size:24px;padding:0 14px;border-radius:4px;direction:ltr}
-#bar{display:none;justify-content:space-between;background:#2a3d50;color:#fff;padding:6px 16px;font-size:14px}
-#bar a,#cback,#forgot,#wa{color:var(--main);text-decoration:underline;cursor:pointer}
-#bar a{color:#fff}
-.wrap,main{max-width:560px;margin:0 auto;padding:0 14px}
-main{padding-bottom:100px}
-label{display:block;font-weight:600;margin:14px 0 4px}
-input,select,textarea{width:100%;max-width:100%;min-width:0;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
-textarea{min-height:92px;resize:vertical}
-input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,183,5,.5);border-color:var(--ink)}
-.bad{border-color:var(--bad)!important}
-.times{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
-.times>div{min-width:0}
-.times label{font-size:14px}
-#msg{margin:12px 0 0;padding:12px;border-radius:6px;display:none;font-weight:600}
-#msg.ok{display:block;background:#dff1e6;color:#14532d}
-#msg.err{display:block;background:#fbe3e1;color:var(--bad)}
-#pend{display:none;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;border-radius:6px;background:#fff3c4;font-weight:600}
-#now{color:var(--main);text-decoration:underline;cursor:pointer}
-.btn,button#send{border:0;background:var(--main);color:#fff;font:inherit;font-weight:800;font-size:18px}
-.btn{width:100%;margin-top:20px;padding:14px;border-radius:6px}
-button#send{position:fixed;left:0;right:0;bottom:0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+:root{--bg:#eef1f4;--ink:#1b2a38;--line:#c9d2db;--main:#0f5c63;--bad:#b3261e;--tag:#f2b705;--muted:#657483;--card:#fff}
+html{overflow-x:hidden;-webkit-text-size-adjust:100%}*{box-sizing:border-box}body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:16px/1.5 Cairo,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif}
+header{background:var(--ink);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}header h1{font-size:18px;margin:0;font-weight:600}.tag{background:var(--tag);color:var(--ink);font-weight:800;font-size:24px;padding:0 14px;border-radius:4px;direction:ltr}
+#bar{display:none;justify-content:space-between;align-items:center;gap:10px;background:#2a3d50;color:#fff;padding:6px 16px;font-size:14px}#bar a,#cback,#wa{color:var(--main);text-decoration:underline;cursor:pointer}#bar a{color:#fff}
+.wrap,main{max-width:850px;margin:0 auto;padding:0 14px}main{padding-bottom:100px}.narrow{max-width:560px}label{display:block;font-weight:600;margin:14px 0 4px}input,select,textarea{width:100%;max-width:100%;min-width:0;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}textarea{min-height:92px;resize:vertical}input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,183,5,.5);border-color:var(--ink)}.bad{border-color:var(--bad)!important}.times{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.times>div{min-width:0}.times label{font-size:14px}
+#msg{margin:12px auto;padding:12px;border-radius:6px;display:none;font-weight:600;max-width:850px}#msg.ok{display:block;background:#dff1e6;color:#14532d}#msg.err{display:block;background:#fbe3e1;color:var(--bad)}#pend{display:none;justify-content:space-between;align-items:center;margin-top:12px;padding:10px 12px;border-radius:6px;background:#fff3c4;font-weight:600}#now{color:var(--main);text-decoration:underline;cursor:pointer}
+.btn,button#send{border:0;background:var(--main);color:#fff;font:inherit;font-weight:800;font-size:18px}.btn{width:100%;margin-top:20px;padding:14px;border-radius:6px}button#send{position:fixed;left:0;right:0;bottom:0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));z-index:5}
+#tabs{display:none;max-width:850px;margin:12px auto 0;padding:0 14px;gap:8px}#tabs button{flex:1;padding:10px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-weight:800;cursor:pointer}#tabs button.active{background:var(--main);border-color:var(--main);color:#fff}
+#dashboard{display:none;max-width:850px;margin:0 auto;padding:0 14px 30px}.dash-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0}.dash-head h2{font-size:20px;margin:0}.monthnav{display:flex;align-items:center;gap:8px}.monthnav button{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-weight:800;padding:7px 12px;cursor:pointer}.monthnav button:disabled{opacity:.35;cursor:not-allowed}.month-label{font-weight:800;min-width:120px;text-align:center}.dash-note{font-size:12px;color:var(--muted);margin:0 0 10px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{background:var(--card);border:1px solid #e0e6eb;border-radius:12px;padding:14px;min-width:0;box-shadow:0 2px 8px #1020300a}.metric .label{font-size:13px;color:var(--muted);font-weight:600}.metric .value{font-size:25px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}.section-card{background:#fff;border:1px solid #e0e6eb;border-radius:12px;margin-top:12px;padding:14px}.section-card h3{margin:0 0 8px;font-size:16px}.rank-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:9px 0;border-bottom:1px solid #edf0f3}.rank-row:last-child{border-bottom:0}.rank-name{font-weight:700;overflow-wrap:anywhere}.rank-value{font-weight:800;white-space:nowrap}.empty{color:var(--muted);padding:12px 0}.recent{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:right;padding:9px 7px;border-bottom:1px solid #edf0f3;vertical-align:top}th{background:#f6f8fa;white-space:nowrap}.statusline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}.refresh{border:0;background:transparent;color:var(--main);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+@media(min-width:620px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.metric .value{font-size:28px}}
 </style>
 </head>
 <body>
-<header><h1>بلاغ عطل جديد</h1><span class="tag" id="wo">—</span></header>
+<header><h1 id="headTitle">بلاغ عطل جديد</h1><span class="tag" id="wo">—</span></header>
 <div id="bar"><span id="who"></span><a id="out">خروج</a></div>
-<div class="wrap">
-  <div id="pend"><span>بلاغات في الانتظار: <b id="pn">0</b></span><a id="now">إرسال الآن</a></div>
-  <div id="msg"></div>
-</div>
-
-<main id="login" style="display:none">
-  <label for="lcode">كود الموظف</label><input id="lcode" inputmode="numeric" autocomplete="username">
-  <label for="lpw">الباسورد</label><input id="lpw" type="password" autocomplete="current-password">
-  <button class="btn" id="lgo">دخول</button>
-  <div id="fbox" style="display:none"><p id="ftxt"></p><a id="wa" target="_blank" rel="noopener" style="display:none;margin-top:6px;padding:10px 14px;border-radius:6px;background:#1f7a4d;color:#fff;text-decoration:none;font-weight:600">راسل المسؤول على واتساب</a></div>
-</main>
-
-<main id="change" style="display:none">
-  <div id="oldBox"><label for="op">الباسورد الحالي</label><input id="op" type="password"></div>
-  <label for="np">الباسورد الجديد (6 خانات على الأقل)</label><input id="np" type="password">
-  <label for="np2">تأكيد الباسورد الجديد</label><input id="np2" type="password">
-  <button class="btn" id="cgo">حفظ الباسورد</button>
-  <p><a id="cback">رجوع</a></p>
-</main>
-
-<main id="form" style="display:none">
-  <label for="section">القسم</label><select id="section"></select>
-  <label for="machine">الماكينة</label><select id="machine"></select>
-  <label for="comp">الجزء المعطل</label><select id="comp"></select>
-  <label for="desc">وصف العطل</label><textarea id="desc"></textarea>
-  <label for="solution">خطوات الحل</label><textarea id="solution"></textarea>
-  <label for="date">التاريخ</label><input type="date" id="date">
-  <div class="times">
-    <div><label for="t1">بداية البلاغ</label><input type="time" id="t1"></div>
-    <div><label for="t2">بداية العمل</label><input type="time" id="t2"></div>
-    <div><label for="t3">نهاية العمل</label><input type="time" id="t3"></div>
-  </div>
-  <label for="spare">قطع الغيار (اختياري)</label><input id="spare">
-  <label for="status">الحالة</label><select id="status"></select>
-  <label for="cat">تصنيف العطل</label><select id="cat"></select>
-</main>
+<div id="tabs"><button id="tabDash" type="button">مؤشرات الأعطال</button><button id="tabForm" type="button">بلاغ جديد</button></div>
+<div class="wrap"><div id="pend"><span>بلاغات في الانتظار: <b id="pn">0</b></span><a id="now">إرسال الآن</a></div><div id="msg"></div></div>
+<main id="login" class="narrow" style="display:none"><label for="lcode">كود الموظف</label><input id="lcode" inputmode="numeric" autocomplete="username"><label for="lpw">الباسورد</label><input id="lpw" type="password" autocomplete="current-password"><button class="btn" id="lgo">دخول</button><div id="fbox" style="display:none"><p id="ftxt"></p><a id="wa" target="_blank" rel="noopener" style="display:none;margin-top:6px;padding:10px 14px;border-radius:6px;background:#1f7a4d;color:#fff;text-decoration:none;font-weight:600">راسل المسؤول على واتساب</a></div></main>
+<main id="change" class="narrow" style="display:none"><div id="oldBox"><label for="op">الباسورد الحالي</label><input id="op" type="password"></div><label for="np">الباسورد الجديد (6 خانات على الأقل)</label><input id="np" type="password"><label for="np2">تأكيد الباسورد الجديد</label><input id="np2" type="password"><button class="btn" id="cgo">حفظ الباسورد</button><p><a id="cback">رجوع</a></p></main>
+<main id="form" style="display:none"><label for="section">القسم</label><select id="section"></select><label for="machine">الماكينة</label><select id="machine"></select><label for="comp">الجزء المعطل</label><select id="comp"></select><label for="desc">وصف العطل</label><textarea id="desc"></textarea><label for="solution">خطوات الحل</label><textarea id="solution"></textarea><label for="date">التاريخ</label><input type="date" id="date"><div class="times"><div><label for="t1">بداية البلاغ</label><input type="time" id="t1"></div><div><label for="t2">بداية العمل</label><input type="time" id="t2"></div><div><label for="t3">نهاية العمل</label><input type="time" id="t3"></div></div><label for="spare">قطع الغيار (اختياري)</label><input id="spare"><label for="status">الحالة</label><select id="status"></select><label for="cat">تصنيف العطل</label><select id="cat"></select></main>
 <button id="send" style="display:none">حفظ البلاغ</button>
+<section id="dashboard" aria-live="polite"><div class="dash-head"><h2>مؤشرات الأعطال</h2><div class="monthnav"><button id="prevMonth" type="button" aria-label="الشهر السابق">‹</button><span class="month-label" id="monthLabel">—</span><button id="nextMonth" type="button" aria-label="الشهر التالي">›</button></div></div><p class="dash-note">الحساب حسب تاريخ البلاغ، ومدة التوقف من بداية العمل إلى نهاية العمل. البلاغات التي ينقصها أحد الوقتين لا تدخل في حساب الساعات أو MTTR.</p><div class="cards"><div class="metric"><div class="label">إجمالي البلاغات</div><div class="value" id="mCount">—</div></div><div class="metric"><div class="label">إجمالي التوقف (ساعة)</div><div class="value" id="mDowntime">—</div></div><div class="metric"><div class="label">متوسط زمن الإصلاح MTTR (ساعة)</div><div class="value" id="mMttr">—</div></div><div class="metric"><div class="label">الماكينات التي توقفت</div><div class="value" id="mMachines">—</div></div></div><div class="section-card"><h3>أعلى 5 ماكينات حسب ساعات التوقف</h3><div id="topMachines" class="empty">جارٍ تحميل البيانات…</div></div><div class="section-card"><h3>أحدث البلاغات في الشهر</h3><div id="recentReports" class="recent empty">جارٍ تحميل البيانات…</div><div class="statusline"><span id="dashUpdated">لم يتم تحديث البيانات بعد</span><button id="refreshDash" class="refresh" type="button">تحديث البيانات</button></div></div></section>
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbybkwat1TAGL1cAUQPXdaXchnCrILQAPTnkCbei7LbHNmttM9tv5AcZfbCZfi8_-qTt/exec';
-const ADMIN_WA = '201270437241'; // واتساب المسؤول (صيغة دولية بدون +)
+const ADMIN_WA = '201270437241';
 const $ = id => document.getElementById(id);
 const REQ = ['section','machine','comp','desc','solution','date','t1','t2','t3','status','cat'];
 const ALL = REQ.concat(['spare']);
-let D = null, busy = false, S = JSON.parse(localStorage.getItem('s') || 'null');
-
+let D = null, busy = false, dashBusy = false, S = JSON.parse(localStorage.getItem('s') || 'null');
+let selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 const getQ = () => JSON.parse(localStorage.getItem('q') || '[]');
 function setQ(q) { localStorage.setItem('q', JSON.stringify(q)); pend(); }
 function pend() { const n = getQ().length; $('pend').style.display = n ? 'flex' : 'none'; $('pn').textContent = n; }
 function note(t, c) { const m = $('msg'); m.textContent = t || ''; m.className = t ? c : ''; }
 function fill(sel, arr, ph) { sel.length = 0; if (ph) sel.add(new Option(ph, '')); arr.forEach(x => sel.add(new Option(x, x))); }
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
-const post = b => {
-  const c = new AbortController(), t = setTimeout(() => c.abort(), 25000);
-  return fetch(API, { method: 'POST', signal: c.signal, headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(b) })
-    .then(r => r.json()).finally(() => clearTimeout(t));
-};
-const netMsg = e => !navigator.onLine ? 'لا يوجد اتصال بالإنترنت. تسجيل الدخول يحتاج نت'
-  : (e && e.name === 'AbortError' ? 'السيرفر بطيء أو الاتصال ضعيف. جرّب مرة تانية' : 'تعذر الوصول للسيرفر. جرّب مرة تانية');
+const post = b => { const c = new AbortController(), t = setTimeout(() => c.abort(), 25000); return fetch(API, {method:'POST',signal:c.signal,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)}).then(r=>r.json()).finally(()=>clearTimeout(t)); };
+const netMsg = e => !navigator.onLine ? 'لا يوجد اتصال بالإنترنت. تسجيل الدخول يحتاج نت' : (e && e.name === 'AbortError' ? 'السيرفر بطيء أو الاتصال ضعيف. جرّب مرة تانية' : 'تعذر الوصول للسيرفر. جرّب مرة تانية');
 const norm = s => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
-
 function show(v) {
-  ['login', 'change', 'form'].forEach(x => $(x).style.display = x === v ? 'block' : 'none');
+  ['login','change','form'].forEach(x => $(x).style.display = x === v ? 'block' : 'none');
+  $('dashboard').style.display = v === 'dashboard' ? 'block' : 'none';
   $('send').style.display = v === 'form' ? 'block' : 'none';
-  $('bar').style.display = S && v !== 'login' ? 'flex' : 'none';
+  const logged = !!S && v !== 'login' && v !== 'change';
+  $('bar').style.display = S && v !== 'login' && v !== 'change' ? 'flex' : 'none';
+  $('tabs').style.display = logged ? 'flex' : 'none';
+  $('tabDash').classList.toggle('active', v === 'dashboard'); $('tabForm').classList.toggle('active', v === 'form');
+  $('headTitle').textContent = v === 'dashboard' ? 'مؤشرات الأعطال' : v === 'form' ? 'بلاغ عطل جديد' : v === 'change' ? 'تغيير كلمة المرور' : 'BD Log';
   $('who').textContent = S ? S.name : '';
-  window.scrollTo(0, 0);
+  if (v === 'form' || v === 'dashboard') $('wo').style.display = v === 'form' ? 'inline-block' : 'none';
+  window.scrollTo(0,0);
 }
-function save(d) { S = { token: d.token, code: d.code, name: d.name }; localStorage.setItem('s', JSON.stringify(S)); }
-function logout() { localStorage.removeItem('s'); localStorage.removeItem('d'); S = null; show('login'); }
+function save(d) { S = {token:d.token,code:d.code,name:d.name}; localStorage.setItem('s',JSON.stringify(S)); }
+function logout() { localStorage.removeItem('s'); localStorage.removeItem('d'); S=null; show('login'); }
 function showChange(forced) { $('oldBox').style.display = forced ? 'none' : 'block'; $('cback').style.display = forced ? 'none' : 'inline'; show('change'); }
-
-function init(d) {
-  D = d;
-  $('wo').textContent = navigator.onLine ? d.id : '—';
-  fill($('section'), d.sections, 'اختر القسم');
-  fill($('machine'), [], 'اختر القسم أولا');
-  fill($('comp'), [], 'اختر القسم أولا');
-  fill($('status'), d.status);
-  fill($('cat'), d.cats);
-  if (d.cats.indexOf('كهربائي') > -1) $('cat').value = 'كهربائي';
-  $('date').value = today();
-}
-
-async function load() {
-  try {
-    const d = await (await fetch(API + '?t=' + encodeURIComponent(S.token))).json();
-    if (d.error === 'AUTH') return logout();
-    if (d.error) throw new Error(d.error);
-    if (d.must) return showChange(true);
-    localStorage.setItem('d', JSON.stringify(d));
-    init(d);
-  } catch (e) {
-    const c = localStorage.getItem('d');
-    if (c) init(JSON.parse(c));
-    else note('افتح التطبيق مرة واحدة مع اتصال بالإنترنت لتحميل القوائم', 'err');
-  }
-}
-async function start() { show('form'); await load(); flush(); }
-
-async function flush() {
-  if (busy || !S) return;
-  busy = true;
-  const ok = [];
-  try {
-    for (const f of getQ()) {
-      if (f.err || f.u !== S.code) continue;
-      let d;
-      try { d = await post(Object.assign({ action: 'submit', token: S.token }, f)); }
-      catch (e) { break; } // لا يوجد اتصال: نعيد المحاولة لاحقا
-      if (d.error === 'AUTH') { logout(); break; }
-      const q = getQ(), it = q.find(x => x.cid === f.cid);
-      if (d.error) { it.err = d.error; note('بلاغ مرفوض: ' + d.error, 'err'); }
-      else { q.splice(q.indexOf(it), 1); ok.push(d.id); }
-      setQ(q);
-    }
-    if (ok.length) note('تم حفظ: ' + ok.join('، '), 'ok');
-  } finally { busy = false; }
-}
-
-const HELP = {
-  BAD_PW:   { m: 'الباسورد غلط.', t: 'لو نسيت الباسورد، اطلب من المسؤول إعادة تعيينه. هيديك باسورد مؤقت جديد، وتختار منه باسورد جديد أول ما تدخل.', w: 'نسيت الباسورد بتاعي. كودي: ' },
-  NO_USER:  { m: 'الكود ده مش مسجل في النظام. اتأكد منه تاني.', t: 'لو متأكد إن الكود صح، اطلب من المسؤول يتأكد إنه مسجل.', w: 'الكود مش شغال معايا. كودي: ' },
-  INACTIVE: { m: 'الحساب ده متوقف.', t: 'كلّم المسؤول لتفعيله.', w: 'حسابي متوقف. كودي: ' },
-  LOCKED:   { m: 'محاولات كتير غلط.', t: 'الحساب اتقفل مؤقتا. استنى 5 دقايق أو كلّم المسؤول.', w: 'الحساب اتقفل معايا. كودي: ' }
-};
-let helpKind = null;
-function help(k) {
-  helpKind = k;
-  $('ftxt').textContent = HELP[k].t;
-  $('fbox').style.display = 'block';
-  if (ADMIN_WA) {
-    const w = $('wa');
-    w.style.display = 'inline-block';
-    w.href = 'https://wa.me/' + ADMIN_WA + '?text=' + encodeURIComponent(HELP[k].w + norm($('lcode').value.trim()));
-  }
-}
-$('lcode').oninput = () => { if (helpKind) help(helpKind); };
-
-$('lgo').onclick = async () => {
-  const code = norm($('lcode').value.trim()), pw = $('lpw').value;
-  if (!code) { note('اكتب كود الموظف', 'err'); $('lcode').focus(); return; }
-  if (!pw) { note('اكتب الباسورد', 'err'); $('lpw').focus(); return; }
-  note('جاري الدخول...', 'ok');
-  try {
-    const d = await post({ action: 'login', code: code, pw: pw });
-    if (d.error) {
-      if (HELP[d.error]) { note(HELP[d.error].m, 'err'); return help(d.error); }
-      return note(d.error, 'err');
-    }
-    save(d); $('lpw').value = ''; helpKind = null; $('fbox').style.display = 'none'; note('');
-    if (d.must) return showChange(true);
-    start();
-  } catch (e) { note(netMsg(e), 'err'); }
-};
-$('cgo').onclick = async () => {
-  if ($('np').value !== $('np2').value) return note('الباسورد الجديد غير متطابق', 'err');
-  try {
-    const d = await post({ action: 'change', token: S.token, old: $('op').value, pw: $('np').value });
-    if (d.error === 'AUTH') return logout();
-    if (d.error) return note(d.error, 'err');
-    save(d); ['op', 'np', 'np2'].forEach(k => $(k).value = '');
-    await start(); note('تم حفظ الباسورد', 'ok');
-  } catch (e) { note(netMsg(e), 'err'); }
-};
-$('cback').onclick = () => { note(''); show('form'); };
-$('out').onclick = () => {
-  if (getQ().length && !confirm('فيه بلاغات في الانتظار لم تُرسل. هتفضل محفوظة لحد ما تدخل بنفس الكود. تكمل؟')) return;
-  logout();
-};
-
-$('section').onchange = () => {
-  const s = $('section').value;
-  fill($('machine'), D.machines.filter(r => r[0] === s).map(r => r[1]), 'اختر الماكينة');
-  fill($('comp'), D.parts.filter(r => r[0] === s).map(r => r[1]), 'اختر الجزء');
-};
-
-$('send').onclick = () => {
-  const f = {};
-  ALL.forEach(k => f[k] = $(k).value.trim());
-  let bad = 0;
-  REQ.forEach(k => { const miss = !f[k]; $(k).classList.toggle('bad', miss); if (miss) bad++; });
-  if (bad) { note('كمّل الخانات المعلّمة بالأحمر', 'err'); window.scrollTo(0, 0); return; }
-  f.u = S.code;
-  f.cid = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random());
-  setQ(getQ().concat([f]));
-  ALL.forEach(k => { if (k !== 'date') $(k).value = ''; });
-  fill($('machine'), [], 'اختر القسم أولا');
-  fill($('comp'), [], 'اختر القسم أولا');
-  note('تم تسجيل البلاغ على الجهاز، جاري الإرسال...', 'ok');
-  window.scrollTo(0, 0);
-  flush().then(load);
-};
-
-$('now').onclick = () => { setQ(getQ().map(x => { delete x.err; return x; })); flush(); };
-window.addEventListener('online', flush);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) flush(); });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-pend();
-if (S) start(); else show('login');
+function init(d) { D=d; $('wo').textContent=navigator.onLine?d.id:'—'; fill($('section'),d.sections,'اختر القسم'); fill($('machine'),[],'اختر القسم أولا'); fill($('comp'),[],'اختر القسم أولا'); fill($('status'),d.status); fill($('cat'),d.cats); if(d.cats.indexOf('كهربائي')>-1)$('cat').value='كهربائي'; $('date').value=today(); }
+async function load() { try { const d=await(await fetch(API+'?t='+encodeURIComponent(S.token))).json(); if(d.error==='AUTH')return logout(); if(d.error)throw new Error(d.error); if(d.must){showChange(true);return false;} localStorage.setItem('d',JSON.stringify(d)); init(d); return true; } catch(e) { const c=localStorage.getItem('d'); if(c){init(JSON.parse(c));return true;} note('افتح التطبيق مرة واحدة مع اتصال بالإنترنت لتحميل القوائم','err'); return false; } }
+async function start() { const ready=await load(); if(!ready||!S)return; if(!navigator.onLine){let all={};try{all=JSON.parse(localStorage.getItem('bd_dashboard_cache')||'{}');}catch(e){}const keys=Object.keys(all).filter(k=>all[k]&&all[k].data);if(!keys.length){show('form');note('لا توجد مؤشرات محفوظة على الجهاز. يمكنك تسجيل بلاغ جديد، وتحتاج إلى الإنترنت لعرض المؤشرات.','err');flush();return;}if(!all[monthKey(selectedMonth)]){keys.sort((a,b)=>(all[b].savedAt||0)-(all[a].savedAt||0));const parts=keys[0].split('-').map(Number);selectedMonth=new Date(parts[0],parts[1]-1,1);}} await showDashboard(false); flush(); }
+async function flush() { if(busy||!S)return; busy=true; const ok=[]; try { for(const f of getQ()) { if(f.err||f.u!==S.code)continue; let d; try{d=await post(Object.assign({action:'submit',token:S.token},f));}catch(e){break;} if(d.error==='AUTH'){logout();break;} const q=getQ(),it=q.find(x=>x.cid===f.cid); if(d.error){if(it)it.err=d.error;note('بلاغ مرفوض: '+d.error,'err');}else{if(it)q.splice(q.indexOf(it),1);ok.push(d.id);} setQ(q); } if(ok.length)note('تم حفظ: '+ok.join('، '),'ok'); }finally{busy=false;} }
+const HELP={BAD_PW:{m:'الباسورد غلط.',t:'لو نسيت الباسورد، اطلب من المسؤول إعادة تعيينه. هيديك باسورد مؤقت جديد، وتختار منه باسورد جديد أول ما تدخل.',w:'نسيت الباسورد بتاعي. كودي: '},NO_USER:{m:'الكود ده مش مسجل في النظام. اتأكد منه تاني.',t:'لو متأكد إن الكود صح، اطلب من المسؤول يتأكد إنه مسجل.',w:'الكود مش شغال معايا. كودي: '},INACTIVE:{m:'الحساب ده متوقف.',t:'كلّم المسؤول لتفعيله.',w:'حسابي متوقف. كودي: '},LOCKED:{m:'محاولات كتير غلط.',t:'الحساب اتقفل مؤقتا. استنى 5 دقايق أو كلّم المسؤول.',w:'الحساب اتقفل معايا. كودي: '}};
+let helpKind=null;
+function help(k){helpKind=k;$('ftxt').textContent=HELP[k].t;$('fbox').style.display='block';if(ADMIN_WA){const w=$('wa');w.style.display='inline-block';w.href='https://wa.me/'+ADMIN_WA+'?text='+encodeURIComponent(HELP[k].w+norm($('lcode').value.trim()));}}
+$('lcode').oninput=()=>{if(helpKind)help(helpKind);};
+$('lgo').onclick=async()=>{const code=norm($('lcode').value.trim()),pw=$('lpw').value;if(!code){note('اكتب كود الموظف','err');$('lcode').focus();return;}if(!pw){note('اكتب الباسورد','err');$('lpw').focus();return;}note('جاري الدخول...','ok');try{const d=await post({action:'login',code:code,pw:pw});if(d.error){if(HELP[d.error]){note(HELP[d.error].m,'err');return help(d.error);}return note(d.error,'err');}save(d);$('lpw').value='';helpKind=null;$('fbox').style.display='none';note('');if(d.must)return showChange(true);start();}catch(e){note(netMsg(e),'err');}};
+$('cgo').onclick=async()=>{if($('np').value!==$('np2').value)return note('الباسورد الجديد غير متطابق','err');try{const d=await post({action:'change',token:S.token,old:$('op').value,pw:$('np').value});if(d.error==='AUTH')return logout();if(d.error)return note(d.error,'err');save(d);['op','np','np2'].forEach(k=>$(k).value='');await start();note('تم حفظ الباسورد','ok');}catch(e){note(netMsg(e),'err');}};
+$('cback').onclick=()=>{note('');show('form');};
+$('out').onclick=()=>{if(getQ().length&&!confirm('فيه بلاغات في الانتظار لم تُرسل. هتفضل محفوظة لحد ما تدخل بنفس الكود. تكمل؟'))return;logout();};
+$('section').onchange=()=>{const s=$('section').value;fill($('machine'),D.machines.filter(r=>r[0]===s).map(r=>r[1]),'اختر الماكينة');fill($('comp'),D.parts.filter(r=>r[0]===s).map(r=>r[1]),'اختر الجزء');};
+$('send').onclick=()=>{const f={};ALL.forEach(k=>f[k]=$(k).value.trim());let bad=0;REQ.forEach(k=>{const miss=!f[k];$(k).classList.toggle('bad',miss);if(miss)bad++;});if(bad){note('كمّل الخانات المعلّمة بالأحمر','err');window.scrollTo(0,0);return;}f.u=S.code;f.cid=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());setQ(getQ().concat([f]));ALL.forEach(k=>{if(k!=='date')$(k).value='';});fill($('machine'),[],'اختر القسم أولا');fill($('comp'),[],'اختر القسم أولا');note('تم تسجيل البلاغ على الجهاز، جاري الإرسال...','ok');window.scrollTo(0,0);flush().then(load);};
+$('now').onclick=()=>{setQ(getQ().map(x=>{delete x.err;return x;}));flush();};
+function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function monthTitle(d){return new Intl.DateTimeFormat('ar-EG',{month:'long',year:'numeric'}).format(d);}
+function fmt(n,dec=1){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
+function cachedDashboard(key){try{const c=JSON.parse(localStorage.getItem('bd_dashboard_cache')||'{}');return c[key]||null;}catch(e){return null;}}
+function cacheDashboard(key,data){let c={};try{c=JSON.parse(localStorage.getItem('bd_dashboard_cache')||'{}');}catch(e){}c[key]={data:data,savedAt:Date.now()};localStorage.setItem('bd_dashboard_cache',JSON.stringify(c));}
+function renderDashboard(data,savedAt,isOffline){$('mCount').textContent=Number(data.count||0).toLocaleString('en-US');$('mDowntime').textContent=fmt(data.totalDowntime,2);$('mMttr').textContent=data.mttr==null?'—':fmt(data.mttr,2);$('mMachines').textContent=Number(data.machineCount||0).toLocaleString('en-US');
+const top=$('topMachines');top.textContent='';if(!data.topMachines||!data.topMachines.length){top.className='empty';top.textContent='لا توجد بيانات لهذا الشهر.';}else{top.className='';data.topMachines.slice(0,5).forEach((m,i)=>{const row=document.createElement('div');row.className='rank-row';const name=document.createElement('div');name.className='rank-name';name.textContent=(i+1)+'. '+m.machine;const val=document.createElement('div');val.className='rank-value';val.textContent=fmt(m.hours,2)+' ساعة';row.append(name,val);top.appendChild(row);});}
+const recent=$('recentReports');recent.textContent='';if(!data.recent||!data.recent.length){recent.className='recent empty';recent.textContent='لا توجد بلاغات لهذا الشهر.';}else{recent.className='recent';const table=document.createElement('table'),thead=document.createElement('thead'),tr=document.createElement('tr');['رقم البلاغ','الماكينة','مدة التوقف','التاريخ'].forEach(t=>{const th=document.createElement('th');th.textContent=t;tr.appendChild(th);});thead.appendChild(tr);table.appendChild(thead);const tb=document.createElement('tbody');data.recent.forEach(r=>{const row=document.createElement('tr');[r.id,r.machine,r.hours==null?'غير مكتملة':fmt(r.hours,2)+' ساعة',r.date].forEach(v=>{const td=document.createElement('td');td.textContent=v==null?'—':String(v);row.appendChild(td);});tb.appendChild(row);});table.appendChild(tb);recent.appendChild(table);}
+const dt=savedAt?new Date(savedAt):new Date();$('dashUpdated').textContent=(isOffline?'عرض محفوظ دون اتصال • ':'آخر تحديث: ')+dt.toLocaleString('ar-EG');}
+async function showDashboard(refresh){show('dashboard');const key=monthKey(selectedMonth);$('monthLabel').textContent=monthTitle(selectedMonth);$('nextMonth').disabled=key>=monthKey(new Date());if(dashBusy)return;const cache=cachedDashboard(key);if(cache&&!refresh)renderDashboard(cache.data,cache.savedAt,!navigator.onLine);else if(!cache){$('topMachines').textContent='جارٍ تحميل البيانات…';$('recentReports').textContent='جارٍ تحميل البيانات…';}
+if(!navigator.onLine){if(cache)renderDashboard(cache.data,cache.savedAt,true);else{$('topMachines').textContent='لا توجد بيانات محفوظة لهذا الشهر. اتصل بالإنترنت للتحديث.';$('recentReports').textContent='لا توجد بيانات محفوظة لهذا الشهر.';}return;}
+if(!refresh&&cache&&Date.now()-cache.savedAt<5*60*1000)return;
+dashBusy=true;try{const requestMonth=new Date(selectedMonth.getFullYear(),selectedMonth.getMonth(),1);const url=API+'?t='+encodeURIComponent(S.token)+'&action=dashboard&year='+requestMonth.getFullYear()+'&month='+(requestMonth.getMonth()+1);const response=await fetch(url);const data=await response.json();if(data.error==='AUTH')return logout();if(data.error)throw new Error(data.error);cacheDashboard(key,data);if(key===monthKey(selectedMonth))renderDashboard(data,Date.now(),false);}catch(e){if(key===monthKey(selectedMonth)){if(cache)renderDashboard(cache.data,cache.savedAt,true);else{$('topMachines').textContent='تعذر تحميل بيانات المؤشرات. تحقق من الاتصال ونشر كود Apps Script المحدّث.';$('recentReports').textContent='لا توجد بيانات متاحة.';note(netMsg(e),'err');}}}finally{dashBusy=false;if(key!==monthKey(selectedMonth))showDashboard(false);}}
+$('tabDash').onclick=()=>showDashboard(false);$('tabForm').onclick=()=>{show('form');if(!D)load();};$('prevMonth').onclick=()=>{selectedMonth=new Date(selectedMonth.getFullYear(),selectedMonth.getMonth()-1,1);showDashboard(false);};$('nextMonth').onclick=()=>{const n=new Date(selectedMonth.getFullYear(),selectedMonth.getMonth()+1,1);if(n<=new Date(new Date().getFullYear(),new Date().getMonth(),1)){selectedMonth=n;showDashboard(false);}};$('refreshDash').onclick=()=>showDashboard(true);
+window.addEventListener('online',()=>{flush();if(S&&$('dashboard').style.display!=='none')showDashboard(true);});document.addEventListener('visibilitychange',()=>{if(!document.hidden){flush();if(S&&$('dashboard').style.display!=='none')showDashboard(false);}});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');pend();if(S)start();else show('login');
 </script>
 </body>
 </html>
