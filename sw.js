@@ -1,5 +1,5 @@
 // Cache version bumped for MainTrack Professional UI. Existing API calls are not intercepted.
-const C = 'maintrack-v11-professional-ui';
+const C = 'maintrack-v5';
 const F = ['./', 'index.html', 'manifest.webmanifest', 'bd-192.png', 'bd-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(C).then(c => c.addAll(F)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== C).map(x => caches.delete(x)))).then(() => clients.claim())));
