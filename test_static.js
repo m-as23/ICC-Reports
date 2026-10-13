@@ -6,7 +6,7 @@ new Function(client);new Function(backend);new Function(fs.readFileSync(base+'/s
 console.log('PASS: front-end, Apps Script and service worker parse as JavaScript');
 // Unit test action dispatcher and mandatory RBAC, without touching live Google Sheets.
 const ctx={ContentService:{MimeType:{JSON:'JSON'},createTextOutput(t){return {setMimeType(){return this},toString(){return t},value:t}}},console};vm.createContext(ctx);vm.runInContext(backend,ctx);
-vm.runInContext(`auth_ = function(){return {code:'1002',name:'Viewer',must:false,role:'viewer'}};
+vm.runInContext(`auth_ = function(){return {code:'1002',name:'Legacy Viewer',must:false,role:'legacy_viewer'}};
 login_ = function(){return {token:'fake'}};
 getDashboard_ = function(){return {count:0}};
 cachedDashboard_ = function(){return {count:0}};
@@ -21,11 +21,13 @@ assert.deepStrictEqual(post('submit').error,'FORBIDDEN');
 assert.deepStrictEqual(post('adminUsers').error,'FORBIDDEN');
 assert.deepStrictEqual(post('adminSaveUser',{code:'1001',role:'owner',active:true}).error,'FORBIDDEN');
 assert.deepStrictEqual(post('somethingElse').error,'UNKNOWN_ACTION');
-assert.deepStrictEqual(post('profile').profile.code,'1002');
-assert.ok(!('error' in post('dashboard',{year:2026,month:10})));
-console.log('PASS: Viewer cannot submit reports or manage users; unknown action rejected; profile/dashboard allowed');
+assert.deepStrictEqual(post('profile').error,'FORBIDDEN');
+assert.deepStrictEqual(post('dashboard',{year:2026,month:10}).error,'FORBIDDEN');
+assert.deepStrictEqual(post('leaveRequest',{type:'annual',start:'2026-10-20',end:'2026-10-21'}).error,'FORBIDDEN');
+assert.deepStrictEqual(post('leaveDecision',{id:'LV-ABCDEFGH',decision:'APPROVED'}).error,'FORBIDDEN');
+console.log('PASS: retired viewer cannot access dashboard, create leave, approve leave, or submit; unknown action rejected');
 const hasGetToken=client.includes("API+'?t='")||client.includes('API+\'?t=\'');
 assert.ok(!hasGetToken);
 assert.ok(!/setInterval\(refreshWorkOrder,\s*20000\)/.test(client));
-assert.ok(client.includes("'bd_dashboard_cache_v2_'+"));
+assert.ok(client.includes("'bd_dashboard_cache_v3_'+"));
 console.log('PASS: no new token-in-query GET calls; no 20-second WO polling; account-isolated dashboard cache');

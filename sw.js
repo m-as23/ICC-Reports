@@ -1,6 +1,6 @@
 // App shell: serve cached UI instantly when available, then refresh it in background.
 // Never cache Apps Script API responses, auth tokens, or user-specific data.
-const CACHE = 'maintrack-v6';
+const CACHE = 'maintrack-v7';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'bd-192.png', 'bd-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
