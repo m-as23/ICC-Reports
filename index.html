@@ -124,7 +124,7 @@ body{background:#f2f5f8}
 <main id="change" class="narrow auth-card" style="display:none"><div class="auth-intro"><img class="auth-mark" src="bd-192.png" width="66" height="66" alt=""><h2>تأمين حسابك</h2><p>اختر كلمة مرور جديدة لمتابعة استخدام النظام</p></div><div id="oldBox"><label for="op">الباسورد الحالي</label><input id="op" type="password"></div><label for="np">الباسورد الجديد (8 خانات على الأقل)</label><input id="np" type="password"><label for="np2">تأكيد الباسورد الجديد</label><input id="np2" type="password"><button class="btn" id="cgo">حفظ الباسورد</button><p><a id="cback">رجوع</a></p></main>
 <main id="form" style="display:none"><label for="section">القسم</label><select id="section"></select><label for="machine">الماكينة</label><select id="machine"></select><label for="comp">الجزء المعطل</label><select id="comp"></select><label for="desc">وصف العطل</label><textarea id="desc"></textarea><label for="solution">خطوات الحل</label><textarea id="solution"></textarea><label for="date">التاريخ</label><input type="date" id="date"><div class="times"><div><label for="t1">بداية البلاغ</label><input type="time" id="t1"></div><div><label for="t2">بداية العمل</label><input type="time" id="t2"></div><div><label for="t3">نهاية العمل</label><input type="time" id="t3"></div></div><label for="spare">قطع الغيار (اختياري)</label><input id="spare"><label for="status">الحالة</label><select id="status"></select><label for="cat">تصنيف العطل</label><select id="cat"></select></main>
 <button id="send" style="display:none">حفظ البلاغ</button>
-<section id="dashboard" aria-live="polite"><div class="dash-toolbar"><span class="live-status" id="syncStatus"><i></i> متصل بالنظام</span><span class="product-caption">MAINTRACK / OPERATIONS OVERVIEW</span></div><div class="dash-head"><div class="dash-title-group"><span class="eyebrow">ASSET &amp; OPERATIONS INTELLIGENCE</span><h2>مؤشرات الأعطال</h2><p class="dash-subtitle">نظرة عامة على أداء الصيانة وساعات التوقف</p></div><div class="monthnav"><button id="prevMonth" type="button" aria-label="الشهر السابق">‹</button><span class="month-label" id="monthLabel">—</span><button id="nextMonth" type="button" aria-label="الشهر التالي">›</button></div></div><p class="dash-note">الحساب حسب تاريخ البلاغ. المؤشر الحالي لساعات التوقف مبني على الفترة من بداية العمل إلى نهايته (زمن الإصلاح)، وليس وقت توقف المعدة الفعلي بالضرورة. متوسط الاستجابة من بداية البلاغ إلى بداية العمل.</p><div class="cards"><div class="metric"><div class="label">إجمالي البلاغات</div><div class="value" id="mCount">—</div></div><div class="metric"><div class="label">إجمالي التوقف (ساعة)</div><div class="value" id="mDowntime">—</div></div><div class="metric"><div class="label">متوسط زمن الإصلاح MTTR (ساعة)</div><div class="value" id="mMttr">—</div></div><div class="metric"><div class="label">الماكينات التي توقفت</div><div class="value" id="mMachines">—</div></div><div class="metric"><div class="label">متوسط وقت الاستجابة (ساعة)</div><div class="value" id="mResponse">—</div></div><div class="metric"><div class="label">الوقت من البلاغ حتى الانتهاء (ساعة)</div><div class="value" id="mElapsed">—</div></div></div><div class="section-card"><h3>ساعات التوقف حسب القسم</h3><div id="sectionHoursChart" class="section-chart empty">جارٍ تحميل بيانات الرسم البياني…</div></div><div class="section-card"><h3>أعلى 5 ماكينات حسب ساعات التوقف</h3><div id="topMachines" class="empty">جارٍ تحميل البيانات…</div></div><div class="analytics-pair"><div class="section-card"><h3>الأعطال حسب اليوم</h3><div id="dailyTrend" class="daily-trend"></div></div><div class="section-card"><h3>جودة تسجيل مدد الإصلاح</h3><div id="qualityInfo" class="quality-info"></div></div></div>
+<section id="dashboard" aria-live="polite"><div class="dash-toolbar"><span class="live-status" id="syncStatus"><i></i> متصل بالنظام</span><button type="button" id="retryConnect" class="refresh" hidden>إعادة الاتصال</button><span class="product-caption">MAINTRACK / OPERATIONS OVERVIEW</span></div><div class="dash-head"><div class="dash-title-group"><span class="eyebrow">ASSET &amp; OPERATIONS INTELLIGENCE</span><h2>مؤشرات الأعطال</h2><p class="dash-subtitle">نظرة عامة على أداء الصيانة وساعات التوقف</p></div><div class="monthnav"><button id="prevMonth" type="button" aria-label="الشهر السابق">‹</button><span class="month-label" id="monthLabel">—</span><button id="nextMonth" type="button" aria-label="الشهر التالي">›</button></div></div><p class="dash-note">الحساب حسب تاريخ البلاغ. المؤشر الحالي لساعات التوقف مبني على الفترة من بداية العمل إلى نهايته (زمن الإصلاح)، وليس وقت توقف المعدة الفعلي بالضرورة. متوسط الاستجابة من بداية البلاغ إلى بداية العمل.</p><div class="cards"><div class="metric"><div class="label">إجمالي البلاغات</div><div class="value" id="mCount">—</div></div><div class="metric"><div class="label">إجمالي التوقف (ساعة)</div><div class="value" id="mDowntime">—</div></div><div class="metric"><div class="label">متوسط زمن الإصلاح MTTR (ساعة)</div><div class="value" id="mMttr">—</div></div><div class="metric"><div class="label">الماكينات التي توقفت</div><div class="value" id="mMachines">—</div></div><div class="metric"><div class="label">متوسط وقت الاستجابة (ساعة)</div><div class="value" id="mResponse">—</div></div><div class="metric"><div class="label">الوقت من البلاغ حتى الانتهاء (ساعة)</div><div class="value" id="mElapsed">—</div></div></div><div class="section-card"><h3>ساعات التوقف حسب القسم</h3><div id="sectionHoursChart" class="section-chart empty">جارٍ تحميل بيانات الرسم البياني…</div></div><div class="section-card"><h3>أعلى 5 ماكينات حسب ساعات التوقف</h3><div id="topMachines" class="empty">جارٍ تحميل البيانات…</div></div><div class="analytics-pair"><div class="section-card"><h3>الأعطال حسب اليوم</h3><div id="dailyTrend" class="daily-trend"></div></div><div class="section-card"><h3>جودة تسجيل مدد الإصلاح</h3><div id="qualityInfo" class="quality-info"></div></div></div>
 <div class="section-card"><h3>تحليل الماكينات — عدد الأعطال وساعات التوقف</h3><div id="machineAnalysis" class="recent"></div></div>
 <div class="analytics-pair"><div class="section-card"><h3>تحليل الأقسام</h3><div id="sectionAnalysis" class="recent"></div></div><div class="section-card"><h3>تصنيفات الأعطال</h3><div id="categoryAnalysis" class="recent"></div></div></div>
 <div class="section-card"><h3>أحدث البلاغات في الشهر</h3><div id="recentReports" class="recent empty">جارٍ تحميل البيانات…</div><div class="statusline"><span id="dashUpdated">لم يتم تحديث البيانات بعد</span><button id="refreshDash" class="refresh" type="button">تحديث البيانات</button></div></div></section>
@@ -173,13 +173,71 @@ function pend() { const n = getQ().filter(q=>S&&q.u===S.code).length; $('pend').
 function note(t, c) { const m = $('msg'); m.textContent = t || ''; m.className = t ? c : ''; }
 function fill(sel, arr, ph) { sel.length = 0; if (ph) sel.add(new Option(ph, '')); arr.forEach(x => sel.add(new Option(x, x))); }
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
-const post = b => { const c = new AbortController(), t = setTimeout(() => c.abort(), 25000); return fetch(API, {method:'POST',signal:c.signal,cache:'no-store',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).finally(()=>clearTimeout(t)); };
-const api = (action,params={}) => post(Object.assign({action,token:S.token},params));
+// Read operations should fail quickly and recover from the UI; a possibly committed
+// write must NOT be silently retried after an HTTP timeout.
+const API_TIMEOUT_MS = Object.freeze({
+  login:30000, change:45000, session:15000, init:20000,
+  dashboard:20000, notifications:15000, nextId:15000,
+  profile:20000, leaveMine:20000, leaveInbox:20000,
+  adminUsers:20000, submit:45000, leaveRequest:45000,
+  leaveDecision:45000, markNotificationRead:30000,
+  updateProfile:45000, adminSaveUser:45000
+});
+const API_DEFAULT_TIMEOUT_MS=25000;
+// Safe metrics in the device console: no employee code, passwords, payload, or token.
+function requestMetric(action,ms,status){
+  try { console.info('[MainTrack API]',JSON.stringify({action,ms:Math.round(ms),status})); }catch(e){}
+}
+async function post(b){
+  const action=String(b.action||'unknown');
+  const timeout=API_TIMEOUT_MS[action]||API_DEFAULT_TIMEOUT_MS;
+  const controller=new AbortController();
+  const begun=Date.now();
+  const timer=setTimeout(()=>controller.abort(),timeout);
+  try {
+    const response=await fetch(API,{
+      method:'POST',signal:controller.signal,cache:'no-store',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)
+    });
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('INVALID_RESPONSE');
+    requestMetric(action,Date.now()-begun,data.error?'server_error':'ok');
+    return data;
+  }catch(e){
+    if(controller.signal.aborted){
+      requestMetric(action,Date.now()-begun,'timeout');
+      const timeoutError=new Error('TIMEOUT '+timeout+'ms');timeoutError.name='AbortError';timeoutError.timeoutMs=timeout;
+      throw timeoutError;
+    }
+    requestMetric(action,Date.now()-begun,'network_error');throw e;
+  }finally{clearTimeout(timer);}
+}
+async function confirmInvalidSession(token){
+  try {
+    const response=await post({action:'session',token});
+    if(response.error==='AUTH')return 'invalid';
+    if(response.ok===true)return 'valid';
+  }catch(e){/* A failed verification is NOT proof of an expired session. */}
+  return 'unknown';
+}
+// A stale response from an earlier token must never sign out a newer login.
+// A single AUTH from a secondary endpoint is confirmed before logging out.
+async function api(action,params={}){
+  const token=S&&S.token;
+  if(!token)return {error:'AUTH'};
+  const result=await post(Object.assign({},params,{action,token}));
+  if(!S||S.token!==token)return {error:'STALE_SESSION'};
+  if(result.error!=='AUTH'||action==='session')return result;
+  const verdict=await confirmInvalidSession(token);
+  if(!S||S.token!==token)return {error:'STALE_SESSION'};
+  return verdict==='invalid'?result:{error:'AUTH_UNCONFIRMED'};
+}
 const roles = {owner:'Owner',engineer:'Engineer',technician:'Technician',legacy_viewer:'صلاحية قديمة موقوفة',unassigned:'غير معيّن'};
 const canReport = () => S&&['owner','engineer','technician'].includes(S.role);
 function setSync(text,state){ const el=$('syncStatus'); if(!el)return; el.innerHTML='';const dot=document.createElement('i');el.append(dot,document.createTextNode(' '+text));el.dataset.state=state||'ok'; }
 
-const netMsg = e => !navigator.onLine ? 'لا يوجد اتصال بالإنترنت. تسجيل الدخول يحتاج نت' : (e && e.name === 'AbortError' ? 'انتهت مهلة الاتصال (25 ثانية). لم يتم إثبات انقطاع السيرفر أو انتهاء الجلسة.' : 'تعذر الوصول للسيرفر. جرّب مرة تانية');
+const netMsg = e => !navigator.onLine ? 'لا يوجد اتصال بالإنترنت. تسجيل الدخول يحتاج نت' : (e && e.name === 'AbortError' ? 'انتهت مهلة الاتصال بعد '+Math.round((e.timeoutMs||API_DEFAULT_TIMEOUT_MS)/1000)+' ثانية. الطلب لم يكتمل على جهازك؛ حاول مجددًا.' : 'تعذر الوصول للسيرفر. تحقق من الاتصال ثم أعد المحاولة.');
 const norm = s => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 function show(v) {
   document.body.classList.toggle('auth-screen', v === 'login' || v === 'change');
@@ -199,8 +257,8 @@ function show(v) {
   if (v === 'form' || v === 'dashboard') $('wo').style.display = v === 'form' ? 'inline-block' : 'none';
   window.scrollTo(0,0);
 }
-function save(d) { S = {token:d.token,code:d.code,name:d.name,role:d.role||'technician'}; sessionStorage.setItem('s',JSON.stringify(S)); appAuthenticated=true; }
-function logout() { if(S) localStorage.removeItem('bd_dashboard_cache_v3_'+S.code); sessionStorage.removeItem('s'); localStorage.removeItem('s');localStorage.removeItem('d'); D=null;appAuthenticated=false;S=null; $('bellCount').style.display='none';show('login'); }
+function save(d) { S = {token:d.token,code:d.code,name:d.name,role:d.role||'technician'}; sessionStorage.setItem('s',JSON.stringify(S)); appAuthenticated=true; $('retryConnect').hidden=true; }
+function logout() { if(S) localStorage.removeItem('bd_dashboard_cache_v3_'+S.code); sessionStorage.removeItem('s'); localStorage.removeItem('s');localStorage.removeItem('d'); D=null;appAuthenticated=false;S=null; $('bellCount').style.display='none';$('retryConnect').hidden=true;show('login'); }
 function showChange(forced) { $('oldBox').style.display = forced ? 'none' : 'block'; $('cback').style.display = forced ? 'none' : 'inline'; show('change'); }
 function init(d) { D=d; $('wo').textContent=navigator.onLine?d.id:'—'; fill($('section'),d.sections,'اختر القسم'); fill($('machine'),[],'اختر القسم أولا'); fill($('comp'),[],'اختر القسم أولا'); fill($('status'),d.status); fill($('cat'),d.cats); if(d.cats.indexOf('كهربائي')>-1)$('cat').value='كهربائي'; $('date').value=today(); applyMachineDeepLink(); }
 async function load() {
@@ -269,7 +327,7 @@ async function markNoticeRead(id,card){
   if(card&&card.classList.contains('read'))return;
   if(card){card.disabled=true;card.style.opacity='.7';}
   try{
-    const d=await post({action:'markNotificationRead',token:S.token,id:String(id)});
+    const d=await api('markNotificationRead',{id:String(id)});
     if(d.error==='AUTH')return logout(); if(d.error)throw new Error(d.error);
     noticeLast=0;await loadNotices(true);
   }catch(e){note('لم يتم حفظ القراءة على السيرفر. تحقق من الاتصال ثم اضغط على الإشعار مرة أخرى.','err');if(card){card.disabled=false;card.style.opacity='1';}}
@@ -285,8 +343,13 @@ async function refreshWorkOrder(){
 }
 // A successful login or password change already validated identity server-side.
 // Only a restored browser session requires the additional `session` request.
+let startPending=false;
 async function start(verifiedByLogin=false) {
+  if(startPending)return;
   if(!S)return show('login');
+  startPending=true;
+  try {
+  $('retryConnect').hidden=true;
   const launchedToken=S.token;
   show('dashboard');setSync(verifiedByLogin?'جارٍ تحميل لوحة الأداء…':'التحقق من الحساب…','loading');
   if(!verifiedByLogin){
@@ -294,17 +357,23 @@ async function start(verifiedByLogin=false) {
     try{auth=await api('session');}
     catch(e){
       // A network timeout is not proof that credentials expired: keep the session.
-      setSync('تعذر التحقق من الاتصال — أعد فتح التطبيق للمحاولة','offline');
-      note(netMsg(e),'err');return;
+      setSync('تعذر التحقق من الاتصال — اضغط إعادة الاتصال','offline');
+      note(netMsg(e),'err');$('retryConnect').hidden=false;return;
     }
     if(!S||S.token!==launchedToken)return;
-    if(auth.error==='AUTH'){logout();return;}
+    if(auth.error==='AUTH'){
+      const verdict=await confirmInvalidSession(launchedToken);
+      if(!S||S.token!==launchedToken)return;
+      if(verdict==='invalid'){logout();return;}
+      if(verdict==='valid')auth={ok:true,role:S.role,name:S.name};
+      else {setSync('تعذر تأكيد الجلسة مؤقتًا','offline');$('retryConnect').hidden=false;return;}
+    }
     if(auth.error==='CHANGE_REQUIRED'||auth.must){showChange(true);return;}
-    if(auth.error){note('فشل التحقق من الحساب: '+auth.error,'err');setSync('تعذر الدخول','offline');return;}
+    if(auth.error){note('فشل التحقق من الحساب: '+auth.error,'err');setSync('تعذر الدخول','offline');$('retryConnect').hidden=false;return;}
     S.role=auth.role;S.name=auth.name||S.name;
     sessionStorage.setItem('s',JSON.stringify(S));
   }
-  appAuthenticated=true;
+  appAuthenticated=true;$('retryConnect').hidden=true;
   const deepQ=new URLSearchParams(location.search);
   let firstView;
   if((deepQ.has('section')||deepQ.has('machine'))&&canReport()){
@@ -321,8 +390,11 @@ async function start(verifiedByLogin=false) {
   // delivery behind a slow dashboard on reconnection.
   if(getQ().some(f=>!f.err&&f.u===S.code))
     setTimeout(()=>{if(S&&S.token===launchedToken&&appAuthenticated)flush();},1200);
+  } finally {startPending=false;}
 }
-async function flush() { if(busy||!S||!appAuthenticated)return; const queued=getQ().filter(f=>!f.err&&f.u===S.code); if(!queued.length)return; busy=true; const ok=[]; try { for(const f of queued) { if(f.err||f.u!==S.code)continue; let d; try{d=await post(Object.assign({action:'submit',token:S.token},f));}catch(e){break;} if(d.error==='AUTH'){logout();break;} const q=getQ(),it=q.find(x=>x.cid===f.cid); if(d.error){if(it)it.err=d.error;note('بلاغ مرفوض: '+d.error,'err');}else{if(it)q.splice(q.indexOf(it),1);ok.push(d.id);} setQ(q); } if(ok.length){localStorage.removeItem(dashStoreKey());note('تم حفظ: '+ok.join('، '),'ok');loadNotices(true);if($('dashboard').style.display!=='none')showDashboard(true);} if(ok.length)await refreshWorkOrder(); }finally{busy=false;} }
+$('retryConnect').onclick=()=>{if(S&&!startPending)start(false);};
+window.addEventListener('online',()=>{if(S&&!appAuthenticated&&!startPending)start(false);});
+async function flush() { if(busy||!S||!appAuthenticated)return; const queued=getQ().filter(f=>!f.err&&f.u===S.code); if(!queued.length)return; busy=true; const ok=[]; try { for(const f of queued) { if(f.err||f.u!==S.code)continue; let d; try{d=await api('submit',f);}catch(e){break;} if(d.error==='AUTH'){logout();break;} if(d.error==='AUTH_UNCONFIRMED'||d.error==='STALE_SESSION'){note('تعذر تأكيد الجلسة مؤقتًا. البلاغ محفوظ في الانتظار ويمكن إعادة الإرسال بعد عودة الاتصال.','err');break;} const q=getQ(),it=q.find(x=>x.cid===f.cid); if(d.error){if(it)it.err=d.error;note('بلاغ مرفوض: '+d.error,'err');}else{if(it)q.splice(q.indexOf(it),1);ok.push(d.id);} setQ(q); } if(ok.length){localStorage.removeItem(dashStoreKey());note('تم حفظ: '+ok.join('، '),'ok');loadNotices(true);if($('dashboard').style.display!=='none')showDashboard(true);} if(ok.length)await refreshWorkOrder(); }finally{busy=false;} }
 const HELP={BAD_PW:{m:'الباسورد غلط.',t:'لو نسيت الباسورد، اطلب من المسؤول إعادة تعيينه. هيديك باسورد مؤقت جديد، وتختار منه باسورد جديد أول ما تدخل.',w:'نسيت الباسورد بتاعي. كودي: '},NO_USER:{m:'الكود ده مش مسجل في النظام. اتأكد منه تاني.',t:'لو متأكد إن الكود صح، اطلب من المسؤول يتأكد إنه مسجل.',w:'الكود مش شغال معايا. كودي: '},INACTIVE:{m:'الحساب ده متوقف.',t:'كلّم المسؤول لتفعيله.',w:'حسابي متوقف. كودي: '},LOCKED:{m:'محاولات كتير غلط.',t:'الحساب اتقفل مؤقتا. استنى 5 دقايق أو كلّم المسؤول.',w:'الحساب اتقفل معايا. كودي: '}};
 let helpKind=null;
 function help(k){helpKind=k;$('ftxt').textContent=HELP[k].t;$('fbox').style.display='block';if(ADMIN_WA){const w=$('wa');w.style.display='inline-block';w.href='https://wa.me/'+ADMIN_WA+'?text='+encodeURIComponent(HELP[k].w+norm($('lcode').value.trim()));}}

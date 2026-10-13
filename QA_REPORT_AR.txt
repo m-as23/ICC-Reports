@@ -1,0 +1,14 @@
+MainTrack Stage5 / 2026-10-13
+Status: LOCAL TESTS PASS. NOT DEPLOYED. LIVE ROOT CAUSE UNCONFIRMED.
+Source frontend: Github m-as23/ICC-Reports main blob 9a6c0e8be034b08ebd4fec5d73d16e7d0282f317.
+Source backend: LOCAL V2.2.1 Code_API.gs, not verified deployed version 16.
+PASS: JavaScript syntax, backend dispatch RBAC, role regression.
+PASS: dashboard analytics fixture.
+PASS: owner-only leave notifications and approval fixture.
+PASS: authentication confirmation after transient AUTH, confirmed invalid, stale responses.
+PASS: action-specific timeout settings, no transparent write retry, safe logging.
+PASS: queued reports preserved on AUTH_UNCONFIRMED or STALE_SESSION (static audit).
+BLOCKED: TinyFish could not render authenticated Apps Script projects page.
+BLOCKED: no live browser/server load test or production network trace.
+Safety: no changes made to user's GitHub, live Apps Script, or Google Sheet.
+EXTERNAL: 4 unauthenticated GET requests returned AUTH after 19.6-23.8s using TinyFish fetch; extraction/proxy-inclusive; not comparable to Apps Script execution time.
