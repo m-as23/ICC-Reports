@@ -1,15 +1,25 @@
-// Cache version bumped for MainTrack Professional UI. Existing API calls are not intercepted.
-const C = 'maintrack-v5';
-const F = ['./', 'index.html', 'manifest.webmanifest', 'bd-192.png', 'bd-512.png'];
-self.addEventListener('install', e => e.waitUntil(caches.open(C).then(c => c.addAll(F)).then(() => self.skipWaiting())));
-self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== C).map(x => caches.delete(x)))).then(() => clients.claim())));
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  const u = new URL(e.request.url);
-  if (u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com') {
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => { const cp = res.clone(); caches.open(C).then(c => c.put(e.request, cp)); return res; })));
-    return;
-  }
-  if (u.origin !== location.origin) return;
-  e.respondWith(fetch(e.request).then(r => { const cp = r.clone(); caches.open(C).then(c => c.put(e.request, cp)); return r; }).catch(() => caches.match(e.request)));
+// App shell: serve cached UI instantly when available, then refresh it in background.
+// Never cache Apps Script API responses, auth tokens, or user-specific data.
+const CACHE = 'maintrack-v6';
+const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'bd-192.png', 'bd-512.png'];
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('maintrack-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch',event=>{
+  const r=event.request;
+  if(r.method!=='GET')return;
+  const u=new URL(r.url);
+  if(u.origin!==self.location.origin)return;
+  const allowed=new Set(ASSETS.map(a=>new URL(a,self.registration.scope).pathname));
+  if(!allowed.has(u.pathname)||u.search) return;
+  event.respondWith(caches.match(r).then(cached=>{
+    const network=fetch(r).then(res=>{
+      if(res.ok && res.type==='basic')caches.open(CACHE).then(c=>c.put(r,res.clone()));
+      return res;
+    }).catch(()=>cached||Response.error());
+    return cached||network;
+  }));
 });
