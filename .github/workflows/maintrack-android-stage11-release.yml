@@ -1,0 +1,116 @@
+name: MainTrack Stage11 Signed Android Release (gated)
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        type: number
+        description: 'Must exceed last installed signed release versionCode'
+        default: 11
+        required: true
+      version_name:
+        type: string
+        description: 'Semantic version number'
+        default: '0.2.0'
+        required: true
+  push:
+    branches:
+      - android/stage11-production-readiness
+    paths:
+      - '.github/workflows/maintrack-android-stage11-release.yml'
+permissions:
+  contents: read
+jobs:
+  signed-release:
+    if: ${{ vars.MT_ANDROID_SIGNING_READY == 'true' && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    environment: maintrack-android-release
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: SDK 36
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          test -x "$MANAGER"
+          "$MANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Validate release prerequisites
+        env:
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: |
+          test -s package-lock.json
+          test -s approved-assets.lock.json
+          test -n "$MT_ANDROID_KEYSTORE_BASE64"
+          test -n "$MT_ANDROID_KEYSTORE_PASSWORD"
+          test -n "$MT_ANDROID_KEY_ALIAS"
+          test -n "$MT_ANDROID_KEY_PASSWORD"
+      - name: Exact pinned dependencies and source
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check
+          npm test
+          npm run build:web
+      - name: Native Release build with controlled version
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          node scripts/harden-native.mjs
+          node - <<'NODE'
+          const fs=require('fs');
+          const path='android/app/build.gradle';
+          let src=fs.readFileSync(path,'utf8');
+          const ver=process.env.VERSION_NAME,code=Number(process.env.VERSION_CODE);
+          if(!Number.isSafeInteger(code)||code<1||code>2000000000||!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(ver))throw Error('Invalid release version');
+          if(!/versionCode\s+\d+/.test(src)||!/versionName\s+"[^"]+"/.test(src))throw Error('Unexpected Gradle version');
+          src=src.replace(/versionCode\s+\d+/,'versionCode '+code).replace(/versionName\s+"[^"]+"/,'versionName "'+ver+'"');
+          fs.writeFileSync(path,src);
+          NODE
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleRelease)
+      - name: Sign and verify Release APK
+        env:
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f release.keystore' EXIT
+          printf '%s' "$MT_ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          UNSIGNED=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s "$UNSIGNED"
+          mkdir -p release-output
+          "$SDK_ROOT/zipalign" -p -f 4 "$UNSIGNED" release-output/maintrack-aligned.apk
+          "$SDK_ROOT/apksigner" sign --ks release.keystore --ks-key-alias "$MT_ANDROID_KEY_ALIAS" --ks-pass env:MT_ANDROID_KEYSTORE_PASSWORD --key-pass env:MT_ANDROID_KEY_PASSWORD --out release-output/MainTrack-stage11-release.apk release-output/maintrack-aligned.apk
+          "$SDK_ROOT/apksigner" verify --verbose release-output/MainTrack-stage11-release.apk
+          sha256sum release-output/MainTrack-stage11-release.apk > release-output/MainTrack-stage11-release.sha256
+          rm -f release-output/maintrack-aligned.apk
+      - name: Export verified signed Android release
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage11-Signed-Release
+          path: |
+            android/maintrack-app/release-output/MainTrack-stage11-release.apk
+            android/maintrack-app/release-output/MainTrack-stage11-release.sha256
+          if-no-files-found: error
+          retention-days: 14
