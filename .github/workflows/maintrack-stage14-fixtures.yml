@@ -1,0 +1,44 @@
+name: MainTrack Stage14 Prepare Isolated OTA Fixtures
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-stage14-fixtures.yml'
+      - 'scripts/stage14/create-fixtures.py'
+permissions:
+  contents: write
+jobs:
+  create-test-only-zip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - name: Reproduce approved UI and updater bootstrap
+        working-directory: android/maintrack-app
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:web
+          npm test
+      - name: Generate checksum-pinned OTA LAB fixtures
+        run: |
+          python3 scripts/stage14/create-fixtures.py
+          python3 - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          data=json.loads(Path('qa/stage14/fixtures.json').read_text())
+          for key in ['healthy','faulty']:
+           z=Path('qa/stage14/'+key+'.zip').read_bytes()
+           assert hashlib.sha256(z).hexdigest()==data[key]['sha256']
+          print('PASS: test fixtures validated')
+          PY
+      - name: Pin independent test fixtures in isolated branch
+        run: |
+          git config user.name 'maintrack-android-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qa/stage14
+          git diff --cached --quiet || (git commit -m 'test(stage14): add self-contained deterministic OTA QA fixtures' && git push origin HEAD:android/stage14-ota-native-lab)
