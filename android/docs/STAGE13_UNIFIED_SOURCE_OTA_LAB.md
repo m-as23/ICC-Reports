@@ -21,3 +21,12 @@ Next before real OTA:
 5. Signed Release APK and shared web deployment stay manual approval gates.
 
 Current source remains compatible with Stage9 isolated API, but this repo artifact is not a new Vercel deployment.
+
+## Completed automated evidence — 2026-10-15
+- GitHub Actions [Stage13 unified build #38768906131](https://github.com/m-as23/ICC-Reports/actions/runs/38768906131): **SUCCESS**, 28/28 Node tests and native Android Gradle build SUCCESSFUL.
+- Web Preview and Android QA APK were built from the same 18 SHA-256 checked secure resources committed under web/maintrack/public.
+- Native-only bundle startup bootstrap is built with pinned esbuild 0.25.12 and calls CapacitorUpdater.notifyAppReady immediately; it has **no update check, URL, download or install call**.
+- npm package-lock committed following successful build. OTA library pinned at @capgo/capacitor-updater 8.53.0 with autoUpdate: "off".
+- GitHub Actions [Stage13 Android14 launch smoke #38769335394](https://github.com/m-as23/ICC-Reports/actions/runs/38769335394): run separately, outcome must be checked before declaring Android startup accepted.
+- The project has **not** tested real signed bundle installation or a real-native rollback on a phone; fault-injection test uses a mock updater. This remains a blocking release gate.
+- No Vercel deployment, no merge to main, no user data writes, and no production updates. Existing installed APK continues to work as before.
