@@ -1,0 +1,34 @@
+name: MainTrack Stage13 Import Immutable UI From Accepted APK
+on:
+  push:
+    branches:
+      - android/stage13-unified-source-ota-lab
+    paths:
+      - '.github/workflows/maintrack-stage13-source-import.yml'
+      - 'scripts/stage13/import_approved_apk.py'
+permissions:
+  actions: read
+  contents: write
+jobs:
+  copy-verified-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: android/stage13-unified-source-ota-lab
+      - name: Download approved Stage11 locked APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .build-input
+          gh run download 38738843363 --repo "${{ github.repository }}" --name MainTrack-Stage11-Debug-APK --dir .build-input
+          APK=$(find .build-input -name app-debug.apk -type f -print -quit)
+          test -s "$APK"
+          python3 scripts/stage13/import_approved_apk.py "$APK"
+      - name: Commit immutable shared source to isolated Stage13 branch
+        run: |
+          git config user.name 'maintrack-android-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/maintrack/public web/maintrack/source-lock.json web/maintrack/README.md
+          git diff --cached --quiet || (git commit -m 'feat(stage13): import exact approved UI into unified GitHub source tree' && git push origin HEAD:android/stage13-unified-source-ota-lab)
