@@ -1,0 +1,71 @@
+name: MainTrack Stage12 Native Updater Integration QA
+on:
+  push:
+    branches:
+      - android/stage12-secure-updates
+    paths:
+      - 'android/maintrack-app/package.json'
+      - 'android/maintrack-app/capacitor.config.json'
+      - '.github/workflows/maintrack-stage12-native-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate-native-updater-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Android SDK
+        run: |
+          ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          TOOL=$(find "$ROOT/cmdline-tools" -type f -name sdkmanager | head -n1)
+          test -x "$TOOL"
+          "$TOOL" --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Resolve exact Capacitor Updater plugin version
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm ls @capgo/capacitor-updater
+      - name: Safety regression and provenance pinned snapshot
+        run: |
+          npm run check
+          npm test
+          npm run build:web
+      - name: Compile with plugin, but never enable update traffic
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const cfg=JSON.parse(fs.readFileSync('capacitor.config.json'));
+          if(cfg.plugins?.CapacitorUpdater?.autoUpdate!=='off'||cfg.plugins.CapacitorUpdater.updateUrl||cfg.server.url)throw Error('Updater not disabled in pilot');
+          console.log('PASS: native updater installed with zero automatic update requests');
+          NODE
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          grep -R 'CapacitorUpdater' android/app/src/main/assets/capacitor.plugins.json
+          npm run android:debug
+      - name: Store review-only Android QA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage12-Native-Updater-OFF-Debug-QA
+          path: android/maintrack-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 10
+      - name: Commit reviewed npm dependencies to isolated Stage12 branch
+        if: success()
+        run: |
+          git config user.name 'maintrack-android-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git diff --cached --exit-code || (git commit -m 'chore(stage12): pin native updater and Capacitor dependencies after QA' && git push origin HEAD:android/stage12-secure-updates)

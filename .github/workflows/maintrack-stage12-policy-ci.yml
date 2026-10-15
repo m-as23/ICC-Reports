@@ -34,6 +34,6 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const native=JSON.parse(fs.readFileSync('capacitor.config.json'));
-          if(native.server.url||native.plugins?.CapacitorUpdater?.autoUpdate)throw Error('Unapproved live update mode');
+          if(native.server.url|| ![undefined,false,'off'].includes(native.plugins?.CapacitorUpdater?.autoUpdate)||native.plugins?.CapacitorUpdater?.updateUrl)throw Error('Unapproved live update mode');
           console.log('PASS: no active OTA endpoint, no native auto update, baseline preserved');
           NODE

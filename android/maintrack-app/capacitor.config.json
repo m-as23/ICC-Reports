@@ -9,5 +9,13 @@
   "android": {
     "allowMixedContent": false
   },
-  "backgroundColor": "#071521"
+  "backgroundColor": "#071521",
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": "off",
+      "autoDeleteFailed": true,
+      "autoDeletePrevious": false,
+      "resetWhenUpdate": true
+    }
+  }
 }
