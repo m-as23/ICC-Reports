@@ -1,0 +1,39 @@
+name: MainTrack Stage12 Secure Update Policy CI
+on:
+  push:
+    branches:
+      - android/stage12-secure-updates
+    paths:
+      - 'android/maintrack-app/update-system/**'
+      - 'android/maintrack-app/tests/**'
+      - '.github/workflows/maintrack-stage12-policy-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  security-and-regression:
+    name: Verify signed update policy and baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check code syntax
+        run: |
+          node --check update-system/policy.mjs
+          node --check tests/update-policy.test.mjs
+      - name: Execute full MainTrack Android safety and Stage12 policy test suite
+        run: node --test tests/*.test.mjs
+      - name: Assert no live-update endpoint enabled in Android baseline
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const native=JSON.parse(fs.readFileSync('capacitor.config.json'));
+          if(native.server.url||native.plugins?.CapacitorUpdater?.autoUpdate)throw Error('Unapproved live update mode');
+          console.log('PASS: no active OTA endpoint, no native auto update, baseline preserved');
+          NODE
