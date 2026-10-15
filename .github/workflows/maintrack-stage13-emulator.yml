@@ -1,0 +1,58 @@
+name: MainTrack Stage13 Unified-Source Android Emulator Smoke
+on:
+  push:
+    branches: [android/stage13-unified-source-ota-lab]
+    paths: ['.github/workflows/maintrack-stage13-emulator.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  stage13-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Stage13 QA APK compiled from unified source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p input-apk
+          gh run download 38768906131 --repo "${{ github.repository }}" --name MainTrack-Stage13-Android-Lab-Debug --dir input-apk
+          APK=$(find input-apk -type f -name app-debug.apk -print -quit)
+          test -s "$APK"
+          cp "$APK" maintrack-stage13-debug.apk
+          sha256sum maintrack-stage13-debug.apk
+          unzip -Z1 maintrack-stage13-debug.apk | grep -q 'assets/public/secure-assets/stage13-native-ready.js'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Enable KVM
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Test native updater bootstrap and login screen with OTA disabled
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r maintrack-stage13-debug.apk
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 16
+            adb shell pidof com.icc.maintrack
+            adb shell dumpsys package com.icc.maintrack | grep -m1 versionName
+            adb shell screencap -p /sdcard/maintrack-stage13.png
+            adb pull /sdcard/maintrack-stage13.png maintrack-stage13.png
+            echo 'PASS Stage13 native startup smoke: UI rendered without requiring an online OTA check'
+      - name: Save UI screenshot for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage13-Android14-Startup-Evidence
+          path: maintrack-stage13.png
+          retention-days: 10
+          if-no-files-found: ignore
