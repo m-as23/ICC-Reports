@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/maintrack-stage14-candidate.yml'
       - 'android/maintrack-app/scripts/release-candidate.py'
+      - 'android/maintrack-app/scripts/snapshot.mjs'
+      - 'android/maintrack-app/update-system/**'
+      - 'web/maintrack/**'
   workflow_dispatch:
     inputs:
       sign_apk:

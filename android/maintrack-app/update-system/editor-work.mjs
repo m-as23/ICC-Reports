@@ -21,7 +21,9 @@ export function createEditorWork(document) {
   const baselines = new Map(), dirty = new Set();
   const remember = event => {
     const field = event.target;
-    if (ids.has(field?.id) && !baselines.has(field.id)) baselines.set(field.id, valueOf(field));
+    // An edit without a known baseline stays dirty until an acknowledgement or
+    // explicit discard. Refocusing must not turn that unsaved value into a baseline.
+    if (ids.has(field?.id) && !baselines.has(field.id) && !dirty.has(field.id)) baselines.set(field.id, valueOf(field));
   };
   const changed = event => {
     const field = event.target;
@@ -39,7 +41,7 @@ export function createEditorWork(document) {
     read() {
       if ([...ids].some(id => !document.getElementById(id))) return true;
       if (!document.getElementById('v6Editor')?.hidden || !document.getElementById('v6Temp')?.hidden) return true;
-      return dirty.size > 0;
+      return dirty.size > 0 || [...baselines].some(([id, value]) => valueOf(document.getElementById(id)) !== value);
     },
     begin(action) {
       const fields = EDITOR_GROUPS[actionGroup[action]] || [];
