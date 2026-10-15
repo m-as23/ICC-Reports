@@ -1,0 +1,4 @@
+Stage14 final Android OTA QA run trigger
+Fixture source: pinned commit 6e2ebc3c8ee1c262b226a3b832de35b74b197682
+Healthy fixture verified SHA-256: 87b9c9a9353a1d930947897220fa5dc893b4718c081d173c44c5a7797053865a
+Only uses synthetic localStorage and lab UI. No production APK, service, database, or user data.
