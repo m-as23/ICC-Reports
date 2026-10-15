@@ -1,7 +1,7 @@
 // Compiled ONLY into the isolated Stage14 Android test APK, never web production or user devices.
 import {Capacitor} from '@capacitor/core';
 import {CapacitorUpdater} from '@capgo/capacitor-updater';
-import {verifyLabRelease,canActivate,stageVerifiedBundle} from '../update-system/ota-lab.mjs';
+import {verifyLabRelease,canActivate,stageVerifiedBundle} from '../../update-system/ota-lab.mjs';
 
 const lab=__STAGE14_CONFIG__;
 const log=(s)=>{console.log(s);const e=document.createElement('p');e.textContent=s;document.body?.appendChild(e)};

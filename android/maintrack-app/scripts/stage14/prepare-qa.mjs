@@ -4,7 +4,7 @@ import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {build} from 'esbuild';
-import {canonicalJson} from '../update-system/policy.mjs';
+import {canonicalJson} from '../../update-system/policy.mjs';
 const scenario=process.env.QA_SCENARIO;
 const sha=process.env.QA_SOURCE_COMMIT;
 if(!['healthy','faulty'].includes(scenario)||!/^[0-9a-f]{40}$/.test(sha))throw Error('INVALID_QA_CONFIGURATION');
