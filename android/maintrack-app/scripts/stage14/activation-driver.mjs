@@ -16,8 +16,9 @@ const assert = (condition, label) => {if (!condition) throw Error(label);};
 const intact = () => localStorage.getItem('q') === raw && !inspectQueueData(localStorage).unknownQueue;
 async function prepare(name) {
   const next = await CapacitorUpdater.getNextBundle(); assert(next == null, 'UNEXPECTED_NATIVE_SCHEDULE');
+  const nativeVersion = (await CapacitorUpdater.current()).native;
   const controller = createMainTrackLabUpdater({
-    verification:{publicKeyBase64:config.publicKey,allowedOrigins:['https://localhost:8443'],currentNative:'0.3.0'},
+    verification:{publicKeyBase64:config.publicKey,allowedOrigins:['https://localhost:8443'],currentNative:nativeVersion},
     updater:{
       download:options => CapacitorUpdater.download(options),
       getNextBundle:() => CapacitorUpdater.getNextBundle(),

@@ -54,6 +54,15 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <network-security-config><base-config cleartextTrafficPermitted="false"><trust-anchors><certificates src="@raw/activation_lab_ca" /></trust-anchors></base-config></network-security-config>
           XML
+          # Match the real QA APK version to its signed compatibility range.
+          python3 - <<'PYVERSION'
+          import pathlib,re
+          p=pathlib.Path('android/app/build.gradle')
+          text=p.read_text()
+          text,n=re.subn(r'versionName "[^"]+"','versionName "0.3.0"',text)
+          assert n==1
+          p.write_text(text)
+          PYVERSION
           npm run android:debug
           python3 scripts/stage14/serve-activation-qa.py .activation-qa .activation-qa/server.crt .activation-qa/server.key > .activation-qa/server.log 2>&1 &
           curl --cacert .activation-qa/server.crt --retry 5 --retry-connrefused --retry-delay 1 -f https://localhost:8443/healthy.zip -o /dev/null
