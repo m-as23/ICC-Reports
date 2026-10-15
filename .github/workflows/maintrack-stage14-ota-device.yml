@@ -4,8 +4,8 @@ on:
     branches: [android/stage14-ota-native-lab]
     paths:
       - '.github/workflows/maintrack-stage14-ota-device.yml'
-      - 'scripts/stage14/qa-entry.mjs'
-      - 'scripts/stage14/prepare-qa.mjs'
+      - 'android/maintrack-app/scripts/stage14/qa-entry.mjs'
+      - 'android/maintrack-app/scripts/stage14/prepare-qa.mjs'
       - 'qa/stage14/**'
   workflow_dispatch:
 permissions:
