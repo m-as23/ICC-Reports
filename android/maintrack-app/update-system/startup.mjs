@@ -11,7 +11,10 @@ if (Capacitor.isNativePlatform()) {
       && globalThis.__MainTrackV6Integrated === true
       && ['login','form','dashboard','v7FormStatus','v7RefreshLists','v6Dock'].every(id => !!document.getElementById(id)),
     isDataCompatible: () => !inspectQueueData(globalThis.localStorage).unknownQueue,
-    notifyReady: () => CapacitorUpdater.notifyAppReady()
+    notifyReady: async () => {
+      await CapacitorUpdater.notifyAppReady();
+      globalThis.dispatchEvent(new Event('maintrack:boot-ready'));
+    }
   });
   const onError = event => {
     if (event.error || event.target?.tagName === 'SCRIPT') health.fail();

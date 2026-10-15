@@ -1,0 +1,80 @@
+name: MainTrack Stage14 Explicit Activation Acceptance
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-stage14-activation.yml'
+      - 'android/maintrack-app/scripts/stage14/*activation*'
+      - 'android/maintrack-app/update-system/stage-maintrack.mjs'
+      - 'android/maintrack-app/update-system/activation-lock.mjs'
+      - 'android/maintrack-app/update-system/boot-health.mjs'
+      - 'android/maintrack-app/update-system/startup.mjs'
+      - 'android/maintrack-app/update-system/data-contract.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-ui-native-activation:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Android SDK
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f -print -quit)
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Build verified UI and disposable HTTPS lab
+        working-directory: android/maintrack-app
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build:web
+          node scripts/stage14/prepare-activation-qa.mjs
+          openssl req -x509 -newkey rsa:2048 -sha256 -nodes -keyout .activation-qa/server.key -out .activation-qa/server.crt -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost' -addext 'basicConstraints=critical,CA:TRUE' > /dev/null 2>&1
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          # QA certificate trusts only this runner. Real backend TLS cannot validate.
+          mkdir -p android/app/src/main/res/raw
+          cp .activation-qa/server.crt android/app/src/main/res/raw/activation_lab_ca.crt
+          cat > android/app/src/main/res/xml/maintrack_network_security.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <network-security-config><base-config cleartextTrafficPermitted="false"><trust-anchors><certificates src="@raw/activation_lab_ca" /></trust-anchors></base-config></network-security-config>
+          XML
+          npm run android:debug
+          python3 scripts/stage14/serve-activation-qa.py .activation-qa .activation-qa/server.crt .activation-qa/server.key > .activation-qa/server.log 2>&1 &
+          curl --cacert .activation-qa/server.crt --retry 5 --retry-connrefused --retry-delay 1 -f https://localhost:8443/healthy.zip -o /dev/null
+      - name: Enable KVM
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: One Android35 session — healthy, rollback, offline restart
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash android/maintrack-app/scripts/stage14/check-activation-device.sh
+      - name: Keep synthetic-data evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage14-Activation-Acceptance
+          path: |
+            stage14-activation-logcat.txt
+            stage14-activation.png
+          if-no-files-found: warn
+          retention-days: 14

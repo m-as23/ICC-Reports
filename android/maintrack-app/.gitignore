@@ -5,3 +5,6 @@ assets/
 .snapshot-temp/
 snapshot.lock.json
 .DS_Store
+
+.activation-qa/
+release-candidate/
