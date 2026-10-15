@@ -97,7 +97,7 @@ jobs:
             grep -q 'MT_STAGE14_PENDING_QUEUE_GUARD_PASS' stage14-${{ matrix.scenario }}-logcat.txt
             grep -q 'MT_STAGE14_SIGNATURE_OK' stage14-${{ matrix.scenario }}-logcat.txt
             grep -q 'MT_STAGE14_BUNDLE_DOWNLOADED_AND_SCHEDULED' stage14-${{ matrix.scenario }}-logcat.txt
-            ${{ matrix.scenario == 'healthy' && "grep -q 'MT_STAGE14_GOOD_QUEUE_PRESERVED' stage14-healthy-logcat.txt" || "grep -q 'MT_STAGE14_ROLLBACK_PASS_BUILTIN_AND_LOCAL_STORAGE' stage14-faulty-logcat.txt" }}
+            if [ "${{ matrix.scenario }}" = "healthy" ]; then grep -q 'MT_STAGE14_GOOD_QUEUE_PRESERVED' stage14-healthy-logcat.txt; else grep -q 'MT_STAGE14_ROLLBACK_PASS_BUILTIN_AND_LOCAL_STORAGE' stage14-faulty-logcat.txt; fi
             adb shell screencap -p /sdcard/stage14-final.png
             adb pull /sdcard/stage14-final.png stage14-${{ matrix.scenario }}-final.png
             echo 'PASS actual Stage14 native bundle transition with integrity and local state safety'
