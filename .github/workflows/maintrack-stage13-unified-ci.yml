@@ -1,0 +1,70 @@
+name: MainTrack Stage13 Unified Web & Android Build QA
+on:
+  push:
+    branches: [android/stage13-unified-source-ota-lab]
+    paths:
+      - 'web/maintrack/**'
+      - 'android/maintrack-app/scripts/snapshot.mjs'
+      - 'android/maintrack-app/tests/shared-source.test.mjs'
+      - '.github/workflows/maintrack-stage13-unified-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unified-web-and-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: SDK36
+        run: |
+          ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$ROOT/cmdline-tools" -name sdkmanager -type f -print -quit)
+          test -x "$MANAGER"
+          "$MANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Install verified npm dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Execute safety and update-policy regression tests
+        run: |
+          npm run check
+          npm test
+      - name: Materialize unified source locally without any Vercel fetch
+        run: |
+          npm run build:web
+          test -s www/index.html
+          grep -q "maintrack-stage9-security-api/api" www/secure-assets/index-inline-1.js
+      - name: Save identical Web preview files — NO deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage13-Web-Preview-UNDEPLOYED
+          path: android/maintrack-app/www/
+          retention-days: 10
+          if-no-files-found: error
+      - name: Build Android from exact same local source
+        run: |
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          npm run android:debug
+          sha256sum android/app/build/outputs/apk/debug/app-debug.apk > stage13-apk.sha256
+      - name: Save isolated Android build — NOT for employees
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage13-Android-Lab-Debug
+          path: |
+            android/maintrack-app/android/app/build/outputs/apk/debug/app-debug.apk
+            android/maintrack-app/stage13-apk.sha256
+          retention-days: 10
+          if-no-files-found: error
