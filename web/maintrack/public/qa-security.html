@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src https://tdnkeskczcsukcujwinu.supabase.co; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>MainTrack | Stage 8 Security QA</title>
+<link rel="stylesheet" href="secure-assets/qa-security-inline-1.css">
+</head>
+<body>
+<main>
+<section class="card">
+<header><div class="logo">MT</div><div><h1>اختبار أمان MainTrack — Stage 8</h1><div class="muted">Role-Based API Access Control · صفحة فحص مستقلة</div></div></header>
+<p>الاختبار يتحقق أن حسابات <b>Engineer</b> و<b>Technician</b> لا تستطيع الوصول إلى وظائف الـOwner من خلال الـAPI مباشرة.</p>
+<div class="warn">مهم: افتح هذه الصفحة <b>في نفس تبويب المتصفح</b> بعد تسجيل دخولك إلى MainTrack بحساب Engineer أو Technician. لا تفتح تبويبًا جديدًا؛ جلسة MainTrack محفوظة داخل التبويب الحالي. لا تكتب أو ترسل كلمة المرور أو رمز الجلسة.</div>
+<div id="session" class="info" role="status">جارٍ فحص جلسة المستخدم المحلية…</div>
+<div class="controls">
+<button id="run" type="button" class="primary" disabled>بدء اختبار صلاحيات API</button>
+<button id="copy" type="button" disabled>نسخ ملخص النتائج</button>
+<button id="back" type="button">الرجوع إلى MainTrack</button>
+</div>
+<p class="muted">سيتم تنفيذ فحوصات قراءة وطلبات رفض آمنة فقط. أي اختبار لعملية تعديل يستخدم معرّفات غير موجودة، بحيث لا يُمكنه تعديل بيانات حقيقية حتى في حالة خلل الصلاحيات.</p>
+</section>
+<section class="card"><h2 style="font-size:18px;margin-top:0">نتائج الفحص</h2><p id="summary" class="muted">لم يبدأ الاختبار بعد.</p><div id="results"></div></section>
+</main>
+<script src="secure-assets/qa-security-inline-1.js"></script>
+</body>
+</html>

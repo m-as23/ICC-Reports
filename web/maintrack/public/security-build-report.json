@@ -1,0 +1,47 @@
+{
+  "build": "2026-10-15-stage9",
+  "strictScriptCSP": true,
+  "apiEndpoint": "stage9-isolated",
+  "pages": {
+    "index.html": {
+      "scriptsExternalized": 2,
+      "stylesExternalized": 1,
+      "inlineEventHandlers": 0,
+      "javascriptURLs": 0,
+      "remainingInlineScripts": 0,
+      "remainingInlineStyles": 0,
+      "legacyStyleAttributes": 22,
+      "externalScriptSrcs": [
+        "secure-assets/index-inline-1.js",
+        "secure-assets/index-inline-2.js",
+        "v6.js"
+      ]
+    },
+    "qa-security.html": {
+      "scriptsExternalized": 1,
+      "stylesExternalized": 1,
+      "inlineEventHandlers": 0,
+      "javascriptURLs": 0,
+      "remainingInlineScripts": 0,
+      "remainingInlineStyles": 0,
+      "legacyStyleAttributes": 1,
+      "externalScriptSrcs": [
+        "secure-assets/qa-security-inline-1.js"
+      ]
+    },
+    "security-final-check.html": {
+      "scriptsExternalized": 1,
+      "stylesExternalized": 1,
+      "inlineEventHandlers": 0,
+      "javascriptURLs": 0,
+      "remainingInlineScripts": 0,
+      "remainingInlineStyles": 0,
+      "legacyStyleAttributes": 0,
+      "externalScriptSrcs": [
+        "secure-assets/security-final-check-inline-1.js"
+      ]
+    }
+  },
+  "issues": [],
+  "rewrittenApiReferences": 2
+}

@@ -1,0 +1,13 @@
+
+@import url("v6-core.css");
+/* MainTrack v7 approved navigation order & reliability */
+body.v6On #tabs{direction:rtl!important}
+body.v6On #tabs button[id^="tab"]{direction:rtl!important;text-align:right!important;flex-direction:row!important;justify-content:flex-start!important}
+#tabs .v6Icon{flex-shrink:0;direction:ltr;transform:none!important}
+#v7RefreshLists{display:inline-flex;align-items:center;gap:7px;margin:8px 0 14px;padding:9px 12px;border:1px solid #b8dadd;border-radius:9px;background:#eef8f9;color:#086d76;font:700 12px Cairo,Tahoma,sans-serif;cursor:pointer}
+.v7-form-status{display:flex;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;margin:12px 0;padding:12px 14px;background:#edf7f8;border:1px solid #bedee5;border-radius:10px;color:#195567;font:700 13px Cairo,sans-serif}
+.v7-form-status[hidden]{display:none!important}
+.v7-form-status[data-error="true"]{background:#fff4f3;color:#9a2e22;border-color:#e8b8b3}
+.v7-form-status button{padding:7px 12px;border:1px solid #9bcdd1;border-radius:8px;background:white;color:#087887}
+.v7-delete{background:#fff2ef!important;border:1px solid #edc0b8!important;color:#a82f23!important;border-radius:9px;padding:10px 12px;font:800 13px Cairo,Tahoma,sans-serif;cursor:pointer}
+.v7-delete[hidden]{display:none!important}.v7-delete:disabled{opacity:.5;cursor:wait}
