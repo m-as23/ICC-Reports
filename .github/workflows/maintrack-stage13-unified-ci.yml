@@ -5,7 +5,7 @@ on:
     paths:
       - 'web/maintrack/**'
       - 'android/maintrack-app/scripts/snapshot.mjs'
-      - 'android/maintrack-app/tests/shared-source.test.mjs'
+      - 'android/maintrack-app/tests/**'
       - '.github/workflows/maintrack-stage13-unified-ci.yml'
   workflow_dispatch:
 permissions:
