@@ -1,19 +1,7 @@
 // Read-only adapter for the existing MainTrack q array. Never use getQ(): its
 // recovery fallback returns [] for corrupt storage, which is unsafe for OTA.
-export function inspectReportQueue(storage) {
-  try {
-    const raw = storage.getItem('q');
-    const rows = raw === null ? [] : JSON.parse(raw);
-    if (!Array.isArray(rows)) return {unsentReports: 0, unknownQueue: true};
-    const unknownQueue = rows.some(row => !row || typeof row !== 'object' || Array.isArray(row)
-      || typeof row.cid !== 'string' || !row.cid.trim()
-      || typeof row.u !== 'string' || !row.u.trim());
-    // Include rejected items and other accounts: every retained row is local work.
-    return {unsentReports: rows.length, unknownQueue};
-  } catch {
-    return {unsentReports: 0, unknownQueue: true};
-  }
-}
+export {inspectQueueData as inspectReportQueue} from './data-contract.mjs';
+import {inspectQueueData as inspectReportQueue} from './data-contract.mjs';
 
 const reportFields = ['section','machine','comp','desc','solution','t1','t2','t3','spare'];
 export function hasReportDraft(document, defaults) {

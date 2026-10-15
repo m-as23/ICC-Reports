@@ -17,7 +17,7 @@ const verification = {publicKeyBase64: pair.publicKey.export({format:'der',type:
 const now = Date.now();
 const payload = {schema:1, channel:'lab', kind:'web-ota', appId:'com.icc.maintrack', issuedAt:now-1000,
   expiresAt:now+86400000, nativeMinimum:'0.2.0', nativeMaximum:'0.3.0', bundleVersion:'0.3.1',
-  bundleUrl:'https://updates-lab.example.org/test-only.zip', sha256:'a'.repeat(64), bytes:1024};
+  bundleUrl:'https://updates-lab.example.org/test-only.zip', sha256:'a'.repeat(64), bytes:1024, localData:{reportQueue:1,writesReportQueue:1,migration:'none'}};
 const envelope = {payload, signature:sign(null, Buffer.from(canonicalJson(payload)), pair.privateKey).toString('base64url')};
 let browser, server, origin, harness;
 
@@ -74,11 +74,11 @@ async function until(predicate, message) {
   assert.fail(message);
 }
 
-async function fixture(run) {
+async function fixture(run, {role = 'technician'} = {}) {
   const context = await browser.newContext({serviceWorkers:'block'});
   context.setDefaultTimeout(10000);
-  const mock = {offline:false, submitMode:'success', submitAttempts:[], committed:new Map(), held:[], pageErrors:[]};
-  const catalog = {id:'LAB-WO-NEXT', role:'technician', sections:['LAB_SECTION'],
+  const mock = {offline:false, submitMode:'success', submitAttempts:[], committed:new Map(), held:[], pageErrors:[], holdAction:null, actions:[]};
+  const catalog = {id:'LAB-WO-NEXT', role, sections:['LAB_SECTION'],
     machines:[['LAB_SECTION','LAB_MACHINE']], parts:[['LAB_SECTION','LAB_PART']],
     status:['Closed','Open'], cats:['Electrical','Mechanical']};
   const apiUrl = 'https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-stage9-security-api/api';
@@ -93,9 +93,27 @@ async function fixture(run) {
       headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*'}, body:JSON.stringify(data)});
     if (req.method() === 'OPTIONS') return fulfill({});
     const body = req.postDataJSON();
+    mock.actions.push(body.action);
+    const profile = {code:'LAB_ACCOUNT', name:'Synthetic Test Account', role, preferredName:'', phone:'', leaveBalance:10};
+    const detail = {woNumber:1, woId:'WO-1', revision:1, description:'Stored description', solution:'Stored solution',
+      status:'Open', category:'Electrical', workflowState:'OPEN'};
+    let reply;
+    if (body.action === 'profile') reply = {profile};
+    if (body.action === 'updateProfile') reply = {profile:{...profile, preferredName:body.preferredName, phone:body.phone}};
+    if (body.action === 'leaveMine') reply = {profile, items:[]};
+    if (body.action === 'leaveRequest') reply = {id:'LAB-LEAVE-1'};
+    if (body.action === 'adminUsers') reply = {items:[{code:'LAB_OTHER',name:'Other Account',role:'technician',active:true,leaveBalance:10}]};
+    if (body.action === 'adminCatalog') reply = {items:[{id:'lab-section',name:'LAB_SECTION',active:true}]};
+    if (body.action === 'cmms') reply = body.mode === 'detail' ? {item:detail} : {items:[detail],total:1};
+    if (['adminSaveUser','adminCatalogSave','cmmsWrite'].includes(body.action)) reply = {ok:true};
+    if (body.action === 'adminCreateEmployee') reply = {temporaryPassword:'synthetic-one-time-password'};
+    if (reply) {
+      if (mock.holdAction === body.action) {mock.held.push(() => fulfill(reply)); return;}
+      return fulfill(reply);
+    }
     if (body.action === 'login') return fulfill({token:'synthetic-token-' + body.code, code:body.code,
-      name:'Synthetic Test Account', role:'technician'});
-    if (body.action === 'session') return fulfill({ok:true, role:'technician', name:'Synthetic Test Account'});
+      name:'Synthetic Test Account', role});
+    if (body.action === 'session') return fulfill({ok:true, role, name:'Synthetic Test Account'});
     if (body.action === 'init') return fulfill(catalog);
     if (body.action === 'dashboard') return fulfill({metrics:{}, topMachines:[], recent:[], sectionHours:[]});
     if (body.action === 'nextId') return fulfill({id:'LAB-WO-NEXT'});
@@ -152,6 +170,7 @@ async function attempt(page, {release = envelope, raceRaw = null, missingAdapter
   return page.evaluate(async ({release, verification, raceRaw, missingAdapter}) => {
     const calls = {download:0, next:0, reload:0};
     const options = {envelope:release, verification, updater:{
+      getNextBundle:async () => null,
       download:async () => {calls.download++; if (raceRaw) localStorage.setItem('q', raceRaw); return {id:'mock-native-bundle'};},
       next:async () => {calls.next++;}, reload:async () => {calls.reload++;}
     }};
@@ -221,7 +240,7 @@ scenario('a draft remains protected when hidden on another tab; defaults alone d
     await open(page); await login(page); await page.locator('#tabForm').click();
     await page.waitForFunction(() => document.getElementById('section').options.length > 1 && !MainTrackLocalWork.read().submitting);
     assert.equal((await readState(page)).dirtyForm, false);
-    assert.equal((await attempt(page)).result.status, 'scheduled');
+    assert.equal((await attempt(page)).result.status, 'ready');
     await page.locator('#desc').fill('Unsubmitted draft');
     await page.locator('#tabDash').click();
     assert.equal((await readState(page)).dirtyForm, true);
@@ -244,13 +263,13 @@ scenario('corrupt and unsupported queue values are retained byte for byte and ne
   });
 });
 
-scenario('a report arriving during mock download defers scheduling; untrusted releases and missing runtime are refused', async () => {
+scenario('a report arriving during mock download defers activation; untrusted releases and missing runtime are refused', async () => {
   await fixture(async ({page}) => {
     await open(page); await login(page);
     await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
     const signed = await attempt(page);
-    assert.equal(signed.result.status, 'scheduled');
-    assert.deepEqual(signed.calls, {download:1,next:1,reload:0});
+    assert.equal(signed.result.status, 'ready');
+    assert.deepEqual(signed.calls, {download:1,next:0,reload:0});
     const tampered = {...envelope, payload:{...payload, bundleVersion:'0.3.9'}};
     const refused = await attempt(page, {release:tampered});
     assert.equal(refused.result.status, 'rejected'); assert.equal(refused.calls.download, 0);
@@ -277,5 +296,137 @@ scenario('lost acknowledgement keeps the actual queued report and reuses cid on 
     assert.equal(mock.submitAttempts.length, 2); assert.equal(mock.committed.size, 1);
     assert.equal(mock.submitAttempts[0].cid, mock.submitAttempts[1].cid);
     assert.equal(JSON.parse(raw)[0].cid, mock.submitAttempts[1].cid);
+  });
+});
+
+async function installActivationButton(page, {fail = false} = {}) {
+  return page.evaluate(async ({envelope, verification, fail}) => {
+    const calls = {download:0, set:0, next:0};
+    const updater = {getNextBundle:async () => null, current:async () => ({bundle:{id:'builtin'}}),
+      download:async () => {calls.download++; return {id:'mock-candidate'};},
+      set:async () => {calls.set++; if (fail) throw Error('synthetic native refusal');},
+      next:async () => {calls.next++;}};
+    const controller = Stage14IntegrationTest.createMainTrackLabUpdater({verification, updater});
+    const result = await controller.prepare(envelope);
+    window.labActivation = {calls, result:null};
+    const button = document.createElement('button'); button.id = 'lab-apply'; button.textContent = 'Apply lab update';
+    button.style.cssText = 'position:fixed;top:0;left:0;z-index:100000;';
+    button.onclick = async () => {window.labActivation.result = await controller.activate();};
+    document.body.append(button);
+    return result;
+  }, {envelope, verification, fail});
+}
+
+scenario('a real draft entered after download defers a user activation and restores normal interaction', async () => {
+  await fixture(async ({page}) => {
+    await open(page); await login(page);
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
+    assert.equal((await installActivationButton(page)).status, 'ready');
+    await page.locator('#tabForm').click(); await page.locator('#desc').fill('Draft after download');
+    await page.locator('#lab-apply').click();
+    await page.waitForFunction(() => labActivation.result);
+    assert.equal((await page.evaluate(() => labActivation.result)).status, 'deferred');
+    assert.equal(await page.locator('#desc').inputValue(), 'Draft after download');
+    assert.equal(await page.locator('#maintrack-update-progress').count(), 0);
+    assert.equal(await page.evaluate(() => labActivation.calls.set), 0);
+    await page.locator('#desc').fill('Still editable');
+  });
+});
+
+scenario('successful handoff locks every editor and prevents further API calls on the stale page', async () => {
+  await fixture(async ({page, mock}) => {
+    await open(page); await login(page);
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
+    assert.equal((await installActivationButton(page)).status, 'ready');
+    await page.locator('#lab-apply').click();
+    await page.waitForFunction(() => labActivation.result);
+    assert.deepEqual(await page.evaluate(() => labActivation.calls), {download:1,set:1,next:0});
+    assert.equal(await page.locator('#maintrack-update-progress').count(), 1);
+    assert.equal(await page.locator('#form').evaluate(el => el.inert), true);
+    const before = mock.actions.length;
+    const result = await page.evaluate(async () => {
+      document.getElementById('sendLeave').click();
+      try {await api('updateProfile', {preferredName:'must not send'}); return 'unexpected';}
+      catch (error) {return error.message;}
+    });
+    assert.equal(result, 'UPDATE_ACTIVATING'); assert.equal(mock.actions.length, before);
+  });
+});
+
+scenario('a proven native refusal restores the UI without clearing local values', async () => {
+  await fixture(async ({page}) => {
+    await open(page); await login(page);
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
+    await installActivationButton(page, {fail:true}); await page.locator('#lab-apply').click();
+    await page.waitForFunction(() => labActivation.result);
+    assert.equal((await page.evaluate(() => labActivation.result)).status, 'failed');
+    assert.equal(await page.locator('#maintrack-update-progress').count(), 0);
+    await page.locator('#tabForm').click(); await page.locator('#desc').fill('Can continue after refusal');
+    assert.equal((await readState(page)).dirtyForm, true);
+  });
+});
+
+scenario('profile draft and in-flight save defer updates, then a confirmed save releases the guard', async () => {
+  await fixture(async ({page, mock}) => {
+    await open(page); await login(page); await page.locator('#tabProfile').click();
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
+    assert.equal((await readState(page)).dirtyForm, false);
+    await page.locator('#profilePreferred').fill('Synthetic preferred name');
+    await page.locator('#tabDash').click();
+    assertDeferred(await attempt(page));
+    // Return without re-fetching/overwriting the existing editor.
+    await page.evaluate(() => show('profile'));
+    mock.holdAction = 'updateProfile'; await page.locator('#saveProfile').click();
+    await until(() => mock.held.length === 1, 'profile save must be held');
+    assert.equal((await readState(page)).submitting, true); assertDeferred(await attempt(page));
+    await mock.held.shift()();
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting && !document.getElementById('saveProfile').disabled);
+    assert.equal((await readState(page)).dirtyForm, false);
+  });
+});
+
+scenario('leave requests are protected while edited or waiting for acknowledgement', async () => {
+  await fixture(async ({page, mock}) => {
+    await open(page); await login(page); await page.locator('#tabLeave').click();
+    await page.locator('#leaveStart').fill('2026-11-01'); await page.locator('#leaveEnd').fill('2026-11-02');
+    await page.locator('#leaveReason').fill('Synthetic leave request'); assertDeferred(await attempt(page));
+    mock.holdAction = 'leaveRequest'; page.once('dialog', dialog => dialog.accept());
+    await page.locator('#sendLeave').click(); await until(() => mock.held.length === 1, 'leave request must be held');
+    assert.equal((await readState(page)).submitting, true);
+    assert.ok(await page.evaluate(() => sessionStorage.getItem('pendingLeave')));
+    await mock.held.shift()();
+    await page.waitForFunction(() => !document.getElementById('sendLeave').disabled && !MainTrackLocalWork.read().submitting);
+    assert.equal((await readState(page)).dirtyForm, false);
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('pendingLeave')), null);
+  });
+});
+
+scenario('owner edits, catalog entries and an open work-order editor all defer updates', async () => {
+  await fixture(async ({page}) => {
+    await open(page); await login(page); await page.locator('#tabAdmin').click();
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
+    await page.locator('#adminDepartment').fill('Synthetic department'); assertDeferred(await attempt(page));
+    await page.locator('#adminDepartment').fill('');
+    await page.locator('#v6EmpCode').fill('NEW_LAB'); assertDeferred(await attempt(page));
+    await page.locator('#v6EmpCode').fill('');
+    await page.locator('#tabCatalog').click(); await page.locator('#v6CatName').fill('New synthetic part');
+    assertDeferred(await attempt(page)); await page.locator('#v6CatName').fill('');
+    await page.locator('#tabCmms').click(); await page.locator('#v6WORows button').first().click();
+    await page.locator('#v6Edit').click(); await page.locator('#v6Editor').waitFor({state:'visible'});
+    assertDeferred(await attempt(page)); await page.locator('#v6Reason').fill('Synthetic edit reason');
+    await page.locator('#v6Cancel').click();
+    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
+    assert.equal((await readState(page)).dirtyForm, false);
+  }, {role:'owner'});
+});
+
+scenario('typing a password is protected without persisting credentials in local storage', async () => {
+  await fixture(async ({page}) => {
+    await open(page); await login(page);
+    await page.evaluate(() => showChange(false));
+    await page.locator('#np').fill('synthetic-new-password'); assertDeferred(await attempt(page));
+    const values = await page.evaluate(() => Object.values(localStorage).join('|'));
+    assert.equal(values.includes('synthetic-new-password'), false);
+    assert.equal(values.includes('synthetic-test-password'), false);
   });
 });

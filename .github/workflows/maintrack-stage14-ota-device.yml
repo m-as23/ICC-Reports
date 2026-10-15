@@ -11,7 +11,8 @@ on:
       # Actual UI/local-work integration has its own fast browser workflow.
       - 'android/maintrack-app/update-system/ota-lab.mjs'
       - 'android/maintrack-app/update-system/policy.mjs'
-      - 'android/maintrack-app/update-system/startup.mjs'
+      # prepare-qa replaces the real UI/bootstrap; actual boot readiness is
+      # exercised by the separate activation acceptance workflow.
       - 'android/maintrack-app/tests/ota-lab.test.mjs'
   workflow_dispatch:
 permissions:

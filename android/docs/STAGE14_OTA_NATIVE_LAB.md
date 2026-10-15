@@ -71,3 +71,21 @@ Native code changes still require a signed APK. Web OTA must remain fail-safe fo
 - [Actual UI local-work workflow](https://github.com/m-as23/ICC-Reports/actions/workflows/maintrack-stage14-local-work.yml)
 - [Isolated source branch](https://github.com/m-as23/ICC-Reports/tree/android/stage14-ota-native-lab)
 - [Capgo updater API](https://capgo.app/docs/plugins/updater/api/)
+
+## Activation boundary follow-up — implementation under verification
+
+The actual UI integration no longer calls `next()`: it downloads a candidate without
+arming a background/restart activation. A separate user action acquires a temporary
+UI lease, re-verifies the signed envelope at the current time, refuses any native
+pending bundle, and rechecks local work immediately before `set()`. An uncertain
+native outcome keeps the old page locked; only a proven pre-switch refusal unlocks it.
+
+The read-only data contract keeps the existing `q` array, account and `cid` identity,
+including rejected rows and unknown extra fields. Destructive migration is not an
+accepted OTA contract. Additional editor tracking covers profile, leave, credentials,
+admin, catalogs and work orders, and tracks all requests through the existing `post()`
+helper without modifying the 18 locked frontend resources.
+
+Native readiness now waits for the locally loaded UI and compatible storage reader;
+it does not wait for an API or connectivity. Acceptance results for this follow-up
+must be recorded below before treating these new boundaries as verified.

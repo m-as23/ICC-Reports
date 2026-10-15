@@ -1,15 +1,31 @@
-// Stage13 native readiness ONLY. No OTA fetching, update URL, or installation.
-// Capgo requires notifyAppReady on every launch to avoid rollback of healthy bundles.
-// This is deliberately executed before MainTrack's first API request.
+// Local boot acceptance. No update URL, download, installation, or network wait.
+// Do not mark an OTA healthy until its actual shell and storage reader have loaded.
 import { Capacitor } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import {createBootHealth} from './boot-health.mjs';
+import {inspectQueueData} from './data-contract.mjs';
 if (Capacitor.isNativePlatform()) {
-  try {
-    Promise.resolve(CapacitorUpdater.notifyAppReady()).catch(()=>{
-      // Native updater manages rollback if readiness cannot be confirmed.
-      // Never block login or send sensitive data from this bootstrap.
-    });
-  } catch {
-    // A missing native bridge cannot block the original web UI.
-  }
+  const health = createBootHealth({
+    isShellReady: () => document.readyState !== 'loading'
+      && !!globalThis.MainTrackLocalWork && globalThis.__MainTrackV7Fix === true
+      && globalThis.__MainTrackV6Integrated === true
+      && ['login','form','dashboard','v7FormStatus','v7RefreshLists','v6Dock'].every(id => !!document.getElementById(id)),
+    isDataCompatible: () => !inspectQueueData(globalThis.localStorage).unknownQueue,
+    notifyReady: () => CapacitorUpdater.notifyAppReady()
+  });
+  const onError = event => {
+    if (event.error || event.target?.tagName === 'SCRIPT') health.fail();
+  };
+  const onRejection = () => health.fail();
+  globalThis.addEventListener('error', onError, true);
+  globalThis.addEventListener('unhandledrejection', onRejection);
+  const deadline = Date.now() + 8000;
+  const timer = setInterval(async () => {
+    const ready = await health.check();
+    if (ready || Date.now() >= deadline) {
+      clearInterval(timer);
+      globalThis.removeEventListener('error', onError, true);
+      globalThis.removeEventListener('unhandledrejection', onRejection);
+    }
+  }, 50);
 }

@@ -1,3 +1,3 @@
-// Only the localhost test server serves this entry. Never included in an APK.
-import {stageMainTrackLabRelease} from '../update-system/stage-maintrack.mjs';
-globalThis.Stage14IntegrationTest = Object.freeze({stageMainTrackLabRelease});
+// Served only by the localhost QA harness, never included in release artifacts.
+import {stageMainTrackLabRelease, createMainTrackLabUpdater} from '../update-system/stage-maintrack.mjs';
+globalThis.Stage14IntegrationTest = Object.freeze({stageMainTrackLabRelease, createMainTrackLabUpdater});
