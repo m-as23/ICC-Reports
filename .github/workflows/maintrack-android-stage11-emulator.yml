@@ -22,7 +22,7 @@ jobs:
           mkdir -p apk-input
           gh run download 38737180316 --repo "${{ github.repository }}" --name MainTrack-Stage11-Debug-APK --dir apk-input
           test -s apk-input/android/app/build/outputs/apk/debug/app-debug.apk
-          sha256sum -c apk-input/debug-apk.sha256 --ignore-missing || true
+          echo 'c64fc9e19c580faa042d8ae617f8bbe709840c50c96fe4b74c6f2253ffb64a60  apk-input/android/app/build/outputs/apk/debug/app-debug.apk' | sha256sum --check
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -41,9 +41,8 @@ jobs:
             adb install -r apk-input/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n com.icc.maintrack/.MainActivity
             sleep 18
-            PID=$(adb shell pidof com.icc.maintrack | tr -d '\r')
-            if [ -z "$PID" ]; then echo "MainTrack app process was not running"; adb logcat -d -t 160; exit 1; fi
-            echo "PASS MainTrack launch on Android emulator PID=$PID"
+            adb shell pidof com.icc.maintrack
+            echo "PASS MainTrack app process is running on Android emulator"
             adb shell screencap -p /sdcard/maintrack-smoke.png
             adb pull /sdcard/maintrack-smoke.png maintrack-smoke.png
       - name: Upload login screen screenshot for manual review
