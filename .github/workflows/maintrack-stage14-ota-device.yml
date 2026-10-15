@@ -1,0 +1,113 @@
+name: MainTrack Stage14 Real Native OTA / Rollback QA
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-stage14-ota-device.yml'
+      - 'scripts/stage14/qa-entry.mjs'
+      - 'scripts/stage14/prepare-qa.mjs'
+      - 'qa/stage14/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-bundle-e2e:
+    name: Android35 real OTA ${{ matrix.scenario }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [healthy, faulty]
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Android SDK setup
+        run: |
+          ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$ROOT/cmdline-tools" -name sdkmanager -type f -print -quit)
+          test -x "$MANAGER"
+          "$MANAGER" --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Verify test fixture is served from immutable HTTPS Git commit
+        env:
+          QA_SCENARIO: ${{ matrix.scenario }}
+          QA_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os,json,hashlib,urllib.request,time
+          meta=json.load(open('../../qa/stage14/fixtures.json'))
+          name=os.environ['QA_SCENARIO'];sha=os.environ['QA_SOURCE_COMMIT'];desired=meta[name]['sha256']
+          url=f'https://raw.githubusercontent.com/m-as23/ICC-Reports/{sha}/qa/stage14/{name}.zip'
+          for attempt in range(5):
+           try:
+            with urllib.request.urlopen(url,timeout=12) as res: data=res.read()
+            assert hashlib.sha256(data).hexdigest()==desired
+            print(f'PASS HTTPS QA fixture {name} pinned to commit {sha}')
+            break
+           except Exception:
+            if attempt==4: raise
+            time.sleep(3)
+          PY
+      - name: Compile QA native app — never deploy or sign production
+        env:
+          QA_SCENARIO: ${{ matrix.scenario }}
+          QA_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build:web
+          node scripts/stage14/prepare-qa.mjs
+          test -s www/stage14-qa.js
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          npm run android:debug
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk ../../stage14-qa-${QA_SCENARIO}.apk
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Native Android35 OTA real download/activation and rollback check
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r stage14-qa-${{ matrix.scenario }}.apk
+            adb logcat -c
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 48
+            adb logcat -d -v time > stage14-${{ matrix.scenario }}-logcat.txt
+            grep 'MT_STAGE14_' stage14-${{ matrix.scenario }}-logcat.txt || true
+            grep -q 'MT_STAGE14_PENDING_QUEUE_GUARD_PASS' stage14-${{ matrix.scenario }}-logcat.txt
+            grep -q 'MT_STAGE14_SIGNATURE_OK' stage14-${{ matrix.scenario }}-logcat.txt
+            grep -q 'MT_STAGE14_BUNDLE_DOWNLOADED_AND_SCHEDULED' stage14-${{ matrix.scenario }}-logcat.txt
+            ${{ matrix.scenario == 'healthy' && "grep -q 'MT_STAGE14_GOOD_QUEUE_PRESERVED' stage14-healthy-logcat.txt" || "grep -q 'MT_STAGE14_ROLLBACK_PASS_BUILTIN_AND_LOCAL_STORAGE' stage14-faulty-logcat.txt" }}
+            adb shell screencap -p /sdcard/stage14-final.png
+            adb pull /sdcard/stage14-final.png stage14-${{ matrix.scenario }}-final.png
+            echo 'PASS actual Stage14 native bundle transition with integrity and local state safety'
+      - name: Store QA logs and screenshots even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage14-${{ matrix.scenario }}-Native-OTA-Evidence
+          path: |
+            stage14-${{ matrix.scenario }}-logcat.txt
+            stage14-${{ matrix.scenario }}-final.png
+          if-no-files-found: warn
+          retention-days: 10
