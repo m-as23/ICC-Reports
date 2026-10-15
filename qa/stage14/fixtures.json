@@ -1,0 +1,17 @@
+{
+  "faulty": {
+    "bytes": 353,
+    "files": [
+      "index.html"
+    ],
+    "sha256": "3fc1637745d830341655a26f877250b7d3f1906a64198b9e76452531f5553a58"
+  },
+  "healthy": {
+    "bytes": 18427,
+    "files": [
+      "index.html",
+      "stage13-native-ready.js"
+    ],
+    "sha256": "59f3cd6c1fac2462ecd8182d05693aafabfc48d5b36ca73ca13f530bdb7971f9"
+  }
+}
