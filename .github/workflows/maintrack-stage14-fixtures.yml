@@ -21,6 +21,7 @@ jobs:
       - name: Reproduce approved UI and updater bootstrap
         working-directory: android/maintrack-app
         run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --no-audit --no-fund
           npm run build:web
           npm test
@@ -40,5 +41,5 @@ jobs:
         run: |
           git config user.name 'maintrack-android-ci'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add qa/stage14
+          git add qa/stage14 android/maintrack-app/package-lock.json
           git diff --cached --quiet || (git commit -m 'test(stage14): add self-contained deterministic OTA QA fixtures' && git push origin HEAD:android/stage14-ota-native-lab)
