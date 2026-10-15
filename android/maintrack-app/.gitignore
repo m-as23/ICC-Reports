@@ -1,0 +1,7 @@
+node_modules/
+www/
+android/
+assets/
+.snapshot-temp/
+snapshot.lock.json
+.DS_Store
