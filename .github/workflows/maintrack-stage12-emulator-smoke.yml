@@ -1,0 +1,60 @@
+name: MainTrack Stage12 Native Updater OFF Emulator Smoke
+on:
+  push:
+    branches:
+      - android/stage12-secure-updates
+    paths:
+      - '.github/workflows/maintrack-stage12-emulator-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download verified Stage12 debug build without enabling OTA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir apk-input
+          gh run download 38765206081 --repo "${{ github.repository }}" --name MainTrack-Stage12-Native-Updater-OFF-Debug-QA --dir apk-input
+          APK=$(find apk-input -type f -name 'app-debug.apk' | head -n1)
+          test -n "$APK"
+          test -s "$APK"
+          sha256sum "$APK"
+          cp "$APK" maintrack-stage12-off-debug.apk
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Enable Android Emulator acceleration
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Verify update plugin does not crash app at launch
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r maintrack-stage12-off-debug.apk
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 15
+            adb shell pidof com.icc.maintrack
+            adb shell pm path com.icc.maintrack
+            adb shell screencap -p /sdcard/stage12-launch.png
+            adb pull /sdcard/stage12-launch.png stage12-launch.png
+            echo 'PASS Stage12 updater plugin OFF: installed, MainTrack running, screenshot captured'
+      - name: Attach read-only screen evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage12-Android14-Startup-QA
+          path: stage12-launch.png
+          if-no-files-found: ignore
+          retention-days: 10
