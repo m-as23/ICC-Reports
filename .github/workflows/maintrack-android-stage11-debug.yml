@@ -1,0 +1,82 @@
+name: MainTrack Android Stage11 Debug APK
+on:
+  push:
+    branches:
+      - android/stage11-production-readiness
+    paths:
+      - 'android/maintrack-app/**'
+      - '.github/workflows/maintrack-android-stage11-debug.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-stage11-android-debug
+  cancel-in-progress: false
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Configure Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Configure Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK 36
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Resolve dependencies and save review lock
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+      - name: Static validation and unit tests
+        run: |
+          npm run check
+          npm test
+      - name: Snapshot secure MainTrack locally
+        run: |
+          npm run build:web
+          test -s www/index.html
+          test -s snapshot.lock.json
+      - name: Generate Capacitor Android project
+        run: |
+          npm run android:prepare
+      - name: Generate MainTrack launcher icon
+        run: |
+          npm run android:icons
+          npx cap sync android
+      - name: Compile Debug APK
+        run: npm run android:debug
+      - name: Verify debug APK
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum android/app/build/outputs/apk/debug/app-debug.apk > debug-apk.sha256
+      - name: Upload first build APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage11-Debug-APK
+          path: |
+            android/maintrack-app/android/app/build/outputs/apk/debug/app-debug.apk
+            android/maintrack-app/debug-apk.sha256
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload reviewed dependency and source locks
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage11-Review-Locks
+          path: |
+            android/maintrack-app/package-lock.json
+            android/maintrack-app/snapshot.lock.json
+          if-no-files-found: error
+          retention-days: 14
