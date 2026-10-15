@@ -30,6 +30,17 @@ const js=await fs.readFile(path.join(www,'secure-assets/index-inline-1.js'),'utf
 const html=await fs.readFile(path.join(www,'index.html'),'utf8');
 if(!js.includes('maintrack-stage9-security-api/api')||js.includes('maintrack-stage6-api/api'))throw Error('API_REGRESSION');
 if(!html.includes('Content-Security-Policy')||html.includes('http-equiv="refresh"'))throw Error('WEB_SECURITY_REGRESSION');
-const meta={source:'web/maintrack/public',sourceCommit:'immutable-stage11-accepted',nativeIndex:source.nativeIndex,assets:source.assets};
+const {build}=await import('esbuild');
+const entry=path.join(root,'update-system/startup.mjs');
+const outFile=path.join(www,'secure-assets','stage13-native-ready.js');
+await build({entryPoints:[entry],outfile:outFile,bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,logLevel:'silent'});
+const bootstrap=await fs.readFile(outFile);
+if(bootstrap.length>180000)throw Error('UPDATE_BOOTSTRAP_SIZE_EXCEEDED');
+const indexFile=path.join(www,'index.html');
+let index=await fs.readFile(indexFile,'utf8');
+if(!index.includes('<head>'))throw Error('MISSING_HEAD');
+index=index.replace('<head>','<head>\n<script src="secure-assets/stage13-native-ready.js"></script>');
+await fs.writeFile(indexFile,index);
+const meta={source:'web/maintrack/public',sourceCommit:'immutable-stage11-accepted',nativeIndex:source.nativeIndex,bootstrap:{sha256:sha(bootstrap),bytes:bootstrap.length},assets:source.assets};
 await fs.writeFile(path.join(root,'snapshot.lock.json'),JSON.stringify(meta,null,2)+'\n');
 console.log('PASS unified Web and Android content: '+source.assets.length+' resources. No network requests, no remote source fetch.');

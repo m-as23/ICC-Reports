@@ -9,7 +9,7 @@ on:
       - '.github/workflows/maintrack-stage13-unified-ci.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   unified-web-and-apk:
     runs-on: ubuntu-latest
@@ -34,8 +34,11 @@ jobs:
           MANAGER=$(find "$ROOT/cmdline-tools" -name sdkmanager -type f -print -quit)
           test -x "$MANAGER"
           "$MANAGER" --install "platforms;android-36" "build-tools;36.0.0"
-      - name: Install verified npm dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Install QA bundler and resolve exact dependencies
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm ls esbuild
       - name: Execute safety and update-policy regression tests
         run: |
           npm run check
@@ -44,6 +47,8 @@ jobs:
         run: |
           npm run build:web
           test -s www/index.html
+          test -s www/secure-assets/stage13-native-ready.js
+          grep -q 'stage13-native-ready.js' www/index.html
           grep -q "maintrack-stage9-security-api/api" www/secure-assets/index-inline-1.js
       - name: Save identical Web preview files — NO deployment
         uses: actions/upload-artifact@v4
@@ -59,6 +64,13 @@ jobs:
           npx cap sync android
           npm run android:debug
           sha256sum android/app/build/outputs/apk/debug/app-debug.apk > stage13-apk.sha256
+      - name: Pin approved dependencies after full test and APK build
+        if: success()
+        run: |
+          git config user.name 'maintrack-android-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git diff --cached --quiet || (git commit -m 'chore(stage13): pin reviewed OTA bootstrap bundler dependency' && git push origin HEAD:android/stage13-unified-source-ota-lab)
       - name: Save isolated Android build — NOT for employees
         uses: actions/upload-artifact@v4
         with:
