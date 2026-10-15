@@ -8,3 +8,5 @@ snapshot.lock.json
 
 .activation-qa/
 release-candidate/
+__pycache__/
+release-output/
