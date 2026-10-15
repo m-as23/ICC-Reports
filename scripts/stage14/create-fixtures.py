@@ -12,8 +12,10 @@ assert source.stat().st_size < 180000
 bootstrap=source.read_bytes()
 healthy=b'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>MainTrack OTA LAB GOOD</title><script src="stage13-native-ready.js"></script></head><body><h1>MainTrack Stage14 Healthy OTA</h1><script>
 const q=JSON.parse(localStorage.getItem('q')||'[]');
-if(q.some(x=>x.id==='stage14-offline-queue-sentinel'))console.log('MT_STAGE14_GOOD_QUEUE_PRESERVED');
-else console.error('MT_STAGE14_QUEUE_LOST');
+if(q.length===0)console.log('MT_STAGE14_PENDING_QUEUE_CLEARED_BEFORE_UPDATE');
+else console.error('MT_STAGE14_UNSAFE_QUEUE_SWITCH');
+if(localStorage.getItem('stage14-qa-persist')==='intact')console.log('MT_STAGE14_GOOD_LOCAL_STATE_PRESERVED');
+else console.error('MT_STAGE14_GOOD_LOCAL_STATE_LOST');
 console.log('MT_STAGE14_GOOD_BUNDLE_RUNNING');
 </script></body></html>'''
 faulty=b'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>MainTrack OTA LAB BROKEN</title></head><body><h1>Deliberately missing updater readiness!</h1><script>console.log('MT_STAGE14_BAD_BUNDLE_RUNNING');</script></body></html>'''
