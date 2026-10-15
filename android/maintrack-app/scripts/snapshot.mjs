@@ -41,6 +41,13 @@ let index=await fs.readFile(indexFile,'utf8');
 if(!index.includes('<head>'))throw Error('MISSING_HEAD');
 index=index.replace('<head>','<head>\n<script src="secure-assets/stage13-native-ready.js"></script>');
 await fs.writeFile(indexFile,index);
-const meta={source:'web/maintrack/public',sourceCommit:'immutable-stage11-accepted',nativeIndex:source.nativeIndex,bootstrap:{sha256:sha(bootstrap),bytes:bootstrap.length},assets:source.assets};
+// Read-only native integration; the locked shared UI resources remain byte-identical.
+const workFile=path.join(www,'secure-assets','stage14-local-work.js');
+await build({entryPoints:[path.join(root,'update-system/local-work-startup.mjs')],outfile:workFile,bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,logLevel:'silent'});
+const localWork=await fs.readFile(workFile);
+if(!index.includes('</body>'))throw Error('MISSING_BODY');
+index=index.replace('</body>','<script src="secure-assets/stage14-local-work.js"></script></body>');
+await fs.writeFile(indexFile,index);
+const meta={source:'web/maintrack/public',sourceCommit:'immutable-stage11-accepted',nativeIndex:source.nativeIndex,bootstrap:{sha256:sha(bootstrap),bytes:bootstrap.length},localWork:{sha256:sha(localWork),bytes:localWork.length},assets:source.assets};
 await fs.writeFile(path.join(root,'snapshot.lock.json'),JSON.stringify(meta,null,2)+'\n');
 console.log('PASS unified Web and Android content: '+source.assets.length+' resources. No network requests, no remote source fetch.');

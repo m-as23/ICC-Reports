@@ -1,0 +1,55 @@
+name: MainTrack Stage14 Real UI Local Work Safety
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-stage14-local-work.yml'
+      - 'android/maintrack-app/update-system/local-work*.mjs'
+      - 'android/maintrack-app/update-system/stage-maintrack.mjs'
+      - 'android/maintrack-app/scripts/snapshot.mjs'
+      - 'android/maintrack-app/tests/local-work.test.mjs'
+      - 'android/maintrack-app/tests-browser/**'
+      - 'web/maintrack/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-ui-local-work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            android/maintrack-app/package-lock.json
+            android/maintrack-app/tests-browser/package-lock.json
+      - name: Verify locked app and read-only guard
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check
+          npm test
+          npm run build:web
+      - name: Install isolated browser test dependencies
+        working-directory: android/maintrack-app/tests-browser
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Exercise actual MainTrack UI against in-memory mock backend only
+        working-directory: android/maintrack-app/tests-browser
+        run: npm test
+      - name: Store non-sensitive test summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage14-Real-UI-Local-Work-Evidence
+          path: android/maintrack-app/tests-browser/evidence/
+          if-no-files-found: warn
+          retention-days: 10

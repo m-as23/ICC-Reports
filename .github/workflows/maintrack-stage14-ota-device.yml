@@ -7,7 +7,11 @@ on:
       - 'android/maintrack-app/scripts/stage14/prepare-qa.mjs'
       - 'qa/stage14/**'
       - 'android/maintrack-app/package.json'
-      - 'android/maintrack-app/update-system/**'
+      # Only modules exercised by this standalone native OTA harness.
+      # Actual UI/local-work integration has its own fast browser workflow.
+      - 'android/maintrack-app/update-system/ota-lab.mjs'
+      - 'android/maintrack-app/update-system/policy.mjs'
+      - 'android/maintrack-app/update-system/startup.mjs'
       - 'android/maintrack-app/tests/ota-lab.test.mjs'
   workflow_dispatch:
 permissions:
