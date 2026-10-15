@@ -47,6 +47,12 @@ try{
  if(!script.includes('maintrack-stage9-security-api/api')||script.includes('maintrack-stage6-api/api'))throw Error('Wrong API endpoint');
  await fs.writeFile(indexFile,html);
  manifest.nativeIndex={sha256:fingerprint(Buffer.from(html)),bytes:Buffer.byteLength(html)};
+ const pinned=JSON.parse(await fs.readFile(path.join(root,'approved-assets.lock.json'),'utf8'));
+ if(pinned.schema!==1||pinned.sourceUrl!==manifest.sourceUrl||pinned.sourceDeployment!==manifest.sourceDeployment)throw Error('Unapproved source identity');
+ if(!Array.isArray(pinned.assets)||pinned.assets.length!==manifest.assets.length)throw Error('Unapproved source asset count');
+ const expected=new Map(pinned.assets.map(a=>[a.path,a]));
+ for(const a of manifest.assets){const b=expected.get(a.path);if(!b||b.sha256!==a.sha256||b.bytes!==a.bytes)throw Error('SOURCE_PIN_MISMATCH: '+a.path)}
+ if(pinned.nativeIndex?.sha256!==manifest.nativeIndex.sha256)throw Error('NATIVE_CSP_PIN_MISMATCH');
  const total=manifest.assets.reduce((sum,i)=>sum+i.bytes,0);
  const js=manifest.assets.filter(x=>x.path.endsWith('.js')).reduce((sum,x)=>sum+x.bytes,0);
  if(total>4000000||js>800000)throw Error('Asset size budget exceeded');
