@@ -33,8 +33,11 @@ jobs:
           java-version: '21'
       - name: Install Android SDK 36 using hosted runner SDK
         run: |
-          test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          test -d "$SDK_ROOT/cmdline-tools"
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
       - name: Resolve dependencies and save review lock
         run: |
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
