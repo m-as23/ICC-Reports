@@ -31,11 +31,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install Android SDK 36
+      - name: Install Android SDK 36 using hosted runner SDK
         run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
       - name: Resolve dependencies and save review lock
         run: |
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
