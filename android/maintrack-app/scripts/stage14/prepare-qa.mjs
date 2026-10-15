@@ -9,7 +9,7 @@ const scenario=process.env.QA_SCENARIO;
 const sha=process.env.QA_SOURCE_COMMIT;
 if(!['healthy','faulty'].includes(scenario)||!/^[0-9a-f]{40}$/.test(sha))throw Error('INVALID_QA_CONFIGURATION');
 const root=path.resolve(import.meta.dirname,'../..');
-const fixtures=JSON.parse(fs.readFileSync(path.resolve(root,'../../../qa/stage14/fixtures.json')));
+const fixtures=JSON.parse(fs.readFileSync(path.resolve(root,'../../qa/stage14/fixtures.json')));
 const f=fixtures[scenario];
 const url='https://raw.githubusercontent.com/m-as23/ICC-Reports/'+sha+'/qa/stage14/'+scenario+'.zip';
 const now=Date.now();
