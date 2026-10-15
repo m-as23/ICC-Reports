@@ -1,0 +1,56 @@
+name: MainTrack Stage11 Android Emulator Smoke
+on:
+  push:
+    branches:
+      - android/stage11-production-readiness
+    paths:
+      - '.github/workflows/maintrack-android-stage11-emulator.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  launch-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download previously built and verified Debug APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p apk-input
+          gh run download 38737180316 --repo "${{ github.repository }}" --name MainTrack-Stage11-Debug-APK --dir apk-input
+          test -s apk-input/android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum -c apk-input/debug-apk.sha256 --ignore-missing || true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Permit KVM acceleration
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Install and launch MainTrack on Android 15 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install -r apk-input/android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 18
+            PID=$(adb shell pidof com.icc.maintrack | tr -d '\r')
+            if [ -z "$PID" ]; then echo "MainTrack app process was not running"; adb logcat -d -t 160; exit 1; fi
+            echo "PASS MainTrack launch on Android emulator PID=$PID"
+            adb shell screencap -p /sdcard/maintrack-smoke.png
+            adb pull /sdcard/maintrack-smoke.png maintrack-smoke.png
+      - name: Upload login screen screenshot for manual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage11-Emulator-Smoke-Evidence
+          path: maintrack-smoke.png
+          if-no-files-found: ignore
+          retention-days: 7
