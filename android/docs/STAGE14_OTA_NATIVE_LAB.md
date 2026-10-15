@@ -1,10 +1,23 @@
 # MainTrack Stage 14 — Native OTA integration laboratory
 
-## Scope
+## Latest accepted follow-up
+
+[Explicit activation acceptance](STAGE14_ACTIVATION_ACCEPTANCE.md) is the current
+status: **47/47 Node tests, 13/13 actual UI browser scenarios**, and a successful
+single-session Android 35 run covering healthy activation, failed-shell rollback
+and offline restart with exact synthetic queue preservation. Native evidence:
+[38823521483](https://github.com/m-as23/ICC-Reports/actions/runs/38823521483).
+The unsigned release candidates and protected APK export path are prepared;
+employee rollout remains disabled.
+
+The sections below retain the earlier fixture and UI integration evidence. Their
+older scheduling behavior and test counts describe those historical commits.
+
+## Original laboratory scope
 
 Prove signed web bundle download, activation, readiness rollback, and preservation of non-sensitive local storage on an isolated Android test build. The laboratory does not connect to Supabase, authenticate users, deploy web assets, or enable employee updates.
 
-## Isolation and security controls
+## Original fixture isolation and security controls
 
 - Work is confined to `android/stage14-ota-native-lab`. Production `main` and deployed Vercel aliases are unchanged.
 - `qa/stage14/healthy.zip` and `faulty.zip` are test-only HTML, with no production data.
@@ -28,7 +41,7 @@ GitHub Actions run [38774916224](https://github.com/m-as23/ICC-Reports/actions/r
 - Both jobs logged `MT_STAGE14_PENDING_QUEUE_GUARD_PASS`, `MT_STAGE14_SIGNATURE_OK`, and `MT_STAGE14_BUNDLE_DOWNLOADED_AND_SCHEDULED`.
 - These are real Android emulator download, activation, and rollback checks, not the mocked rollback unit test alone. No repeat emulator run is needed for this result.
 
-## Actual MainTrack UI local-work gate — accepted
+## Initial actual MainTrack UI local-work gate — accepted
 
 Integration commit: `422845c00bd55346ca94c79e8e2ca8351f0ba312`.
 
@@ -46,24 +59,30 @@ GitHub Actions run [38786455203](https://github.com/m-as23/ICC-Reports/actions/r
 
 Reproduction and test scope: [`tests-browser/README.md`](../maintrack-app/tests-browser/README.md).
 
-## Evidence scope
+## Original evidence scope
 
 The corrected persistence assertion checks a separate localStorage sentinel that is **not intentionally cleared** before OTA. It proves that localStorage survives the healthy bundle switch and native rollback.
 
-The actual UI suite proves queue persistence through closing/reopening and guarded recovery/delivery. It prevents OTA while queued work exists. It does not force an update with a report in the queue. Native queued-data compatibility/migration through a bundle swap and rollback remains a release gate.
+The actual UI suite proves queue persistence through closing/reopening and guarded recovery/delivery. It prevents OTA while queued work exists. It does not force an update with a report in the queue. At that commit, native queued-data compatibility through a bundle swap and rollback remained a release gate. The follow-up linked above now verifies unchanged schema-1 queue preservation through real native swaps; schema-changing migrations remain excluded.
 
 ## Secure update status and remaining gates
 
-Stage 14 laboratory acceptance is complete; employee OTA is still disabled. Do not connect the lab updater to employee devices or publish a mandatory policy until all remaining gates are completed:
+The laboratory and explicit activation acceptance are complete. Employee OTA is
+still disabled. The unchanged schema-1 contract, final activation boundary and
+protection for additional editors are now verified within the documented test
+scope. Web/OTA review packaging and a gated APK signing workflow are prepared.
 
-1. Define and test queued-data schema compatibility/migration through healthy native OTA and rollback. The actual UI persistence, session binding, and deferred-update integration gate above is complete.
-2. Cover the final activation boundary: work created after scheduling must remain recoverable on the next launch. Extend draft/submission protection to other editable application screens before enabling employee updates.
-3. Have the owner create and retain the production signing key outside GitHub source; pin only its public key in the signed native app.
-4. Select the update hosting and distribution model. Keep spending and production deployment disabled until the owner chooses them.
-5. Build a separate release pipeline with protected environment approval, signed metadata, immutable artifacts, staged optional rollout, and an immediate rollback path.
-6. Test the signed Release APK and offline startup on a user-controlled Android device before any employee pilot.
+Before employee rollout, production trust roots and hosting/distribution must be
+configured, the production update prompt connected, backend compatibility and
+real-server idempotency verified, and an owner-signed APK tested through an in-place
+upgrade on a physical owner-controlled device. The immutable Web publish/recovery
+path also needs a deployment pilot. See the full current
+[remaining gates](STAGE14_ACTIVATION_ACCEPTANCE.md#remaining-before-employee-rollout)
+and [release path](STAGE14_RELEASE_PATH.md).
 
-Native code changes still require a signed APK. Web OTA must remain fail-safe for startup and fail-closed for untrusted manifests. Never merge this branch into `main` or deploy it as part of this laboratory task.
+Native code changes still require a signed APK. Web OTA must remain fail-safe for
+startup and fail-closed for untrusted manifests. Never merge this branch into
+`main` or deploy it as part of this laboratory task.
 
 ## Evidence links
 
@@ -72,7 +91,7 @@ Native code changes still require a signed APK. Web OTA must remain fail-safe fo
 - [Isolated source branch](https://github.com/m-as23/ICC-Reports/tree/android/stage14-ota-native-lab)
 - [Capgo updater API](https://capgo.app/docs/plugins/updater/api/)
 
-## Activation boundary follow-up — implementation under verification
+## Activation boundary follow-up — accepted in the laboratory
 
 The actual UI integration no longer calls `next()`: it downloads a candidate without
 arming a background/restart activation. A separate user action acquires a temporary
@@ -87,5 +106,5 @@ admin, catalogs and work orders, and tracks all requests through the existing `p
 helper without modifying the 18 locked frontend resources.
 
 Native readiness now waits for the locally loaded UI and compatible storage reader;
-it does not wait for an API or connectivity. Acceptance results for this follow-up
-must be recorded below before treating these new boundaries as verified.
+it does not wait for an API or connectivity. The [acceptance report](STAGE14_ACTIVATION_ACCEPTANCE.md) records the passing
+UI and native evidence, isolation details and remaining production gates.

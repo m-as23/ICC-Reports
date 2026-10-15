@@ -48,8 +48,9 @@ a new signed APK. The candidate workflow has an independently gated signing job:
 
 - Manual dispatch on the isolated branch, `sign_apk=true`, and repository variable
   `MT_STAGE14_SIGNING_READY=true` are all required.
-- Environment `maintrack-android-release` holds the four existing keystore secrets;
-  configure owner approval there before enabling signing. No key is generated here.
+- Configure the four keystore secrets in environment `maintrack-android-release`
+  and require owner approval there before enabling signing. These account settings
+  have not been verified or changed by this work. No key is generated here.
 - Set owner-approved `MT_ANDROID_EXPECTED_CERT_SHA256` and
   `MT_ANDROID_LAST_VERSION_CODE`. The workflow checks the produced certificate and
   requires a strictly higher versionCode. Keep the same app ID/certificate for an

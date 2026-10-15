@@ -2,9 +2,9 @@
 
 This suite loads the approved MainTrack UI emitted by `scripts/snapshot.mjs`.
 The shared source and its SHA-256 lock remain unchanged. The native build adds a
-read-only local-work reader after the existing application script. The lab update
-integration verifies the signed manifest and consults this reader before download
-and before scheduling. It is not connected to employee OTA startup.
+local-work reader and a short user-driven activation lease after the existing
+application script. The lab controller verifies signed metadata before download
+and again before explicit activation. Downloads never arm a background switch. It is not connected to employee OTA startup.
 
 ## Run
 
@@ -39,10 +39,17 @@ included by `snapshot.mjs`.
 - A lost acknowledgement retains the queue and retry keeps the original `cid`.
   The mock backend deduplicates by account + `cid`. This is not proof of the live
   backend's idempotency or an unconditional exactly-once delivery guarantee.
-- A report arriving during download prevents scheduling. Invalid signatures or
-  unavailable runtime state cannot enable an update.
+- Work created during or after download defers activation. Invalid signatures,
+  expired candidates or unavailable runtime state cannot enable an update.
+- Actual pointer-driven activation freezes editing and refuses API requests from
+  the old page while native activation is outstanding. A proven native refusal
+  restores interaction; an uncertain switch keeps the stale page locked.
+- Profile, leave, admin, employee, catalog, work-order and credential edits are
+  included. In-flight saves defer updates; acknowledgement clears only the values
+  that were actually sent, leaving newer edits protected.
 
 This suite does not force an OTA while a report is queued. It verifies that the
-guard prevents that switch. The separate Stage 14 Android run proves localStorage
-sentinel persistence through native swap and rollback. Real queued-data schema
-migration and signed Release APK/device acceptance remain separate release gates.
+guard prevents that switch. See `android/docs/STAGE14_ACTIVATION_ACCEPTANCE.md` for the separate actual-UI
+Android acceptance and its exact outcome. Schema-changing migrations are currently
+rejected, not silently implemented. Signed Release APK/physical-device acceptance
+and live-backend idempotency remain separate release gates.
