@@ -7,6 +7,9 @@ on:
       - 'android/maintrack-app/scripts/stage14/qa-entry.mjs'
       - 'android/maintrack-app/scripts/stage14/prepare-qa.mjs'
       - 'qa/stage14/**'
+      - 'android/maintrack-app/package.json'
+      - 'android/maintrack-app/update-system/**'
+      - 'android/maintrack-app/tests/ota-lab.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -64,6 +67,7 @@ jobs:
           QA_SCENARIO: ${{ matrix.scenario }}
           QA_SOURCE_COMMIT: ${{ github.sha }}
         run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --no-audit --no-fund
           npm test
           npm run build:web

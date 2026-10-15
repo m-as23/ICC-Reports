@@ -13,7 +13,8 @@
   "dependencies": {
     "@capacitor/core": "8.5.2",
     "@capacitor/android": "8.5.2",
-    "@capgo/capacitor-updater": "8.53.0"
+    "@capgo/capacitor-updater": "8.53.0",
+    "tweetnacl": "1.0.3"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2",

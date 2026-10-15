@@ -1,3 +1,4 @@
+import nacl from 'tweetnacl';
 // Stage12 update-policy foundation. No network traffic unless caller provides an approved URL and trusted public key.
 // Never call this module on the critical path to render the login screen.
 export const DEFAULT_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -35,12 +36,23 @@ export function validUpdatePayload(payload,now,channel='pilot'){
   return true;
 }
 export async function verifySignedPolicy(envelope,{publicKeyBase64,cryptoSubtle=globalThis.crypto?.subtle,now=Date.now(),channel='pilot'}={}){
-  if(!publicKeyBase64||!cryptoSubtle||!envelope||typeof envelope!=='object'||!validUpdatePayload(envelope.payload,now,channel))return null;
+  if(!publicKeyBase64||!envelope||typeof envelope!=='object'||!validUpdatePayload(envelope.payload,now,channel))return null;
+  let keyBytes,signature,message;
   try {
-    const key=await cryptoSubtle.importKey('raw',base64Bytes(publicKeyBase64),{name:'Ed25519'},false,['verify']);
-    const valid=await cryptoSubtle.verify({name:'Ed25519'},key,base64Bytes(envelope.signature),textEncoder.encode(canonicalJson(envelope.payload)));
-    return valid?envelope.payload:null;
-  } catch{return null}
+    keyBytes=base64Bytes(publicKeyBase64);
+    signature=base64Bytes(envelope.signature);
+    message=textEncoder.encode(canonicalJson(envelope.payload));
+    if(keyBytes.length!==32||signature.length!==64)return null;
+  }catch{return null}
+  if(cryptoSubtle){
+    try {
+      const key=await cryptoSubtle.importKey('raw',keyBytes,{name:'Ed25519'},false,['verify']);
+      const valid=await cryptoSubtle.verify({name:'Ed25519'},key,signature,message);
+      return valid?envelope.payload:null;
+    }catch{ /* WebView may lack Ed25519 WebCrypto. Use bundled audited NaCl verifier. */ }
+  }
+  try { return nacl.sign.detached.verify(message,signature,keyBytes)?envelope.payload:null; }
+  catch{return null}
 }
 export function shouldCheck({now=Date.now(),lastCheck=0,intervalMs=DEFAULT_CHECK_INTERVAL_MS}={}){
   return !Number.isFinite(lastCheck)||lastCheck<=0||now-lastCheck>=intervalMs;

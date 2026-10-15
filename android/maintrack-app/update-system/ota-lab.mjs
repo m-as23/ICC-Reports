@@ -1,3 +1,4 @@
+import nacl from 'tweetnacl';
 // Stage13 LAB ONLY. Never auto-call; plugin autoUpdate stays off.
 // Signed JSON manifest contains exact ZIP SHA256 + URL. Server cannot trigger an update with unsigned data.
 import { canonicalJson, activationBlockers, compareVersions } from './policy.mjs';
@@ -20,12 +21,18 @@ export function validateLabRelease(m,{now=Date.now(),allowedOrigins=[],currentNa
 }
 export async function verifyLabRelease(envelope,opts={}){
  const {publicKeyBase64,cryptoSubtle=globalThis.crypto?.subtle}=opts;
- if(!publicKeyBase64||!cryptoSubtle||!envelope?.payload||!validateLabRelease(envelope.payload,opts))return null;
- try{
-  const key=await cryptoSubtle.importKey('raw',decode(publicKeyBase64),{name:'Ed25519'},false,['verify']);
-  const ok=await cryptoSubtle.verify({name:'Ed25519'},key,decode(envelope.signature),new TextEncoder().encode(canonicalJson(envelope.payload)));
-  return ok?envelope.payload:null;
- }catch{return null}
+ if(!publicKeyBase64||!envelope?.payload||!validateLabRelease(envelope.payload,opts))return null;
+ let keyBytes,sig,msg;
+ try {keyBytes=decode(publicKeyBase64);sig=decode(envelope.signature);msg=new TextEncoder().encode(canonicalJson(envelope.payload));if(keyBytes.length!==32||sig.length!==64)return null;}catch{return null}
+ if(cryptoSubtle){
+   try{
+     const key=await cryptoSubtle.importKey('raw',keyBytes,{name:'Ed25519'},false,['verify']);
+     const ok=await cryptoSubtle.verify({name:'Ed25519'},key,sig,msg);
+     return ok?envelope.payload:null;
+   }catch{ /* Ed25519 is unavailable in some Android WebViews; safely fall back. */ }
+ }
+ try{return nacl.sign.detached.verify(msg,sig,keyBytes)?envelope.payload:null}
+ catch{return null}
 }
 export function canActivate({dirtyForm=false,unsentReports=0,submitting=false,offline=false,unknownQueue=false}={}){
  return activationBlockers({dirtyForm,unsentReports,submitting,offline,unknownQueue}).length===0;

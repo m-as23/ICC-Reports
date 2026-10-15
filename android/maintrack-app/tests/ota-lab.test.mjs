@@ -56,3 +56,10 @@ test('rollback fault injection resets to previous working bundle in mock',async(
  assert.equal(await simulatedRollback({updater,bootstrapCompleted:true}),'kept');
  assert.equal(reverted,1);
 });
+
+test('NaCl verifier confirms authentic lab release on old Android WebViews without Ed25519 SubtleCrypto',async()=>{
+ const unsupported={importKey:async()=>{throw new DOMException('Unsupported','NotSupportedError')}};
+ assert.ok(await verifyLabRelease(envelope(m),{...opts,cryptoSubtle:unsupported}));
+ const tampered=envelope(m);tampered.payload.bytes=1500;
+ assert.equal(await verifyLabRelease(tampered,{...opts,cryptoSubtle:unsupported}),null);
+});
