@@ -20,9 +20,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p apk-input
-          gh run download 38737180316 --repo "${{ github.repository }}" --name MainTrack-Stage11-Debug-APK --dir apk-input
+          gh run download 38738843363 --repo "${{ github.repository }}" --name MainTrack-Stage11-Debug-APK --dir apk-input
           test -s apk-input/android/app/build/outputs/apk/debug/app-debug.apk
-          echo 'c64fc9e19c580faa042d8ae617f8bbe709840c50c96fe4b74c6f2253ffb64a60  apk-input/android/app/build/outputs/apk/debug/app-debug.apk' | sha256sum --check
+          echo 'de1ddedb9855f158f4225dd67c546a0a261d08309a73abc31630fc34ad1b2e3b  apk-input/android/app/build/outputs/apk/debug/app-debug.apk' | sha256sum --check
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -33,10 +33,11 @@ jobs:
       - name: Install and launch MainTrack on Android 15 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_2
           disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install -r apk-input/android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n com.icc.maintrack/.MainActivity
