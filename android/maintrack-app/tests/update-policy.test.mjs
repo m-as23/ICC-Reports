@@ -46,3 +46,14 @@ test('verified update server result is allowed with valid signed JSON only',asyn
  const ok=await fetchVerifiedPolicy({url:'https://example.org/policy.json',publicKeyBase64:pub,cryptoSubtle:webcrypto.subtle,now,fetchImpl:async()=>({ok:true,headers:new Map([['content-type','application/json']]),text:async()=>JSON.stringify(signed())})});
  assert.equal(ok.status,'verified');
 });
+
+test('mandatory policy never loops once UI and native versions are current',()=>{
+ const p={...payload,mode:'required',latestNative:'0.2.0',latestUi:'0.2.0'};
+ assert.equal(decide({policy:p,currentNative:'0.2.0',currentUi:'0.2.0'}).action,'continue');
+});
+test('native and UI release types are handled independently',()=>{
+ const p={...payload,latestNative:'0.3.0',latestUi:'0.2.1',mode:'required'};
+ assert.equal(decide({policy:p,currentNative:'0.2.0',currentUi:'0.2.0'}).action,'native-required');
+ assert.equal(decide({policy:{...payload,latestNative:'0.2.0'},currentNative:'0.2.0',currentUi:'0.2.0'}).action,'ui-optional');
+ assert.equal(decide({policy:{...payload,latestUi:'0.2.0'},currentNative:'0.2.0',currentUi:'0.2.0'}).action,'native-optional');
+});

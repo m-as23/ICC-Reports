@@ -56,12 +56,20 @@ export function activationBlockers({dirtyForm=false,unsentReports=0,submitting=f
 }
 export function decide({policy,currentNative,currentUi,blockers=[]}={}){
   if(!policy)return {action:'continue',reason:'NO_TRUSTED_POLICY'};
-  if(compareVersions(currentNative,policy.minNative)<0)return {action:'native-required',reason:'UNSUPPORTED_NATIVE'};
-  if(compareVersions(currentUi,policy.minUi)<0||policy.mode==='required'){
+  const nativeBelowMin=compareVersions(currentNative,policy.minNative)<0;
+  const uiBelowMin=compareVersions(currentUi,policy.minUi)<0;
+  const nativeOutdated=compareVersions(currentNative,policy.latestNative)<0;
+  const uiOutdated=compareVersions(currentUi,policy.latestUi)<0;
+  const nativeRequired=nativeBelowMin||(policy.mode==='required'&&nativeOutdated);
+  const uiRequired=uiBelowMin||(policy.mode==='required'&&uiOutdated);
+  if(nativeRequired||uiRequired){
     if(blockers.length)return {action:'defer',reason:'PROTECT_LOCAL_WORK',blockers};
-    return {action:'ui-required',reason:'VERIFIED_MINIMUM_VERSION'};
+    return nativeRequired?{action:'native-required',reason:'VERIFIED_MINIMUM_VERSION'}:{action:'ui-required',reason:'VERIFIED_MINIMUM_VERSION'};
   }
-  if(compareVersions(currentUi,policy.latestUi)<0&&policy.mode==='optional')return {action:'ui-optional',reason:'OPTIONAL_RELEASE'};
+  if(policy.mode==='optional'){
+    if(nativeOutdated)return {action:'native-optional',reason:'OPTIONAL_NATIVE_RELEASE'};
+    if(uiOutdated)return {action:'ui-optional',reason:'OPTIONAL_UI_RELEASE'};
+  }
   return {action:'continue',reason:'SUPPORTED'};
 }
 // This is explicitly opt-in. An unsigned response can never require an update.
