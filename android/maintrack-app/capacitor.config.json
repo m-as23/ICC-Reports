@@ -1,0 +1,13 @@
+{
+  "appId": "com.icc.maintrack",
+  "appName": "MainTrack",
+  "webDir": "www",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "backgroundColor": "#071521"
+}
