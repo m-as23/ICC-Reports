@@ -1,0 +1,51 @@
+name: MainTrack Stage11 Pin Successful Build Inputs
+on:
+  push:
+    branches:
+      - android/stage11-production-readiness
+    paths:
+      - '.github/workflows/maintrack-android-stage11-pin.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  pin-reviewed-dependencies-and-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: android/stage11-production-readiness
+      - name: Download source and npm locks from successful Build 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p review-locks
+          gh run download 38737180316 --repo "${{ github.repository }}" --name MainTrack-Stage11-Review-Locks --dir review-locks
+          test -s review-locks/package-lock.json
+          test -s review-locks/snapshot.lock.json
+      - name: Verify source identity and dependency constraints
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=JSON.parse(fs.readFileSync('review-locks/snapshot.lock.json'));
+          const p=JSON.parse(fs.readFileSync('review-locks/package-lock.json'));
+          const pkg=JSON.parse(fs.readFileSync('android/maintrack-app/package.json'));
+          if(s.sourceDeployment!=='dpl_ARyE7KNjFKMfJCWQ4YcZZMXxykhF'||s.sourceUrl!=='https://maintrack-final-security-qa.vercel.app/'||s.assets.length<15)throw Error('Unapproved source');
+          if(p.lockfileVersion!==3||p.name!==pkg.name||p.version!==pkg.version)throw Error('Wrong npm lock');
+          for(const [name,ver] of Object.entries({...pkg.dependencies,...pkg.devDependencies})){
+            const locked=p.packages['']?.dependencies?.[name]??p.packages['']?.devDependencies?.[name];
+            if(locked!==ver||!p.packages['node_modules/'+name])throw Error('Wrong package '+name);
+          }
+          const app='android/maintrack-app/';
+          fs.copyFileSync('review-locks/package-lock.json',app+'package-lock.json');
+          const approved={schema:1,sourceUrl:s.sourceUrl,sourceDeployment:s.sourceDeployment,assets:s.assets,nativeIndex:s.nativeIndex};
+          fs.writeFileSync(app+'approved-assets.lock.json',JSON.stringify(approved,null,2)+'\n');
+          console.log('PASS: 18 reviewed source resources and exact npm lock pinned');
+          NODE
+      - name: Commit approved source fingerprints and dependency lock to Android branch
+        run: |
+          git config user.name 'maintrack-android-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android/maintrack-app/package-lock.json android/maintrack-app/approved-assets.lock.json
+          git diff --cached --exit-code || (git commit -m 'chore(android): pin reviewed source and dependency lock from successful APK build' && git push origin HEAD:android/stage11-production-readiness)
