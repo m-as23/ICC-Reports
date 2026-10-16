@@ -1,0 +1,64 @@
+name: MainTrack Owner Signed OTA
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths: ['.github/workflows/maintrack-owner-ota.yml']
+  workflow_dispatch:
+    inputs:
+      version_name:
+        type: string
+        default: '0.4.2'
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build:web
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          npm --prefix tests-browser test
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: maintrack-android-release
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build without private credentials
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/prepare-pilot-ui.mjs --config release/owner-public.json
+      - name: Publish owner-signed compatible OTA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: ${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+          VERSION_NAME: ${{ inputs.version_name || '0.4.2' }}
+        run: node scripts/publish-owner-ota.mjs
