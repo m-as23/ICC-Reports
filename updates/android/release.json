@@ -1,0 +1,23 @@
+{
+  "payload": {
+    "schema": 1,
+    "channel": "lab",
+    "kind": "web-ota",
+    "appId": "com.icc.maintrack",
+    "issuedAt": 1792191822384,
+    "expiresAt": 1792710223384,
+    "nativeMinimum": "0.4.1",
+    "nativeMaximum": "0.4.99",
+    "bundleVersion": "0.4.1",
+    "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/88d80ce13aa0c86a6224ffdc3e5374bbd59f2875/updates/android/maintrack-0.4.1.zip",
+    "sha256": "69f13c0ee112254c1b25d65d28f712a2e26524d897e86c874ef7d5fe99c10dcd",
+    "bytes": 104145,
+    "localData": {
+      "reportQueue": 1,
+      "writesReportQueue": 1,
+      "migration": "none"
+    },
+    "sourceCommit": "7394136264d5ef870013e35c00daa45287c96a11"
+  },
+  "signature": "txr5rVwWzNGC-7xKVlvKRxt1XlJ6jJDMJku5YjanIpBvCh3xlAWTDyREPU4HdpC6x2BhekeYJ_gsnJFIv1DwCw"
+}
