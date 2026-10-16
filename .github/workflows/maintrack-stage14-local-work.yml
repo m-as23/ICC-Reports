@@ -11,6 +11,11 @@ on:
       - 'android/maintrack-app/update-system/data-contract.mjs'
       - 'android/maintrack-app/update-system/boot-health.mjs'
       - 'android/maintrack-app/update-system/startup.mjs'
+      - 'android/maintrack-app/update-system/pilot-*.mjs'
+      - 'android/maintrack-app/update-system/pilot-panel.css'
+      - 'android/maintrack-app/scripts/prepare-pilot-ui.mjs'
+      - 'android/maintrack-app/scripts/check-pilot-build.mjs'
+      - 'android/maintrack-app/tests/pilot-session.test.mjs'
       - 'android/maintrack-app/scripts/snapshot.mjs'
       - 'android/maintrack-app/tests/local-work.test.mjs'
       - 'android/maintrack-app/tests/activation.test.mjs'
@@ -44,6 +49,8 @@ jobs:
           npm run check
           npm test
           npm run build:web
+      - name: Compile opt-in pilot UI with disposable public config and restore standard snapshot
+        run: node scripts/check-pilot-build.mjs
       - name: Install isolated browser test dependencies
         working-directory: android/maintrack-app/tests-browser
         run: |

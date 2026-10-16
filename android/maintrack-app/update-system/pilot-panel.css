@@ -1,0 +1,7 @@
+#mt-pilot-updates{font:15px Cairo,sans-serif;color:#eaf5ff}
+    #mt-pilot-updates button{font:inherit;cursor:pointer;border:1px solid #72cbd0;border-radius:10px;padding:10px 14px;background:#12333e;color:#fff}
+    #mt-pilot-updates button:disabled{opacity:.5;cursor:wait}
+    #mt-pilot-open{position:fixed;left:12px;bottom:calc(85px + env(safe-area-inset-bottom));z-index:1000}
+    #mt-pilot-dialog{position:fixed;z-index:1001;left:12px;right:12px;bottom:calc(140px + env(safe-area-inset-bottom));max-width:440px;margin:auto;background:#0b1928;border:1px solid #72cbd0;border-radius:16px;padding:20px;box-shadow:0 12px 40px #0009}
+    #mt-pilot-dialog[hidden]{display:none}#mt-pilot-dialog p{line-height:1.8}#mt-pilot-dialog h2{font-size:19px;margin:0 0 12px}
+    #mt-pilot-actions{display:flex;gap:8px;flex-wrap:wrap}

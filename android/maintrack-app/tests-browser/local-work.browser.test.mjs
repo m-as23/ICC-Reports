@@ -30,11 +30,15 @@ before(async () => {
       if (pathname === '/stage14-integration-harness.js') {
         res.writeHead(200, {'Content-Type':'application/javascript'}); res.end(harness); return;
       }
+      if (pathname === '/secure-assets/stage15-pilot-update.css') {
+        res.writeHead(200, {'Content-Type':'text/css'});
+        res.end(await fs.readFile(path.join(root,'update-system/pilot-panel.css'))); return;
+      }
       const file = path.resolve(www, '.' + (pathname === '/' ? '/index.html' : pathname));
       if (!file.startsWith(www + path.sep)) {res.writeHead(403); res.end(); return;}
       let data = await fs.readFile(file);
       if (file.endsWith('index.html')) {
-        data = Buffer.from(data.toString().replace('</body>', '<script src="stage14-integration-harness.js"></script></body>'));
+        data = Buffer.from(data.toString().replace("connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co;", "connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co https://updates-lab.example.org;").replace('</body>', '<script src="stage14-integration-harness.js"></script></body>'));
       }
       const types = {'.js':'application/javascript','.css':'text/css','.html':'text/html','.json':'application/json'};
       res.writeHead(200, {'Content-Type':types[path.extname(file)] || 'application/octet-stream', 'Cache-Control':'no-store'});
@@ -77,7 +81,7 @@ async function until(predicate, message) {
 async function fixture(run, {role = 'technician'} = {}) {
   const context = await browser.newContext({serviceWorkers:'block'});
   context.setDefaultTimeout(10000);
-  const mock = {offline:false, submitMode:'success', submitAttempts:[], committed:new Map(), held:[], pageErrors:[], holdAction:null, actions:[]};
+  const mock = {offline:false, submitMode:'success', submitAttempts:[], committed:new Map(), held:[], pageErrors:[], holdAction:null, actions:[], updateReply:envelope, manifestRequests:0};
   const catalog = {id:'LAB-WO-NEXT', role, sections:['LAB_SECTION'],
     machines:[['LAB_SECTION','LAB_MACHINE']], parts:[['LAB_SECTION','LAB_PART']],
     status:['Closed','Open'], cats:['Electrical','Mechanical']};
@@ -86,6 +90,11 @@ async function fixture(run, {role = 'technician'} = {}) {
     const req = route.request();
     const url = new URL(req.url());
     if (url.origin === origin) return route.continue();
+    if (req.url() === 'https://updates-lab.example.org/release.json') {
+      mock.manifestRequests++;
+      return route.fulfill({status:200, contentType:'application/json',
+        headers:{'Access-Control-Allow-Origin':'*'}, body:JSON.stringify(mock.updateReply)});
+    }
     // Every external request is intercepted. No route can reach a real backend.
     if (req.url() !== apiUrl) return route.abort('blockedbyclient');
     if (mock.offline) return route.abort('internetdisconnected');
@@ -430,3 +439,60 @@ scenario('typing a password is protected without persisting credentials in local
     assert.equal(values.includes('synthetic-test-password'), false);
   });
 });
+
+async function installPilotPanel(page) {
+  await page.evaluate(verification => {
+    window.pilotCalls = {download:0, set:0};
+    Stage15PilotTest.mountPilotPanel({config:{schema:1,channel:'lab',
+      publicKeyBase64:verification.publicKeyBase64, allowedOrigins:verification.allowedOrigins,
+      manifestUrl:'https://updates-lab.example.org/release.json'}, localWork:MainTrackLocalWork,
+      updater:{current:async () => ({native:'0.3.0',bundle:{id:'builtin'}}), getNextBundle:async () => null,
+        download:async () => {pilotCalls.download++; return {id:'pilot-downloaded'};},
+        set:() => {pilotCalls.set++; return new Promise(() => {});}}});
+  }, verification);
+}
+scenario('pilot panel checks and downloads only on request, defers new edits, then activates on a real click', () =>
+  fixture(async ({page,mock}) => {
+    await open(page); await login(page); await installPilotPanel(page);
+    assert.equal(mock.manifestRequests, 0);
+    await page.locator('#mt-pilot-open').click(); assert.equal(mock.manifestRequests, 0);
+    assert.equal(await page.locator('#mt-pilot-dialog').evaluate(el => getComputedStyle(el).position), 'fixed');
+    await page.locator('#mt-pilot-check').click();
+    await page.locator('#mt-pilot-download').waitFor({state:'visible'});
+    assert.equal(mock.manifestRequests, 1);
+    assert.deepEqual(await page.evaluate(() => pilotCalls), {download:0,set:0});
+    await page.locator('#mt-pilot-download').click();
+    await page.locator('#mt-pilot-activate').waitFor({state:'visible'});
+    await fs.mkdir(path.join(import.meta.dirname,'evidence'),{recursive:true});
+    await page.screenshot({path:path.join(import.meta.dirname,'evidence/pilot-panel.png')});
+    await page.locator('#mt-pilot-close').click();
+    await page.locator('#desc').fill('Unsaved after update download');
+    await page.locator('#mt-pilot-open').click(); await page.locator('#mt-pilot-activate').click();
+    await page.waitForFunction(() => document.getElementById('mt-pilot-status').textContent.includes('مؤجل'));
+    assert.equal(await page.evaluate(() => pilotCalls.set), 0);
+    await page.locator('#mt-pilot-close').click(); await page.locator('#desc').fill('');
+    await page.locator('#mt-pilot-open').click(); await page.locator('#mt-pilot-activate').click();
+    await page.waitForFunction(() => pilotCalls.set === 1);
+    assert.equal(await page.locator('#desc').evaluate(el => el.closest('[inert]') !== null), true);
+  }));
+scenario('pilot panel refuses retained reports without changing stored bytes', () =>
+  fixture(async ({page}) => {
+    await open(page); await login(page); await installPilotPanel(page);
+    const raw = JSON.stringify([{u:'LAB_OTHER',cid:'pilot-retained',err:'TEST_REJECTED',extra:'keep'}]);
+    await page.evaluate(raw => localStorage.setItem('q',raw), raw);
+    await page.locator('#mt-pilot-open').click(); await page.locator('#mt-pilot-check').click();
+    await page.locator('#mt-pilot-download').waitFor({state:'visible'}); await page.locator('#mt-pilot-download').click();
+    await page.waitForFunction(() => document.getElementById('mt-pilot-status').textContent.includes('مؤجل'));
+    assert.equal(await readRawQueue(page), raw);
+    assert.deepEqual(await page.evaluate(() => pilotCalls), {download:0,set:0});
+  }));
+scenario('pilot panel rejects untrusted update while the actual application remains usable', () =>
+  fixture(async ({page,mock}) => {
+    mock.updateReply = {...envelope,signature:'A'.repeat(86)};
+    await open(page); await login(page); await installPilotPanel(page);
+    await page.locator('#mt-pilot-open').click(); await page.locator('#mt-pilot-check').click();
+    await page.waitForFunction(() => document.getElementById('mt-pilot-status').textContent.includes('أمان'));
+    assert.deepEqual(await page.evaluate(() => pilotCalls), {download:0,set:0});
+    await page.locator('#mt-pilot-close').click(); await page.locator('#desc').fill('Continue existing work');
+    assert.equal((await readState(page)).dirtyForm, true);
+  }));
