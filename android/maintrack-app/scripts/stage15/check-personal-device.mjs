@@ -62,8 +62,8 @@ try {
     assert.equal(await page.evaluate(() => localStorage.getItem('q')),raw);
     // Chromium flushes DOM storage to disk asynchronously. Establish a durable
     // pre-upgrade baseline, not a last-millisecond synthetic write before kill.
-    execFileSync('adb',['shell','input','keyevent','3']);
-    // DevTools focus emulation can keep JS visibility 'visible' after Android HOME.
+    // Keep the WebView foregrounded while establishing disk durability. A
+    // backgrounded Android WebView can suspend native/DevTools callbacks.
     await new Promise(resolve => setTimeout(resolve,6000));
     assert.equal(await page.evaluate(() => localStorage.getItem('q')),raw);
     console.log('MT_DEVICE_LAB_OTA_030_TO_031_PASS');
