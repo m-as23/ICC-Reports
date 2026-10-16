@@ -46,6 +46,21 @@ correct/incorrect passwords, wrong certificate and missing alias, plus app/branc
 version rejection and corrupt archive/overwrite rejection. No Android emulator
 test was repeated for these tooling changes.
 
+## Confirmed GitHub result
+
+Commit `69edd781dd0d45dd4fa983aee92db7a700d67874` passed
+[run 38846973505](https://github.com/m-as23/ICC-Reports/actions/runs/38846973505):
+**9/9 release tests, 47/47 Node tests, all 18 source hashes and complete candidate/
+preview packaging**. Job logs were reviewed. The signed-release job was skipped,
+as expected for a push; this does not reveal whether signing secrets exist.
+
+[Review artifact 12024260055](https://github.com/m-as23/ICC-Reports/actions/runs/38846973505/artifacts/12024260055)
+contains the unsigned Web/OTA candidates and the isolated static preview ZIP.
+GitHub reports artifact SHA-256
+`15ea2d254bb1c7a92fac0ffb0241977a32b974d96a61c82cb0a5fcc250393bfb`;
+retention ends 2026-10-30. Scripts and manifests in this branch permit regeneration.
+No signed APK or live preview URL has been produced by this run.
+
 ## Owner signing prerequisites
 
 1. Establish whether a signed MainTrack APK is already installed or distributed.
