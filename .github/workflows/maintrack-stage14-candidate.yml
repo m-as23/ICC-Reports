@@ -119,6 +119,12 @@ jobs:
           npm run check
           npm test
           npm run build:web
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs/promises';
+          import {removePilotNote} from './scripts/release-visual.mjs';
+          const file = 'www/index.html';
+          await fs.writeFile(file, removePilotNote(await fs.readFile(file, 'utf8')));
+          NODE
       - name: Native Release build with controlled version
         env:
           VERSION_CODE: ${{ inputs.version_code }}
