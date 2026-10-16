@@ -527,6 +527,7 @@ scenario('web update preserves retained queue bytes and refuses navigation',()=>
 }));
 scenario('web update clean actual UI requires trusted click and locks before navigation',()=>fixture(async({page})=>{
   await open(page);await login(page);await page.waitForFunction(()=>!MainTrackLocalWork.read().submitting);await webSession(page);
+  await page.waitForFunction(()=>navigator.userActivation?.isActive===false);
   await page.evaluate(()=>webSession.activate().catch(e=>{webError=e.message;}));
   assert.equal(await page.evaluate(()=>webError),'TRUSTED_ACTION_REQUIRED');
   await page.locator('#web-apply-test').click();await page.waitForFunction(()=>webNavigations.length===1);

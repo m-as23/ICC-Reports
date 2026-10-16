@@ -54,6 +54,8 @@ jobs:
           npm run build:web
       - name: Compile opt-in pilot UI with disposable public config and restore standard snapshot
         run: node scripts/check-pilot-build.mjs
+      - name: Prepare opt-in online Web pilot without deployment
+        run: node scripts/prepare-web-pilot.mjs
       - name: Install isolated browser test dependencies
         working-directory: android/maintrack-app/tests-browser
         run: |
