@@ -45,3 +45,21 @@ compatibility across accepted frontend versions is a release requirement.
 Permanent Android release signing/distribution and the previously observed last-write
 storage durability boundary remain employee-release blockers. Do not describe this
 as a completed employee update system or distribute the Debug lab pair to employees.
+
+## Confirmed verification — 2026-10-16
+
+Runtime commit `b15d10d03ee796dd249e7a788e326132d9d90da8` passed
+[GitHub run 38902073876](https://github.com/m-as23/ICC-Reports/actions/runs/38902073876),
+job `116976497207`: **66/66 Node tests, 19/19 browser scenarios**, locked-source
+verification and opt-in Web pilot packaging. Job logs were read. Nine existing
+release/preflight tests also passed locally; no Android emulator was repeated.
+
+The three added actual-UI browser cases check dirty-report refusal, retained queue
+byte preservation and trusted-click locking before a captured navigation call.
+Navigation is intercepted in these tests; they do not prove a hosted two-release
+upgrade or real PWA installation. Backend requests use in-memory mocks only.
+
+The first browser run passed 18/19; its gesture test incorrectly used CDP evaluate,
+which itself supplies user activation. The accepted test expires that activation
+inside the page task before checking refusal, then checks an actual button click.
+No application guard was weakened to make this test pass.
