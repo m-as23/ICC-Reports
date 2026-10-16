@@ -1,0 +1,93 @@
+name: MainTrack Stage15 Recheck Exact APK Pair
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-stage15-device-recheck.yml'
+      - 'android/maintrack-app/scripts/stage15/check-personal-device.mjs'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  recheck-device:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Stage15-Unaccepted-Debug-Candidates
+          run-id: 38884874877
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/.device-pilot/apks
+      - name: Verify exact previously built APK bytes before reusing them
+        run: |
+          python3 - <<'PY'
+          import pathlib,hashlib,json
+          root=pathlib.Path('.device-pilot/apks')
+          expected={'MainTrack_UpdateLab_v0.3.0.apk':'85e234fa33691e987b49668f699cbadc20ba3757ffa5fc401997fb210db4fe0d',
+                    'MainTrack_UpdateLab_v0.3.2.apk':'6af562a64b5fb5f15c19924183fbbd9f432306d64a1bc8a51704cb8480626611'}
+          for name,digest in expected.items(): assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest
+          metadata=json.loads((root/'delivery.json').read_text())
+          assert metadata['sourceCommit']=='8103a8eedbe4dc5e5e393cd1dfa6bc596d87c9db'
+          assert metadata['packageId']=='com.icc.maintrack.updatelab' and metadata['debug'] is True
+          print('PASS exact APK pair reused; no native rebuild or signing-key change')
+          PY
+          npm --prefix tests-browser ci --no-audit --no-fund
+      - name: KVM
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Establish durable queue baseline and check OTA, APK upgrade and offline startup
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r .device-pilot/apks/MainTrack_UpdateLab_v0.3.0.apk
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs ota
+            adb shell am force-stop com.icc.maintrack.updatelab
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs persisted
+            adb install -r .device-pilot/apks/MainTrack_UpdateLab_v0.3.2.apk
+            adb shell am force-stop com.icc.maintrack.updatelab
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs apk
+            adb shell am force-stop com.icc.maintrack.updatelab
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs offline
+      - name: Export accepted APK pair only after all device checks pass
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage15-Personal-Update-Lab
+          path: |
+            android/maintrack-app/.device-pilot/apks/*.apk
+            android/maintrack-app/.device-pilot/apks/delivery.json
+            android/maintrack-app/.device-pilot/apks/SHA256SUMS
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: error
+      - name: Keep synthetic device evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage15-Device-Evidence
+          path: android/maintrack-app/.device-pilot/evidence/
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: warn

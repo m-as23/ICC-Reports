@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   personal-lab:
-    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab' && !contains(github.event.head_commit.message, '[reuse-apks]')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     defaults:

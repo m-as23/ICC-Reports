@@ -6,7 +6,7 @@ import {execFileSync} from 'node:child_process';
 
 const pkg = 'com.icc.maintrack.updatelab';
 const phase = process.argv[2];
-assert(['ota','apk','offline'].includes(phase));
+assert(['ota','persisted','apk','offline'].includes(phase));
 const folder = '.device-pilot/evidence'; await fs.mkdir(folder,{recursive:true});
 const raw = JSON.stringify([{u:'LAB-NO-LOGIN',cid:'stage15-native-upgrade',desc:'Synthetic local report',err:'TEST_RETAINED',extra:{keep:true}}]);
 const marker = 'stage15-no-account-synthetic-sentinel';
@@ -23,7 +23,8 @@ try {
       ? route.continue() : route.abort('blockedbyclient');
   });
   await page.waitForFunction(() => globalThis.MainTrackLocalWork && document.getElementById('mt-pilot-open')
-    && !!globalThis.Capacitor?.Plugins?.CapacitorUpdater);
+    && !!globalThis.Capacitor?.Plugins?.CapacitorUpdater
+    && globalThis.__MainTrackV7Fix === true && globalThis.__MainTrackV6Integrated === true);
   const current = () => page.evaluate(() => Capacitor.Plugins.CapacitorUpdater.current());
   if (phase === 'ota') {
     assert.equal((await current()).native,'0.3.0');
@@ -58,7 +59,19 @@ try {
     await page.screenshot({path:folder+'/after-ota.png'});
     // Queue preservation through APK upgrade, not an OTA guard bypass.
     await page.evaluate(raw => localStorage.setItem('q',raw),raw);
+    assert.equal(await page.evaluate(() => localStorage.getItem('q')),raw);
+    // Chromium flushes DOM storage to disk asynchronously. Establish a durable
+    // pre-upgrade baseline, not a last-millisecond synthetic write before kill.
+    execFileSync('adb',['shell','input','keyevent','3']);
+    await page.waitForFunction(() => document.visibilityState === 'hidden');
+    await new Promise(resolve => setTimeout(resolve,6000));
     console.log('MT_DEVICE_LAB_OTA_030_TO_031_PASS');
+  } else if (phase === 'persisted') {
+    assert.equal((await current()).native,'0.3.0');
+    assert.equal((await current()).bundle.version,'0.3.1');
+    assert.equal(await page.evaluate(() => localStorage.getItem('stage15-device-sentinel')),marker);
+    assert.equal(await page.evaluate(() => localStorage.getItem('q')),raw);
+    console.log('MT_DEVICE_LAB_DURABLE_QUEUE_BEFORE_APK_PASS');
   } else {
     assert.equal((await current()).native,'0.3.2');
     assert.equal((await current()).bundle.id,'builtin');
