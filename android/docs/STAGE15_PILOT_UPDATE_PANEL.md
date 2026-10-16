@@ -1,5 +1,12 @@
 # MainTrack — opt-in update panel after Stage 14 acceptance
 
+## Personal-device build follow-up
+
+The [accepted Debug APK pair](STAGE15_PERSONAL_DEVICE_APK.md) now provides a real
+public-hosted OTA and native APK-upgrade experiment beside the original app.
+Its report is authoritative for deliverable versions, hashes and observed durability
+limits. Production/employee Release gates remain open.
+
 ## Continuity
 
 This extends the accepted Stage14 activation controller on

@@ -1,5 +1,13 @@
 # MainTrack — signed pilot preparation
 
+## Latest personal-device trial
+
+The [personal-device APK pair](STAGE15_PERSONAL_DEVICE_APK.md) is now available:
+separate **MainTrack Update Lab**, base 0.3.0, signed lab OTA 0.3.1 and in-place Debug
+APK 0.3.2. Android35 acceptance passed using those exact files; the owner's physical
+phone trial is pending. This is not a permanent signed employee Release. The report
+records the observed last-write durability boundary and the still-open release gate.
+
 ## Verified state on 2026-10-16
 
 - Branch: `android/stage14-ota-native-lab`; app ID: `com.icc.maintrack`.
