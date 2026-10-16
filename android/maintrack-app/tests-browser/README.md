@@ -53,3 +53,17 @@ guard prevents that switch. See `android/docs/STAGE14_ACTIVATION_ACCEPTANCE.md` 
 Android acceptance and its exact outcome. Schema-changing migrations are currently
 rejected, not silently implemented. Signed Release APK/physical-device acceptance
 and live-backend idempotency remain separate release gates.
+
+
+## Opt-in update panel follow-up
+
+Three additional scenarios exercise the Arabic check/download/activate controls on
+this same actual UI: no startup/panel-open traffic, explicit activation deferred by
+new edits, retained queue bytes, and untrusted-release rejection while existing work
+continues. The harness adds only the lab manifest origin to generated test HTML's
+CSP, intercepts that HTTPS endpoint and serves the real external panel stylesheet.
+The production shared HTML/security policy is not edited. The native bridge remains
+a mock; these scenarios are not a new Android device acceptance run.
+
+See [pilot panel scope](../../docs/STAGE15_PILOT_UPDATE_PANEL.md). The evidence artifact
+also includes `pilot-panel.png`, showing synthetic-account data only.

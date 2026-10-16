@@ -466,6 +466,7 @@ scenario('pilot panel checks and downloads only on request, defers new edits, th
     await fs.mkdir(path.join(import.meta.dirname,'evidence'),{recursive:true});
     await page.screenshot({path:path.join(import.meta.dirname,'evidence/pilot-panel.png')});
     await page.locator('#mt-pilot-close').click();
+    await page.locator('#tabForm').click();
     await page.locator('#desc').fill('Unsaved after update download');
     await page.locator('#mt-pilot-open').click(); await page.locator('#mt-pilot-activate').click();
     await page.waitForFunction(() => document.getElementById('mt-pilot-status').textContent.includes('مؤجل'));
@@ -493,6 +494,7 @@ scenario('pilot panel rejects untrusted update while the actual application rema
     await page.locator('#mt-pilot-open').click(); await page.locator('#mt-pilot-check').click();
     await page.waitForFunction(() => document.getElementById('mt-pilot-status').textContent.includes('أمان'));
     assert.deepEqual(await page.evaluate(() => pilotCalls), {download:0,set:0});
-    await page.locator('#mt-pilot-close').click(); await page.locator('#desc').fill('Continue existing work');
+    await page.locator('#mt-pilot-close').click(); await page.locator('#tabForm').click();
+    await page.locator('#desc').fill('Continue existing work');
     assert.equal((await readState(page)).dirtyForm, true);
   }));
