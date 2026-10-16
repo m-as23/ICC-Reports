@@ -84,13 +84,13 @@ jobs:
       - name: One real Android35 session using the delivered APK pair and public OTA
         uses: reactivecircus/android-emulator-runner@v2
         with:
+          working-directory: android/maintrack-app
           api-level: 35
           arch: x86_64
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            cd android/maintrack-app
             adb install -r .device-pilot/apks/MainTrack_UpdateLab_v0.3.0.apk
             adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
             node scripts/stage15/check-personal-device.mjs ota
