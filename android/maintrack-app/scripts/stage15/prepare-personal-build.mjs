@@ -1,0 +1,22 @@
+// This generated native project is an isolated Debug lab, never a Release export.
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {verifyLabRelease} from '../../update-system/ota-lab.mjs';
+const root = path.resolve(import.meta.dirname,'../..');
+const fixture = path.resolve(root,'../../qa/stage15-device');
+const configPath = path.join(fixture,'public-config.json');
+const config = JSON.parse(fs.readFileSync(configPath,'utf8'));
+const envelope = JSON.parse(fs.readFileSync(path.join(fixture,'release.json'),'utf8'));
+const release = await verifyLabRelease(envelope,{...config,currentNative:'0.3.0'});
+if (!release || !/^https:\/\/raw\.githubusercontent\.com\/m-as23\/ICC-Reports\/[0-9a-f]{40}\/qa\/stage15-device\/healthy-0\.3\.1\.zip$/.test(release.bundleUrl)) throw Error('UNTRUSTED_DEVICE_FIXTURE');
+const bytes = fs.readFileSync(path.join(fixture,'healthy-0.3.1.zip'));
+if (bytes.length !== release.bytes || createHash('sha256').update(bytes).digest('hex') !== release.sha256) throw Error('DEVICE_FIXTURE_INTEGRITY');
+execFileSync(process.execPath,['scripts/prepare-pilot-ui.mjs','--config',configPath],{cwd:root,stdio:'inherit'});
+const file = path.join(root,'capacitor.config.json');
+const native = JSON.parse(fs.readFileSync(file,'utf8'));
+native.appName = 'MainTrack Update Lab';
+Object.assign(native.plugins.CapacitorUpdater,{appId:'com.icc.maintrack',statsUrl:'',updateUrl:'',channelUrl:'',appReadyTimeout:10000});
+fs.writeFileSync(file,JSON.stringify(native,null,2)+'\n');
+console.log('PASS immutable signed fixture and isolated Debug www prepared; production configuration is not committed');

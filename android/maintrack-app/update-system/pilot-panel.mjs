@@ -33,7 +33,8 @@ export function mountPilotPanel({document = globalThis.document, ...options}) {
   const render = state => {
     const busy = ['checking','downloading','activating','recovery-required'].includes(state.phase);
     text.textContent = (state.phase === 'ready' && state.reason ? messages.blocked : messages[state.phase])
-      + (state.version ? ' الإصدار: ' + state.version : '');
+      + (state.installedVersion ? ' الإصدار الحالي: ' + state.installedVersion + '.' : '')
+      + (state.version ? ' التحديث المتاح: ' + state.version : '');
     check.disabled = busy; download.disabled = busy; activate.disabled = busy;
     download.hidden = !['available','blocked'].includes(state.phase);
     activate.hidden = state.phase !== 'ready';

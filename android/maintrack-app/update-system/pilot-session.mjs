@@ -30,7 +30,12 @@ export async function fetchPilotEnvelope(url, fetchImpl = globalThis.fetch) {
   try {
     const response = await fetchImpl(url, {signal:abort.signal, credentials:'omit', cache:'no-store',
       redirect:'error', headers:{accept:'application/json'}});
-    if (!response.ok || response.redirected || !/^application\/json(?:;|$)/i.test(response.headers.get('content-type') || '')
+    const type = response.headers.get('content-type') || '';
+    // GitHub's raw static host serves JSON as text/plain. Only this exact pinned
+    // host gets the MIME exception; byte limits and signature verification remain.
+    const jsonType = /^application\/json(?:;|$)/i.test(type)
+      || (new URL(url).origin === 'https://raw.githubusercontent.com' && /^text\/plain(?:;|$)/i.test(type));
+    if (!response.ok || response.redirected || !jsonType
       || Number(response.headers.get('content-length') || 0) > 16384 || !response.body) throw Error('MANIFEST_RESPONSE_REJECTED');
     reader = response.body.getReader();
     const chunks = []; let bytes = 0;
@@ -52,10 +57,11 @@ export async function fetchPilotEnvelope(url, fetchImpl = globalThis.fetch) {
 
 export function createPilotSession({config, updater, localWork, fetchImpl, clock = Date.now, onChange = () => {}}) {
   config = validatePilotConfig(config);
-  let state = Object.freeze({phase:'idle', version:null, reason:null});
+  let installedVersion = null;
+  let state = Object.freeze({phase:'idle', version:null, reason:null, installedVersion});
   let controller, envelope, running = false;
   const emit = (phase, reason = null, version = state.version) => {
-    state = Object.freeze({phase, reason, version}); onChange(state); return state;
+    state = Object.freeze({phase, reason, version, installedVersion}); onChange(state); return state;
   };
   const terminal = () => ['activating','recovery-required'].includes(state.phase);
   return Object.freeze({
@@ -69,6 +75,7 @@ export function createPilotSession({config, updater, localWork, fetchImpl, clock
         compareVersions(current?.native, '0.0.0');
         const installed = current?.bundle?.id === 'builtin' ? current.native : current?.bundle?.version;
         compareVersions(installed, '0.0.0');
+        installedVersion = installed; emit('checking', null, null);
         envelope = await fetchPilotEnvelope(config.manifestUrl, fetchImpl);
         const verification = {publicKeyBase64:config.publicKeyBase64,
           allowedOrigins:config.allowedOrigins, currentNative:current.native};

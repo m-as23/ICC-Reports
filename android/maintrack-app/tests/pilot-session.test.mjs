@@ -73,3 +73,9 @@ test('pilot configuration is fixed to an approved HTTPS lab origin', () => {
     assert.throws(() => validatePilotConfig(bad));
   }
 });
+test('only GitHub raw hosting accepts plain-text JSON; signatures still gate a release', async () => {
+  const plain = () => new Response('{}', {headers:{'content-type':'text/plain; charset=utf-8'}});
+  assert.deepEqual(await fetchPilotEnvelope('https://raw.githubusercontent.com/owner/repo/commit/release.json', async () => plain()), {});
+  await assert.rejects(fetchPilotEnvelope(config.manifestUrl, async () => plain()));
+  const {session} = fixture(); await session.check(); assert.equal(session.read().installedVersion, '0.3.0');
+});

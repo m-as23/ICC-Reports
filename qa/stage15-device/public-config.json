@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "channel": "lab",
+  "publicKeyBase64": "C9yUVGFiVL-Oa3ER04hFt1WgBrlgAWb3xDdrFVQ7RPI",
+  "manifestUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/android/stage14-ota-native-lab/qa/stage15-device/release.json",
+  "allowedOrigins": [
+    "https://raw.githubusercontent.com"
+  ]
+}

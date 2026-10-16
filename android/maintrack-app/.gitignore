@@ -11,3 +11,4 @@ release-candidate/
 __pycache__/
 release-output/
 web-preview/
+.device-pilot/
