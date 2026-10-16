@@ -4,6 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {validatePilotConfig} from '../update-system/pilot-session.mjs';
+import {removePilotNote} from './release-visual.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 if (process.argv.length !== 4 || process.argv[2] !== '--config') throw Error('PUBLIC_PILOT_CONFIG_FILE_REQUIRED');
@@ -19,11 +20,11 @@ await build({entryPoints:[path.join(root, 'update-system/pilot-entry.mjs')],
   define:{__MAINTRACK_PILOT_CONFIG__:JSON.stringify(config)}});
 await fs.copyFile(path.join(root, 'update-system/pilot-panel.css'), path.join(root, 'www/secure-assets/stage15-pilot-update.css'));
 const file = path.join(root, 'www/index.html');
-let index = await fs.readFile(file, 'utf8');
+let index = removePilotNote(await fs.readFile(file, 'utf8'));
 const origin = new URL(config.manifestUrl).origin;
 const pattern = /connect-src 'self' https:\/\/tdnkeskczcsukcujwinu\.supabase\.co;/;
 if (!pattern.test(index)) throw Error('UNEXPECTED_GENERATED_CSP');
 index = index.replace(pattern, `connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co ${origin};`);
 index = index.replace('</body>', '<script src="secure-assets/stage15-pilot-update.js"></script></body>');
 await fs.writeFile(file, index);
-console.log('PASS opt-in laboratory update panel generated; no production channel or background check enabled');
+console.log('PASS opt-in laboratory update panel generated; owner-configured metadata discovery enabled; download and activation require user action');
