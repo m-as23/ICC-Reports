@@ -63,8 +63,9 @@ try {
     // Chromium flushes DOM storage to disk asynchronously. Establish a durable
     // pre-upgrade baseline, not a last-millisecond synthetic write before kill.
     execFileSync('adb',['shell','input','keyevent','3']);
-    await page.waitForFunction(() => document.visibilityState === 'hidden');
+    // DevTools focus emulation can keep JS visibility 'visible' after Android HOME.
     await new Promise(resolve => setTimeout(resolve,6000));
+    assert.equal(await page.evaluate(() => localStorage.getItem('q')),raw);
     console.log('MT_DEVICE_LAB_OTA_030_TO_031_PASS');
   } else if (phase === 'persisted') {
     assert.equal((await current()).native,'0.3.0');
