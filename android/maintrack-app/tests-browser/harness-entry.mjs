@@ -4,3 +4,5 @@ globalThis.Stage14IntegrationTest = Object.freeze({stageMainTrackLabRelease, cre
 
 import {mountPilotPanel} from '../update-system/pilot-panel.mjs';
 globalThis.Stage15PilotTest = Object.freeze({mountPilotPanel});
+import {createWebSession} from '../update-system/web-session.mjs';
+globalThis.Stage16WebTest = Object.freeze({createWebSession});

@@ -1,0 +1,30 @@
+// Explicit opt-in packaging only. Never deploy, change locked sources or Android.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {build} from 'esbuild';
+const root = path.resolve(import.meta.dirname,'..');
+const git = (...args) => execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+if(git('branch','--show-current') !== 'android/stage14-ota-native-lab') throw Error('WRONG_BRANCH');
+if(git('diff','HEAD','--name-only')) throw Error('COMMIT_TRACKED_CHANGES_FIRST');
+const commit = git('rev-parse','HEAD');
+const output = path.join(root,'web-pilot');
+await fs.mkdir(output); // Refuse stale output.
+execFileSync(process.execPath,['scripts/snapshot.mjs'],{cwd:root,stdio:'inherit'});
+const base = `/releases/${commit}/`;
+const target = path.join(output,'.vercel/output/static',base);
+await fs.mkdir(target,{recursive:true});
+await fs.cp(path.join(root,'www'),target,{recursive:true});
+await build({entryPoints:[path.join(root,'update-system/web-entry.mjs')],outfile:path.join(target,'secure-assets/web-update.js'),bundle:true,format:'iife',platform:'browser',target:'es2022',define:{__MAINTRACK_WEB_CONFIG__:JSON.stringify({commit})}});
+await fs.copyFile(path.join(root,'update-system/web-panel.css'),path.join(target,'secure-assets/web-update.css'));
+const html = path.join(target,'index.html');
+await fs.writeFile(html,(await fs.readFile(html,'utf8')).replace('</head>','<link rel="stylesheet" href="secure-assets/web-update.css"></head>').replace('</body>','<script src="secure-assets/web-update.js"></script></body>'));
+const manifestPath = path.join(target,'manifest.webmanifest');
+const manifest = JSON.parse(await fs.readFile(manifestPath,'utf8'));
+Object.assign(manifest,{id:'/maintrack-web-pilot',name:'MainTrack — Web Pilot',start_url:'/',scope:'/'});
+await fs.writeFile(manifestPath,JSON.stringify(manifest));
+const staticDir = path.join(output,'.vercel/output/static');
+await fs.writeFile(path.join(staticDir,'maintrack-release.json'),JSON.stringify({schema:1,appId:'com.icc.maintrack',channel:'web-pilot',commit,path:base,expiresAt:Date.now()+6*86400000}));
+const config = {version:3,routes:[{src:'/(.*)',headers:{'X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow'},continue:true},{src:'/',status:307,headers:{Location:base,'Cache-Control':'no-store'}},{src:'/maintrack-release.json',headers:{'Cache-Control':'no-store'},continue:true},{src:'/releases/(.*)',headers:{'Cache-Control':'public, max-age=31536000, immutable'},continue:true},{handle:'filesystem'},{src:'/(.*)',status:404}]};
+await fs.writeFile(path.join(output,'.vercel/output/config.json'),JSON.stringify(config,null,2));
+console.log('PASS web pilot prepared, no deployment; same pilot backend as shared UI. Online installable web shell, offline caching not enabled.');

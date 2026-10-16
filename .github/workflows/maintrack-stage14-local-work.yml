@@ -22,6 +22,9 @@ on:
       - 'android/maintrack-app/tests/editor-work.test.mjs'
       - 'android/maintrack-app/tests-browser/**'
       - 'web/maintrack/**'
+      - 'android/maintrack-app/update-system/web-*'
+      - 'android/maintrack-app/scripts/prepare-web-pilot.mjs'
+      - 'android/maintrack-app/tests/web-session.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read

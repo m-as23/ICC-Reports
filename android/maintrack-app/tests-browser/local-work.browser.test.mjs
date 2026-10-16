@@ -498,3 +498,38 @@ scenario('pilot panel rejects untrusted update while the actual application rema
     await page.locator('#desc').fill('Continue existing work');
     assert.equal((await readState(page)).dirtyForm, true);
   }));
+
+async function webSession(page) {
+  await page.evaluate(async () => {
+    const commit='b'.repeat(40);
+    globalThis.webNavigations=[]; globalThis.webError=null;
+    globalThis.webSession=Stage16WebTest.createWebSession({origin:location.origin,currentCommit:'a'.repeat(40),
+      fetchRelease:async()=>({schema:1,appId:'com.icc.maintrack',channel:'web-pilot',commit,path:`/releases/${commit}/`,expiresAt:Date.now()+86400000}),
+      localWork:MainTrackLocalWork,navigate:url=>webNavigations.push(url)});
+    await webSession.check();
+    const button=document.createElement('button');button.id='web-apply-test';button.textContent='Apply web update';
+    button.onclick=()=>webSession.activate().catch(e=>{webError=e.message;});document.body.append(button);
+  });
+}
+scenario('web update refuses actual dirty report and preserves its contents',()=>fixture(async({page})=>{
+  await open(page);await login(page);await reportForm(page);await webSession(page);
+  await page.locator('#web-apply-test').click();await page.waitForFunction(()=>webError!==null);
+  assert.equal(await page.evaluate(()=>webError),'LOCAL_WORK_PENDING');
+  assert.deepEqual(await page.evaluate(()=>webNavigations),[]);
+  assert.equal(await page.locator('#desc').inputValue(),'Synthetic offline maintenance report');
+}));
+scenario('web update preserves retained queue bytes and refuses navigation',()=>fixture(async({page})=>{
+  await open(page);await login(page);await webSession(page);
+  const raw=JSON.stringify([{u:'LAB_OTHER',cid:'web-retained',err:'TEST',extra:'keep'}]);
+  await page.evaluate(raw=>localStorage.setItem('q',raw),raw);
+  await page.locator('#web-apply-test').click();await page.waitForFunction(()=>webError!==null);
+  assert.deepEqual(await page.evaluate(()=>webNavigations),[]);assert.equal(await readRawQueue(page),raw);
+}));
+scenario('web update clean actual UI requires trusted click and locks before navigation',()=>fixture(async({page})=>{
+  await open(page);await login(page);await page.waitForFunction(()=>!MainTrackLocalWork.read().submitting);await webSession(page);
+  await page.evaluate(()=>webSession.activate().catch(e=>{webError=e.message;}));
+  assert.equal(await page.evaluate(()=>webError),'TRUSTED_ACTION_REQUIRED');
+  await page.locator('#web-apply-test').click();await page.waitForFunction(()=>webNavigations.length===1);
+  assert.equal(await page.evaluate(()=>webNavigations[0]),origin+'/releases/'+'b'.repeat(40)+'/');
+  assert.equal(await page.locator('#maintrack-update-progress').count(),1);
+}));
