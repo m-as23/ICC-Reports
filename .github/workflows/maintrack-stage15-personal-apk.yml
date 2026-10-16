@@ -79,6 +79,14 @@ jobs:
           (folder/'delivery.json').write_text(json.dumps({'schema':1,'sourceCommit':os.environ['GITHUB_SHA'],'packageId':'com.icc.maintrack.updatelab','debug':True,'employeeRelease':False,'certificateSha256':certs[0],'otaVersion':'0.3.1','manifestExpiresAt':release['expiresAt'],'apks':apks},indent=2)+'\n')
           (folder/'SHA256SUMS').write_text(''.join(a['sha256']+'  '+a['file']+'\n' for a in apks))
           PY
+      - name: Retain public Debug candidates for diagnosis before device acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage15-Unaccepted-Debug-Candidates
+          path: android/maintrack-app/.device-pilot/apks/
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: true
       - name: KVM
         run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - name: One real Android35 session using the delivered APK pair and public OTA

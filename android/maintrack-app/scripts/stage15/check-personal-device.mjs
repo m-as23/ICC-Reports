@@ -2,6 +2,7 @@
 import {_android} from '../../tests-browser/node_modules/playwright/index.mjs';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 
 const pkg = 'com.icc.maintrack.updatelab';
 const phase = process.argv[2];
@@ -11,9 +12,10 @@ const raw = JSON.stringify([{u:'LAB-NO-LOGIN',cid:'stage15-native-upgrade',desc:
 const marker = 'stage15-no-account-synthetic-sentinel';
 const [device] = await _android.devices(); assert(device, 'ANDROID_DEVICE_REQUIRED');
 device.setDefaultTimeout(30000);
+let page;
 const watchdog = setTimeout(() => {console.error('DEVICE_LAB_TIMEOUT');process.exit(1);},120000);
 try {
-  const webview = await device.webView({pkg}); const page = await webview.page();
+  const webview = await device.webView({pkg}); page = await webview.page();
   page.setDefaultTimeout(20000);
   await page.route('**/*', route => {
     const origin = new URL(route.request().url()).origin;
@@ -21,7 +23,7 @@ try {
       ? route.continue() : route.abort('blockedbyclient');
   });
   await page.waitForFunction(() => globalThis.MainTrackLocalWork && document.getElementById('mt-pilot-open')
-    && globalThis.Capacitor?.Plugins?.CapacitorUpdater);
+    && !!globalThis.Capacitor?.Plugins?.CapacitorUpdater);
   const current = () => page.evaluate(() => Capacitor.Plugins.CapacitorUpdater.current());
   if (phase === 'ota') {
     assert.equal((await current()).native,'0.3.0');
@@ -71,4 +73,15 @@ try {
     } else console.log('MT_DEVICE_LAB_OFFLINE_RESTART_AND_QUEUE_PASS');
   }
   await fs.writeFile(folder+'/'+phase+'.json',JSON.stringify({phase,result:'passed',packageId:pkg,current:await current(),syntheticOnly:true},null,2)+'\n');
+} catch (error) {
+  try {
+    const state = await page.evaluate(() => ({url:location.href,ready:document.readyState,
+      localWork:!!globalThis.MainTrackLocalWork,panel:!!document.getElementById('mt-pilot-open'),
+      platform:globalThis.Capacitor?.getPlatform?.(),plugins:Object.keys(globalThis.Capacitor?.Plugins || {})}));
+    await fs.writeFile(folder+'/failure-state.json',JSON.stringify(state,null,2)+'\n');
+    console.error('DEVICE_LAB_STATE '+JSON.stringify(state));
+    await page.screenshot({path:folder+'/failure.png',timeout:5000});
+  } catch { /* Preserve the original error if the WebView disconnected. */ }
+  try {await fs.writeFile(folder+'/device-logcat.txt',execFileSync('adb',['logcat','-d'],{timeout:10000,maxBuffer:8*1024*1024}));} catch {}
+  throw error;
 } finally {clearTimeout(watchdog); await device.close();}
