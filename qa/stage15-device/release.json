@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "schema": 1,
+    "channel": "lab",
+    "kind": "web-ota",
+    "appId": "com.icc.maintrack",
+    "issuedAt": 1792144479996,
+    "expiresAt": 1792662880996,
+    "nativeMinimum": "0.3.0",
+    "nativeMaximum": "0.3.2",
+    "bundleVersion": "0.3.1",
+    "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/93c1564f93a2e7bf2bbde24536c60c424bc6f56c/qa/stage15-device/healthy-0.3.1.zip",
+    "sha256": "e3ab4ee906330a764ab389c2b8f26a5d8c5eaec8f1a26ed3bba41b44b2c1f01f",
+    "bytes": 103921,
+    "localData": {
+      "reportQueue": 1,
+      "writesReportQueue": 1,
+      "migration": "none"
+    }
+  },
+  "signature": "LNce2sGMxLhKnIi8C2xQTHNTi-_NpiaWFPxvXnxoNsNqRIttX3uJ3DyMgKK42Y2ZoQz8AuVltxh0phafG7VrBg"
+}

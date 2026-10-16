@@ -1,0 +1,125 @@
+name: MainTrack Stage15 Personal Update Lab APK Pair
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-stage15-personal-apk.yml'
+      - 'android/maintrack-app/scripts/stage15/**'
+      - 'qa/stage15-device/release.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  personal-lab:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: SDK 36
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Verify source and prepare isolated public-update build
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          npm ci --no-audit --no-fund
+          npm test
+          npm --prefix tests-browser ci --no-audit --no-fund
+          node scripts/stage15/prepare-personal-build.mjs
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          node scripts/harden-native.mjs
+      - name: Build both installable Debug APKs with the same temporary certificate
+        run: |
+          mkdir -p .device-pilot/apks
+          node scripts/stage15/set-native-version.mjs 0.3.0 300
+          npm run android:debug
+          cp android/app/build/outputs/apk/debug/app-debug.apk .device-pilot/apks/MainTrack_UpdateLab_v0.3.0.apk
+          node scripts/stage15/set-native-version.mjs 0.3.2 302
+          npm run android:debug
+          cp android/app/build/outputs/apk/debug/app-debug.apk .device-pilot/apks/MainTrack_UpdateLab_v0.3.2.apk
+      - name: Verify certificates and actual APK identities
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          for version in 0.3.0 0.3.2; do
+            "$SDK_ROOT/apksigner" verify --verbose --print-certs ".device-pilot/apks/MainTrack_UpdateLab_v${version}.apk" > ".device-pilot/apks/certificate-${version}.txt"
+            "$SDK_ROOT/aapt" dump badging ".device-pilot/apks/MainTrack_UpdateLab_v${version}.apk" > ".device-pilot/apks/identity-${version}.txt"
+          done
+          python3 - <<'PY'
+          import pathlib,re,hashlib,json,os
+          folder=pathlib.Path('.device-pilot/apks'); certs=[]; apks=[]
+          for version,code in [('0.3.0','300'),('0.3.2','302')]:
+              cert=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',(folder/f'certificate-{version}.txt').read_text())[1].lower()
+              certs.append(cert)
+              text=(folder/f'identity-{version}.txt').read_text()
+              identity=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",text,re.M)
+              assert identity.groups()==('com.icc.maintrack.updatelab',code,version)
+              assert "application-label:'MainTrack Update Lab'" in text
+              apk=folder/f'MainTrack_UpdateLab_v{version}.apk'
+              apks.append({'file':apk.name,'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,'version':version,'versionCode':int(code)})
+          assert certs[0]==certs[1], 'APK pair must share the same signing key'
+          release=json.loads(pathlib.Path('../../qa/stage15-device/release.json').read_text())['payload']
+          (folder/'delivery.json').write_text(json.dumps({'schema':1,'sourceCommit':os.environ['GITHUB_SHA'],'packageId':'com.icc.maintrack.updatelab','debug':True,'employeeRelease':False,'certificateSha256':certs[0],'otaVersion':'0.3.1','manifestExpiresAt':release['expiresAt'],'apks':apks},indent=2)+'\n')
+          (folder/'SHA256SUMS').write_text(''.join(a['sha256']+'  '+a['file']+'\n' for a in apks))
+          PY
+      - name: KVM
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: One real Android35 session using the delivered APK pair and public OTA
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            cd android/maintrack-app
+            adb install -r .device-pilot/apks/MainTrack_UpdateLab_v0.3.0.apk
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs ota
+            adb install -r .device-pilot/apks/MainTrack_UpdateLab_v0.3.2.apk
+            adb shell am force-stop com.icc.maintrack.updatelab
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs apk
+            adb shell am force-stop com.icc.maintrack.updatelab
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell monkey -p com.icc.maintrack.updatelab -c android.intent.category.LAUNCHER 1
+            node scripts/stage15/check-personal-device.mjs offline
+      - name: Export accepted personal-device APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage15-Personal-Update-Lab
+          path: |
+            android/maintrack-app/.device-pilot/apks/*.apk
+            android/maintrack-app/.device-pilot/apks/delivery.json
+            android/maintrack-app/.device-pilot/apks/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: true
+      - name: Keep only public/synthetic diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage15-Device-Evidence
+          path: android/maintrack-app/.device-pilot/evidence/
+          if-no-files-found: warn
+          retention-days: 14
+          include-hidden-files: true
