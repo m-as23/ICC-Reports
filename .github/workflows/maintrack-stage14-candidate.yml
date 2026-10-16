@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/maintrack-stage14-candidate.yml'
       - 'android/maintrack-app/scripts/release-candidate.py'
+      - 'android/maintrack-app/scripts/release-preflight.py'
+      - 'android/maintrack-app/scripts/prepare-web-preview.py'
+      - 'android/maintrack-app/tests-release/**'
       - 'android/maintrack-app/scripts/snapshot.mjs'
       - 'android/maintrack-app/update-system/**'
       - 'web/maintrack/**'
@@ -45,6 +48,12 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify release preparation without Android builds
+        run: python3 -m unittest discover -s tests-release -v
       - name: Verify locked source and package unsigned candidates
         run: |
           npm ci --no-audit --no-fund
@@ -52,10 +61,15 @@ jobs:
           npm test
           python3 scripts/release-candidate.py build
           python3 scripts/release-candidate.py verify
+          python3 scripts/prepare-web-preview.py --expected-commit "$GITHUB_SHA"
+          sha256sum web-preview/maintrack-web-preview.zip > web-preview/maintrack-web-preview.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: MainTrack-Stage14-Review-Candidates
-          path: android/maintrack-app/release-candidate/
+          path: |
+            android/maintrack-app/release-candidate/
+            android/maintrack-app/web-preview/maintrack-web-preview.zip
+            android/maintrack-app/web-preview/maintrack-web-preview.sha256
           if-no-files-found: error
           retention-days: 14
   signed-release:
@@ -70,6 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -80,29 +95,24 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Verify owner signing inputs before installing SDK or building Android
+        env:
+          MT_STAGE14_SIGNING_READY: ${{ vars.MT_STAGE14_SIGNING_READY }}
+          EXPECTED_CERT_SHA256: ${{ vars.MT_ANDROID_EXPECTED_CERT_SHA256 }}
+          LAST_VERSION_CODE: ${{ vars.MT_ANDROID_LAST_VERSION_CODE }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: python3 scripts/release-preflight.py
       - name: SDK 36
         run: |
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           MANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)
           test -x "$MANAGER"
           "$MANAGER" --install "platforms;android-36" "build-tools;36.0.0"
-      - name: Validate release prerequisites
-        env:
-          EXPECTED_CERT_SHA256: ${{ vars.MT_ANDROID_EXPECTED_CERT_SHA256 }}
-          LAST_VERSION_CODE: ${{ vars.MT_ANDROID_LAST_VERSION_CODE }}
-          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
-          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
-          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
-          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
-        run: |
-          test -n "$EXPECTED_CERT_SHA256"
-          test -n "$LAST_VERSION_CODE"
-          test -s package-lock.json
-          test -s approved-assets.lock.json
-          test -n "$MT_ANDROID_KEYSTORE_BASE64"
-          test -n "$MT_ANDROID_KEYSTORE_PASSWORD"
-          test -n "$MT_ANDROID_KEY_ALIAS"
-          test -n "$MT_ANDROID_KEY_PASSWORD"
       - name: Exact pinned dependencies and source
         run: |
           npm ci --no-audit --no-fund
@@ -159,6 +169,18 @@ jobs:
           actual=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',pathlib.Path('release-output/signature.txt').read_text())
           assert actual and actual[1].lower()==expected, 'Signing certificate mismatch'
           PYVERIFY
+          "$SDK_ROOT/aapt" dump badging release-output/MainTrack-stage14-release.apk > release-output/apk-identity.txt
+          python3 - <<'PYIDENTITY'
+          import hashlib,json,pathlib,re
+          root=pathlib.Path('release-output')
+          expected=json.loads((root/'signing-preflight.json').read_text())
+          identity=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",(root/'apk-identity.txt').read_text(),re.M)
+          assert identity, 'APK identity not readable'
+          assert identity.groups()==(expected['appId'],str(expected['versionCode']),expected['versionName']), 'APK identity/version mismatch'
+          expected['apkSha256']=hashlib.sha256((root/'MainTrack-stage14-release.apk').read_bytes()).hexdigest()
+          expected['signed']=True
+          (root/'release-provenance.json').write_text(json.dumps(expected,indent=2)+'\n')
+          PYIDENTITY
           sha256sum release-output/MainTrack-stage14-release.apk > release-output/MainTrack-stage14-release.sha256
           rm -f release-output/maintrack-aligned.apk
       - name: Export verified signed Android release
@@ -168,5 +190,6 @@ jobs:
           path: |
             android/maintrack-app/release-output/MainTrack-stage14-release.apk
             android/maintrack-app/release-output/MainTrack-stage14-release.sha256
+            android/maintrack-app/release-output/release-provenance.json
           if-no-files-found: error
           retention-days: 14

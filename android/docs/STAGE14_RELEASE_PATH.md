@@ -3,6 +3,9 @@
 No production endpoint, production signing key, paid service or employee channel is
 enabled by this work. Everything remains on `android/stage14-ota-native-lab`.
 
+See [signed pilot preparation](STAGE14_PILOT_HANDOFF.md) for the checked signing
+preflight, isolated Web preview package and current account-access blockers.
+
 ## Web in the browser
 
 1. Build the exact approved shared source, then run the unit and actual-UI tests.
