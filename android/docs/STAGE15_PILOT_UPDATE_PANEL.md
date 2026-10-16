@@ -68,7 +68,21 @@ Three new actual-UI browser scenarios exercise the visible controls, protected
 activation after new work, untouched retained reports and rejection of an untrusted
 release. Their endpoint and native bridge are intercepted/mocked; no live backend,
 OTA host or Android emulator is used. Existing 13 browser scenarios remain in the
-same regression suite. CI acceptance must be recorded before calling them passed.
+same regression suite.
+
+Confirmed at `5053b2ac162f644cc6806719e3060dbac8a97425`:
+[run 38869140630](https://github.com/m-as23/ICC-Reports/actions/runs/38869140630)
+passed **54/54 Node tests and 16/16 actual UI browser scenarios**, plus the opt-in
+build smoke check and the 18 original resource hashes. Job logs were reviewed.
+The [evidence artifact](https://github.com/m-as23/ICC-Reports/actions/runs/38869140630/artifacts/12032233804)
+contains scenario results and the synthetic-account panel screenshot. The screenshot
+was visually reviewed. Two initial new browser assertions were corrected to open
+the report tab before typing; no runtime changes were needed for that correction.
+
+[Candidate run 38868910980](https://github.com/m-as23/ICC-Reports/actions/runs/38868910980)
+also passed 9 release checks and 54 Node tests. It packages the standard snapshot,
+not an enrolled pilot/employee build; its signing job remained skipped. The runtime
+at that run (`3cb170e`) is identical to the accepted UI run above.
 
 ## Remaining release gates
 

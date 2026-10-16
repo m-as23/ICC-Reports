@@ -63,9 +63,11 @@ No signed APK or live preview URL has been produced by this run.
 
 ## Owner signing prerequisites
 
-1. Establish whether a signed MainTrack APK is already installed or distributed.
-   If so, retain its **same signing key**, app ID and a higher versionCode. A debug
-   build does not establish the permanent release identity. Do not uninstall an
+1. The user already installed and successfully exercised the Stage11 **Debug** APK
+   on 2026-10-15. A permanent signed Release has not been accepted in this project.
+   The signing-secret/account settings remain unverified. Preserve the known app
+   ID and require the same certificate for any in-place upgrade of an installation;
+   a debug build does not establish the permanent release identity. Do not uninstall an
    existing installation to work around a certificate mismatch.
 2. If no release identity exists, create the permanent keystore on an owner-controlled
    computer and keep a secure backup. An interactive example (JDK `keytool` required)
@@ -106,6 +108,13 @@ No signed APK or live preview URL has been produced by this run.
    Install and then upgrade in place on the owner's phone using synthetic records;
    check data, login/session behavior, offline startup and resume before a pilot.
    Owner-device installation and release-upgrade acceptance remain pending.
+
+## Update panel follow-up
+
+The [opt-in update panel](STAGE15_PILOT_UPDATE_PANEL.md) now connects the explicit
+check/download/activate actions to the accepted guard. Its 54 Node and 16 browser
+checks pass. Ordinary candidates remain unenrolled; the outstanding owner signing,
+hosting access and physical-device release gates below are unchanged.
 
 ## Preview handoff
 
