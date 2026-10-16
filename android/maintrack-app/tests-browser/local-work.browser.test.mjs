@@ -440,16 +440,16 @@ scenario('typing a password is protected without persisting credentials in local
   });
 });
 
-async function installPilotPanel(page) {
-  await page.evaluate(verification => {
+async function installPilotPanel(page, autoDiscover = false) {
+  await page.evaluate(({verification, autoDiscover}) => {
     window.pilotCalls = {download:0, set:0};
-    Stage15PilotTest.mountPilotPanel({config:{schema:1,channel:'lab',
+    Stage15PilotTest.mountPilotPanel({autoDiscover,config:{schema:1,channel:'lab',
       publicKeyBase64:verification.publicKeyBase64, allowedOrigins:verification.allowedOrigins,
       manifestUrl:'https://updates-lab.example.org/release.json'}, localWork:MainTrackLocalWork,
       updater:{current:async () => ({native:'0.3.0',bundle:{id:'builtin'}}), getNextBundle:async () => null,
         download:async () => {pilotCalls.download++; return {id:'pilot-downloaded'};},
         set:() => {pilotCalls.set++; return new Promise(() => {});}}});
-  }, verification);
+  }, {verification, autoDiscover});
 }
 scenario('pilot panel checks and downloads only on request, defers new edits, then activates on a real click', () =>
   fixture(async ({page,mock}) => {
@@ -534,3 +534,29 @@ scenario('web update clean actual UI requires trusted click and locks before nav
   assert.equal(await page.evaluate(()=>webNavigations[0]),origin+'/releases/'+'b'.repeat(40)+'/');
   assert.equal(await page.locator('#maintrack-update-progress').count(),1);
 }));
+
+scenario('background discovery shows an update only after trusted newer metadata, with zero downloads', () =>
+  fixture(async ({page,mock}) => {
+    await open(page); await login(page); await installPilotPanel(page,true);
+    await page.locator('#mt-pilot-open').waitFor({state:'visible'});
+    assert.equal(await page.locator('#mt-pilot-open').textContent(),'تحديث متاح');
+    assert.equal(mock.manifestRequests,1);
+    assert.equal(await page.locator('#mt-pilot-dialog').isVisible(),false);
+    assert.deepEqual(await page.evaluate(()=>pilotCalls),{download:0,set:0});
+    for(let i=0;i<5;i++)await page.evaluate(()=>dispatchEvent(new Event('focus')));
+    assert.equal(mock.manifestRequests,1);
+    await page.locator('#mt-pilot-open').click();
+    await page.locator('#mt-pilot-download').click();
+    await page.locator('#mt-pilot-activate').waitFor({state:'visible'});
+    assert.deepEqual(await page.evaluate(()=>pilotCalls),{download:1,set:0});
+  }));
+scenario('background discovery silently rejects unsigned metadata and leaves the report form usable', () =>
+  fixture(async ({page,mock}) => {
+    mock.updateReply={...envelope,signature:'A'.repeat(86)};
+    await open(page);await login(page);await installPilotPanel(page,true);
+    await page.waitForFunction(()=>document.getElementById('mt-pilot-status').textContent.includes('أمان'));
+    assert.equal(await page.locator('#mt-pilot-open').isVisible(),false);
+    assert.equal(await page.locator('#mt-pilot-dialog').isVisible(),false);
+    await page.locator('#tabForm').click();await page.locator('#desc').fill('Continue while update server rejects metadata');
+    assert.deepEqual(await page.evaluate(()=>pilotCalls),{download:0,set:0});
+  }));
