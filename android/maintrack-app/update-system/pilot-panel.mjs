@@ -34,7 +34,7 @@ export function mountPilotPanel({document = globalThis.document, autoDiscover = 
   let manualCheck = false;
   const render = state => {
     if (autoDiscover) open.hidden = !['available','blocked','downloading','ready','activating','recovery-required'].includes(state.phase);
-    if (manualCheck && state.phase !== 'checking') dialog.hidden = false;
+    if (manualCheck && state.phase !== 'checking') {dialog.hidden = false; manualCheck = false;}
     const busy = ['checking','downloading','activating','recovery-required'].includes(state.phase);
     text.textContent = (state.phase === 'ready' && state.reason ? messages.blocked : messages[state.phase])
       + (state.installedVersion ? ' الإصدار الحالي: ' + state.installedVersion + '.' : '')
