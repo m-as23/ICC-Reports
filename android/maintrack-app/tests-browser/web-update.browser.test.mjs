@@ -18,7 +18,7 @@ before(async () => {
       const url=new URL(req.url,'http://localhost');
       const name=decodeURIComponent(url.pathname);
       if (name==='/maintrack-release.json') metadataReads++;
-      const relative=name==='/'? '/maintrack-release.json' : name;
+      const relative=name==='/'? '/maintrack-release.json' : (name.endsWith('/') ? name+'index.html' : name);
       const file=path.resolve(root,'.'+relative);
       if (!file.startsWith(root+path.sep)) throw Error('PATH_OUTSIDE_WEB_ROOT');
       const buffer=await fs.readFile(file);
