@@ -4,9 +4,11 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {removePilotNote} from './release-visual.mjs';
+import {carryWebHistory} from '../update-system/web-history.mjs';
 const root = path.resolve(import.meta.dirname,'..');
 const git = (...args) => execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
-if(git('branch','--show-current') !== 'android/stage14-ota-native-lab') throw Error('WRONG_BRANCH');
+const pinnedCI = process.env.GITHUB_REF === 'refs/heads/android/stage14-ota-native-lab' && process.env.GITHUB_SHA === git('rev-parse','HEAD');
+if(git('branch','--show-current') !== 'android/stage14-ota-native-lab' && !pinnedCI) throw Error('WRONG_BRANCH');
 if(git('diff','HEAD','--name-only')) throw Error('COMMIT_TRACKED_CHANGES_FIRST');
 const commit = git('rev-parse','HEAD');
 const output = path.join(root,'web-pilot');
@@ -14,6 +16,9 @@ await fs.mkdir(output); // Refuse stale output.
 execFileSync(process.execPath,['scripts/snapshot.mjs'],{cwd:root,stdio:'inherit'});
 const base = `/releases/${commit}/`;
 const target = path.join(output,'.vercel/output/static',base);
+const carried = await carryWebHistory({previousStatic:process.env.MT_WEB_PREVIOUS_STATIC_DIR,
+  currentStatic:path.join(output,'.vercel/output/static'),currentCommit:commit,
+  requireHistory:process.env.MT_WEB_REQUIRE_HISTORY === 'true'});
 await fs.mkdir(target,{recursive:true});
 await fs.cp(path.join(root,'www'),target,{recursive:true});
 await build({entryPoints:[path.join(root,'update-system/web-entry.mjs')],outfile:path.join(target,'secure-assets/web-update.js'),bundle:true,format:'iife',platform:'browser',target:'es2022',define:{__MAINTRACK_WEB_CONFIG__:JSON.stringify({commit})}});
@@ -28,4 +33,4 @@ const staticDir = path.join(output,'.vercel/output/static');
 await fs.writeFile(path.join(staticDir,'maintrack-release.json'),JSON.stringify({schema:1,appId:'com.icc.maintrack',channel:'web-pilot',commit,path:base,expiresAt:Date.now()+6*86400000}));
 const config = {version:3,routes:[{src:'/(.*)',headers:{'X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow'},continue:true},{src:'/',status:307,headers:{Location:base,'Cache-Control':'no-store'}},{src:'/maintrack-release.json',headers:{'Cache-Control':'no-store'},continue:true},{src:'/releases/(.*)',headers:{'Cache-Control':'public, max-age=31536000, immutable'},continue:true},{handle:'filesystem'},{src:'/(.*)',status:404}]};
 await fs.writeFile(path.join(output,'.vercel/output/config.json'),JSON.stringify(config,null,2));
-console.log('PASS web pilot prepared, no deployment; same pilot backend as shared UI. Online installable web shell, offline caching not enabled.');
+console.log('PASS web pilot prepared; prior releases retained: '+carried.length+'; no deployment. Online shell, offline caching not enabled.');
