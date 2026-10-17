@@ -228,7 +228,7 @@ def build():
     manifest = {
         "schema": 1, "mode": "review-only", "signed": False,
         "deployable": False, "rolloutEnabled": False, "gitCommit": head,
-        "branch": EXPECTED_BRANCH, "appId": "com.icc.maintrack",
+        "branch": git("branch", "--show-current"), "appId": "com.icc.maintrack",
         "backendRequirement": "promote stable stage9 API after role/compatibility tests",
         "localData": LOCAL_CONTRACT,
         "changedFromApprovedBaseline": sorted(changes),
