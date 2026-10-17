@@ -91,8 +91,7 @@ async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.sta
  if(type==='compensatory'&&!half)die('LEAVE_POLICY_PENDING');
  const days=half?0.5:daySpan;if(days<0.5||days>60)die('INVALID_LEAVE_DURATION');
  const f={cid:uuid(b.cid),start,end,days,type,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
- if(half)f.durationKind=durationKind; // preserve legacy full-day idempotency hashes
- const digest=sha(JSON.stringify({user:u.id,...f}));
+ const digest=sha(JSON.stringify({user:u.id,...f,...(half?{durationKind}:{})})); // keep legacy full-day digest
  return transaction(async c=>{
   const old=await first(c,'SELECT public_id,days,status,request_digest FROM mt_leave_requests WHERE client_request_id=$1',[f.cid]);
   if(old){if(old.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:old.public_id,days:old.days,status:old.status,duplicate:true};}
@@ -114,10 +113,30 @@ async function decision(u,b){permit(u,'leave.approve');const publicId=text(b.id,
  return transaction(async c=>{
   const req=await first(c,'SELECT * FROM mt_leave_requests WHERE public_id=$1 FOR UPDATE',[publicId]);if(!req)die('LEAVE_NOT_FOUND',404);
   if(req.status!=='PENDING'){if(req.status===d)return {ok:true,id:publicId,status:d,balanceAfter:req.balance_after==null?null:Number(req.balance_after),duplicate:true};die('LEAVE_ALREADY_DECIDED',409);}
-  const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1 FOR UPDATE',[req.requester_id]);if(!bal)die('LEAVE_BALANCE_NOT_SET');const before=Number(bal.days);if(d==='APPROVED'&&before<req.days)die('INSUFFICIENT_LEAVE_BALANCE');
-  const after=d==='APPROVED'?round(before-Number(req.days)):before;
-  if(d==='APPROVED'){await c.query('UPDATE mt_leave_balances SET days=$1 WHERE user_id=$2',[after,req.requester_id]);await c.query('INSERT INTO mt_leave_ledger(request_id,user_id,delta,balance_after,approved_by) VALUES($1,$2,$3,$4,$5)',[req.id,req.requester_id,-Number(req.days),after,u.id]);}
-  await c.query('UPDATE mt_leave_requests SET status=$1,decided_at=now(),decided_by=$2,decision_reason=$3,balance_before=$4,balance_after=$5 WHERE id=$6',[d,u.id,reason,before,after,req.id]);
+  let before=null,after=null;
+ if(req.type==='compensatory'){
+  if(req.duration_kind!=='HALF_DAY'||Number(req.days)!==0.5)die('LEAVE_POLICY_PENDING');
+  // Serialize consumption against other approved substitute-time operations.
+  await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[req.requester_id]);
+  const bank=await first(c,'SELECT COALESCE(SUM(delta_minutes),0)::integer AS minutes FROM mt_substitute_time_ledger WHERE user_id=$1',[req.requester_id]);
+  before=Number(bank.minutes)/60;
+  after=d==='APPROVED'?before-4:before;
+  if(d==='APPROVED'&&Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
+  if(d==='APPROVED'){
+   await c.query('INSERT INTO mt_substitute_time_ledger(user_id,delta_minutes,leave_id,approved_by) VALUES($1,-240,$2,$3)',[req.requester_id,req.id,u.id]);
+  }
+ }else{
+  const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1 FOR UPDATE',[req.requester_id]);
+  if(!bal)die('LEAVE_BALANCE_NOT_SET');
+  before=Number(bal.days);
+  if(d==='APPROVED'&&before<Number(req.days))die('INSUFFICIENT_LEAVE_BALANCE');
+  after=d==='APPROVED'?round(before-Number(req.days)):before;
+  if(d==='APPROVED'){
+   await c.query('UPDATE mt_leave_balances SET days=$1 WHERE user_id=$2',[after,req.requester_id]);
+   await c.query('INSERT INTO mt_leave_ledger(request_id,user_id,delta,balance_after,approved_by) VALUES($1,$2,$3,$4,$5)',[req.id,req.requester_id,-Number(req.days),after,u.id]);
+  }
+ }
+ await c.query('UPDATE mt_leave_requests SET status=$1,decided_at=now(),decided_by=$2,decision_reason=$3,balance_before=$4,balance_after=$5 WHERE id=$6',[d,u.id,reason,before,after,req.id]);
   await c.query("INSERT INTO mt_notifications(recipient_id,source_id,type,title,description,target) VALUES($1,$2,'leaveDecision',$3,$4,'leave') ON CONFLICT DO NOTHING",[req.requester_id,publicId,d==='APPROVED'?'تم اعتماد الإجازة':'تم رفض الإجازة',publicId+(reason?' — '+reason:'')]);
   await c.query('INSERT INTO mt_audit(actor_id,action,entity,entity_id,details) VALUES($1,$2,$3,$4,$5::jsonb)',[u.id,'leave.'+d.toLowerCase(),'leave',publicId,JSON.stringify({days:req.days,before,after})]);
   return {ok:true,id:publicId,status:d,balanceAfter:after};
