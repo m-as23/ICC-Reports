@@ -29,4 +29,13 @@ Scope: user approved preparing one synchronized feature update for the current W
 - User explicitly downloads/activates only after unsaved/queued work guard allows it; app reopens preserving local data and login when supported and verified.
 - Web existing-tab update requires same-origin version history; fresh visits receive the new version after release pointer change. Not exactly simultaneous installs because each device checks/applies at different times.
 
-Status: **BLOCKED pending verifiable shared build, signing continuity, live update acceptance and stable backend compatibility. No public rollout yet.**
+## Verified Stage 20 QA build and release compatibility (2026-10-17)
+
+- GitHub Actions [39066055161](https://github.com/m-as23/ICC-Reports/actions/runs/39066055161) at exact SHA `0098631f6a25bd7f9f4f795b8cf3dd6b8540eb0d`: **PASS**. 46 Node tests PASS; reviewed SHA-256/byte integrity of unsigned Web and Android OTA ZIPs; all 16 common assets identical. GitHub artifact 12113212910, 14-day retention.
+- No lock overwrite or signed release occurred; new separate QA build script/workflow prepares safe immutable review-only archives. The baseline approved source lock remains stale against 3 changed UI assets, intentionally.
+- GitHub run [38979572247](https://github.com/m-as23/ICC-Reports/actions/runs/38979572247) published owner-signed OTA v0.4.2 successfully on 2026-10-16 from Stage14. This confirms a working owner OTA signing path at the time, **not** that the same secret will still be available or that a future signature is approved.
+- Compared currently deployed Edge sources: stable API v10 exposes 26 dispatch handlers; QA API v13 retains **all 26** and adds exactly 6 (`accountSummary`, `overtimeMine`, `overtimeRequest`, `overtimeDecision`, `overtimeInbox`, `overtimeSummary`). This is static route compatibility only. Runtime permission, older client and transactional behavior still gate promotion.
+- Stable API v10 lacks all six new actions, so this review bundle **must not be installed or exposed** until backend deployment and old-client regression are approved.
+- Staging and stable Edge functions operate in the **same Supabase project**, therefore DB migrations already applied there are shared; do not treat it as a separately isolated database.
+
+Status: **Review artifacts built and verified. Rollout still blocked pending stable backend compatibility tests, owner-signed OTA for the new immutable bytes, and in-place Android/Web host acceptance.** No public rollout yet.
