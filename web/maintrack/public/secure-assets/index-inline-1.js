@@ -5,6 +5,15 @@ const $ = id => document.getElementById(id);
 const REQ = ['section','machine','comp','desc','solution','date','t1','t2','t3','status','cat'];
 const ALL = REQ.concat(['spare']);
 let D = null, busy = false, dashBusy = false, S = null;
+// Persistent sessions are opt-in only on native builds with Android Keystore.
+// Never place bearer tokens in Web localStorage.
+const MT_LOGOUT_GUARD = 'mt_native_logout_pending_v1';
+const mtSecureSession = () => globalThis.MainTrackSecureSession?.available?.() ? globalThis.MainTrackSecureSession : null;
+let mtSessionWrites = Promise.resolve();
+function mtQueueNativeWrite(task) {
+  mtSessionWrites = mtSessionWrites.catch(() => {}).then(task);
+  return mtSessionWrites;
+}
 try { S = JSON.parse(sessionStorage.getItem('s') || localStorage.getItem('s') || 'null'); } catch(e) { S=null; }
 // One-time session migration: stop persisting credentials across browser restarts.
 localStorage.removeItem('s');localStorage.removeItem('d');localStorage.removeItem('bd_dashboard_cache'); if (S) sessionStorage.setItem('s',JSON.stringify(S));
@@ -106,8 +115,36 @@ function show(v) {
   if (v === 'form' || v === 'dashboard') $('wo').style.display = v === 'form' ? 'inline-block' : 'none';
   window.scrollTo(0,0);
 }
-function save(d) { S = {token:d.token,code:d.code,name:d.name,role:d.role||'technician'}; sessionStorage.setItem('s',JSON.stringify(S)); appAuthenticated=true; $('retryConnect').hidden=true; }
-function logout() { if(S) localStorage.removeItem('bd_dashboard_cache_v3_'+S.code); sessionStorage.removeItem('s'); localStorage.removeItem('s');localStorage.removeItem('d'); D=null;appAuthenticated=false;S=null;noticeLast=0;noticeOpen=false;$('bellCount').style.display='none';$('notifications').setAttribute('aria-hidden','true');$('retryConnect').hidden=true;show('login'); }
+async function save(d) {
+  S = {token:d.token,code:d.code,name:d.name,role:d.role||'technician'};
+  sessionStorage.setItem('s',JSON.stringify(S));
+  appAuthenticated=true; $('retryConnect').hidden=true;
+  const secure=mtSecureSession();
+  if(secure) {
+    try {
+      await mtQueueNativeWrite(() => secure.save(S));
+      localStorage.removeItem(MT_LOGOUT_GUARD);
+    } catch(e) {
+      localStorage.setItem(MT_LOGOUT_GUARD,'1');
+      note('تم تسجيل الدخول، لكن تعذر حفظ الجلسة بأمان على الجهاز. قد تحتاج تسجيل الدخول بعد إغلاق التطبيق.','err');
+    }
+  }
+}
+function logout() {
+  const secure=mtSecureSession();
+  if(secure) {
+    // Non-secret tombstone prevents restored login even if Android kills the app
+    // before the asynchronous encrypted-store delete finishes.
+    localStorage.setItem(MT_LOGOUT_GUARD,'1');
+    void mtQueueNativeWrite(() => secure.clear())
+      .then(() => localStorage.removeItem(MT_LOGOUT_GUARD)).catch(() => {});
+  }
+  if(S) localStorage.removeItem('bd_dashboard_cache_v3_'+S.code);
+  sessionStorage.removeItem('s');localStorage.removeItem('s');localStorage.removeItem('d');
+  D=null;appAuthenticated=false;S=null;noticeLast=0;noticeOpen=false;
+  $('bellCount').style.display='none';$('notifications').setAttribute('aria-hidden','true');
+  $('retryConnect').hidden=true;show('login');
+}
 function showChange(forced) { $('oldBox').style.display = forced ? 'none' : 'block'; $('cback').style.display = forced ? 'none' : 'inline'; show('change'); }
 function init(d) { D=d; $('wo').textContent=navigator.onLine?d.id:'—'; fill($('section'),d.sections,'اختر القسم'); fill($('machine'),[],'اختر القسم أولا'); fill($('comp'),[],'اختر القسم أولا'); fill($('status'),d.status); fill($('cat'),d.cats); if(d.cats.indexOf('كهربائي')>-1)$('cat').value='كهربائي'; $('date').value=today(); applyMachineDeepLink(); }
 async function load() {
@@ -262,8 +299,8 @@ const HELP={BAD_PW:{m:'الباسورد غلط.',t:'لو نسيت الباسور
 let helpKind=null;
 function help(k){helpKind=k;$('ftxt').textContent=HELP[k].t;$('fbox').style.display='block';if(ADMIN_WA){const w=$('wa');w.style.display='inline-block';w.href='https://wa.me/'+ADMIN_WA+'?text='+encodeURIComponent(HELP[k].w+norm($('lcode').value.trim()));}}
 $('lcode').oninput=()=>{if(helpKind)help(helpKind);};
-$('lgo').onclick=async()=>{if($('lgo').disabled)return;const code=norm($('lcode').value.trim()),pw=$('lpw').value;if(!code){note('اكتب كود الموظف','err');$('lcode').focus();return;}if(!pw){note('اكتب الباسورد','err');$('lpw').focus();return;}$('lgo').disabled=true;note('جاري الدخول...','ok');try{const d=await post({action:'login',code:code,pw:pw});if(d.error){if(HELP[d.error]){note(HELP[d.error].m,'err');return help(d.error);}return note(d.error,'err');}save(d);$('lpw').value='';helpKind=null;$('fbox').style.display='none';note('');if(d.must)return showChange(true);start(true);}catch(e){note(netMsg(e),'err');}finally{$('lgo').disabled=false;}};
-$('cgo').onclick=async()=>{if($('np').value!==$('np2').value)return note('الباسورد الجديد غير متطابق','err');try{const d=await post({action:'change',token:S.token,old:$('op').value,pw:$('np').value});if(d.error==='AUTH')return logout();if(d.error)return note(d.error,'err');save(d);['op','np','np2'].forEach(k=>$(k).value='');await start(true);note('تم حفظ الباسورد','ok');}catch(e){note(netMsg(e),'err');}};
+$('lgo').onclick=async()=>{if($('lgo').disabled)return;const code=norm($('lcode').value.trim()),pw=$('lpw').value;if(!code){note('اكتب كود الموظف','err');$('lcode').focus();return;}if(!pw){note('اكتب الباسورد','err');$('lpw').focus();return;}$('lgo').disabled=true;note('جاري الدخول...','ok');try{const d=await post({action:'login',code:code,pw:pw});if(d.error){if(HELP[d.error]){note(HELP[d.error].m,'err');return help(d.error);}return note(d.error,'err');}await save(d);$('lpw').value='';helpKind=null;$('fbox').style.display='none';note('');if(d.must)return showChange(true);start(true);}catch(e){note(netMsg(e),'err');}finally{$('lgo').disabled=false;}};
+$('cgo').onclick=async()=>{if($('np').value!==$('np2').value)return note('الباسورد الجديد غير متطابق','err');try{const d=await post({action:'change',token:S.token,old:$('op').value,pw:$('np').value});if(d.error==='AUTH')return logout();if(d.error)return note(d.error,'err');await save(d);['op','np','np2'].forEach(k=>$(k).value='');await start(true);note('تم حفظ الباسورد','ok');}catch(e){note(netMsg(e),'err');}};
 $('cback').onclick=()=>{note('');show('form');};
 $('out').onclick=()=>{if(getQ().length&&!confirm('فيه بلاغات في الانتظار لم تُرسل. هتفضل محفوظة لحد ما تدخل بنفس الكود. تكمل؟'))return;logout();};
 $('section').onchange=()=>{const s=$('section').value;fill($('machine'),D.machines.filter(r=>r[0]===s).map(r=>r[1]),'اختر الماكينة');fill($('comp'),D.parts.filter(r=>r[0]===s).map(r=>r[1]),'اختر الجزء');};
@@ -703,4 +740,26 @@ window.addEventListener('online',()=>{if(!S)return;flush();loadNotices(true);if(
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S){flush();loadNotices();if($('dashboard').style.display!=='none')showDashboard(false);}});
 // Only visible sessions poll once per minute; WO is refreshed on form entry/save, not every 20s.
 setInterval(()=>{if(S&&appAuthenticated&&!document.hidden)loadNotices();},20000);
-if('serviceWorker'in navigator)Promise.resolve() /* Preview runs without service-worker cache */;pend();if(S)start();else show('login');
+if('serviceWorker'in navigator)Promise.resolve() /* Preview runs without service-worker cache */;pend();
+void (async()=>{
+  const secure=mtSecureSession();
+  if(localStorage.getItem(MT_LOGOUT_GUARD)==='1'){
+    S=null;sessionStorage.removeItem('s');
+    if(secure) {
+      try {await mtQueueNativeWrite(() => secure.clear());localStorage.removeItem(MT_LOGOUT_GUARD);}
+      catch(e) {/* Fail closed. Do not restore credentials after explicit logout. */}
+    }
+    show('login');return;
+  }
+  if(!S && secure){
+    try {
+      const restored=await secure.read();
+      if(restored && /^[a-f0-9]{64}$/.test(restored.token)
+         && typeof restored.code==='string' && restored.code.length>0 && restored.code.length<=64
+         && typeof restored.name==='string' && typeof restored.role==='string') {
+        S=restored;sessionStorage.setItem('s',JSON.stringify(S));
+      }
+    }catch(e){/* Missing/invalid keystore credentials require login, not plaintext fallback. */}
+  }
+  if(S)await start();else show('login');
+})();
