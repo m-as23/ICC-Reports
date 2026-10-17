@@ -379,7 +379,7 @@ async function cmmsAudit(u,b){
 
 
 const otSelect="SELECT o.id,o.public_id,o.work_date,o.start_time,o.end_time,o.minutes,o.compensation_kind,o.work_kind,o.reason,o.status,o.created_at,o.decided_at,o.decision_reason,u.employee_code,u.name FROM mt_overtime_requests o JOIN mt_users u ON u.id=o.requester_id";
-const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.work_date),from:String(r.start_time).slice(0,5),to:String(r.end_time).slice(0,5),hours:round(Number(r.minutes)/60),compensation:r.compensation_kind,workKind:r.work_kind||'UNSPECIFIED',reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decisionReason:r.decision_reason||''});
+const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.work_date),from:String(r.start_time).slice(0,5),to:String(r.end_time).slice(0,5),minutes:Number(r.minutes),hours:round(Number(r.minutes)/60),compensation:r.compensation_kind,workKind:r.work_kind||'UNSPECIFIED',reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decisionReason:r.decision_reason||''});
 async function overtimeMine(u){permit(u,'leave.request');
  const [history,bank,totals]=await Promise.all([
   pool.query(otSelect+' WHERE o.requester_id=$1 ORDER BY o.created_at DESC LIMIT 150',[u.id]),
@@ -459,7 +459,8 @@ async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day
  const workKind=String(b.workKind||'UNSPECIFIED'); // compatibility with older pilot clients
  if(!['AFTER_SHIFT','INDEPENDENT_DAY','UNSPECIFIED'].includes(workKind))die('INVALID_OVERTIME_WORK_KIND');
  const f={cid:uuid(b.cid),workDate,from,to,minutes,compensation,workKind,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
- const digest=sha(JSON.stringify({user:u.id,...f}));
+ const {workKind:_legacyWorkKind,...fingerprintFields}=f;
+ const digest=sha(JSON.stringify({user:u.id,...fingerprintFields,...(workKind==='UNSPECIFIED'?{}:{workKind})}));
  return transaction(async c=>{
   const old=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);
   if(old){if(old.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:old.public_id,status:old.status,duplicate:true};}
