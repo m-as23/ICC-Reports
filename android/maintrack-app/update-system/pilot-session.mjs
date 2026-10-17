@@ -66,8 +66,9 @@ export function createPilotSession({config, updater, localWork, fetchImpl, clock
   const terminal = () => ['activating','recovery-required'].includes(state.phase);
   return Object.freeze({
     read: () => state,
-    async check() {
-      if (running || terminal()) return state;
+    async check({manual = false} = {}) {
+      // Never throw away a downloaded bundle or a blocked retry during automatic checks.
+      if (running || terminal() || state.phase === 'ready' || (state.phase === 'blocked' && !manual)) return state;
       running = true; controller?.cancel(); controller = null; envelope = null;
       emit('checking', null, null);
       try {
