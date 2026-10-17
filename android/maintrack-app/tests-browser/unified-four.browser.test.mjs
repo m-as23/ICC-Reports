@@ -103,6 +103,8 @@ test('employee sees day-based My Account, 3 history filters, native-safe dirty o
  await withPage('engineer',async({page,actions})=>{
   await page.locator('#tabProfile').click();
   await page.locator('#profile').waitFor({state:'visible'});
+  // Profile fetches run concurrently; page visibility precedes API completion.
+  await page.waitForFunction(()=>document.getElementById('leaveBalance')?.textContent.trim()==='22');
   assert.equal((await page.locator('#leaveBalance').innerText()).trim(),'22');
   assert.equal((await page.locator('#substituteBalance').innerText()).trim(),'4.5');
   assert.equal((await page.locator('#otFinancial').innerText()).trim(),'6');
