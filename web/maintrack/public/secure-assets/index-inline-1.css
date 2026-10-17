@@ -255,3 +255,43 @@ body.auth-screen #change{background:linear-gradient(135deg,#122d43,#091c31)!impo
 #profile #otFeedback{display:block;font-weight:650;font-size:13px;line-height:1.8;min-height:23px}
 #profile #otFeedback[data-state="error"]{color:#b33c3c}
 #profile #otFeedback[data-state="success"]{color:#14775d}
+
+
+/* Owner approval detail cards - QA */
+#approvals .approval-card--detailed{background:#fff;border:1px solid #d8e4ec;border-radius:16px;padding:18px 20px;margin:12px 0;box-shadow:0 5px 20px rgba(22,57,76,.045);color:#16354b;min-width:0}
+#approvals .request-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2edf2}
+#approvals .request-card-heading{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+#approvals .request-card-type{font-size:15px;line-height:1.5;font-weight:900;color:#087986}
+#approvals .request-card-name{font-size:16px;font-weight:850;color:#102d42;line-height:1.55;overflow-wrap:anywhere}
+#approvals .request-card-identity{font-size:12px;color:#59778c;line-height:1.65;overflow-wrap:anywhere}
+#approvals .request-status{flex-shrink:0;display:inline-block;font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;white-space:nowrap;line-height:1.5;border:1px solid #d9e2eb;color:#37546a;background:#f5f8fa}
+#approvals .request-status--pending{background:#fff6dd;border-color:#f4dda7;color:#845f10}
+#approvals .request-status--approved{background:#e8f5ef;border-color:#badfcb;color:#176846}
+#approvals .request-status--rejected{background:#fce9e7;border-color:#f1c5c3;color:#9f3b35}
+#approvals .request-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin:14px 0 12px;padding:0}
+#approvals .request-detail-field{background:#f4f8fa;border:1px solid #e6eff3;border-radius:10px;padding:12px;min-width:0;display:flex;flex-direction:column;gap:5px}
+#approvals .request-detail-field dt{font-size:12px;color:#688094;font-weight:650;line-height:1.5}
+#approvals .request-detail-field dd{font-size:14px;font-weight:800;color:#1b4058;line-height:1.6;margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#approvals .request-notes{padding:10px 12px;margin:12px 0;background:#fafbfd;border-inline-start:3px solid #79a8b4;border-radius:8px}
+#approvals .request-notes-label{font-size:12px;font-weight:800;color:#285469}
+#approvals .request-notes p{color:#39576a;font-size:13px;line-height:1.65;margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#approvals .request-actions{display:flex;align-items:center;gap:11px;justify-content:flex-start;padding-top:8px;border-top:1px solid #edf2f5}
+#approvals .request-actions button{flex:1;min-height:43px;max-width:230px;cursor:pointer}
+#approvals .request-actions button:disabled{opacity:.65;cursor:wait}
+#approvals .request-action-feedback{font-size:13px;font-weight:700;min-height:0;line-height:1.75;margin:8px 0 0}
+#approvals .request-action-feedback:empty{display:none}
+#approvals .request-action-feedback[data-state="error"]{color:#aa3535}
+#approvals .request-action-feedback[data-state="success"]{color:#126e52}
+@media(max-width:640px){
+ #approvals .approval-card--detailed{padding:14px 12px;border-radius:13px}
+ #approvals .request-card-top{gap:9px}
+ #approvals .request-card-name{font-size:15px}
+ #approvals .request-card-type{font-size:14px}
+ #approvals .request-card-identity{font-size:11px}
+ #approvals .request-status{font-size:10px;padding:5px 8px}
+ #approvals .request-details-grid{gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #approvals .request-detail-field{padding:10px 9px}
+ #approvals .request-detail-field dd{font-size:12px}
+ #approvals .request-actions button{max-width:none}
+}
+@media(max-width:370px){#approvals .request-details-grid{grid-template-columns:1fr}}
