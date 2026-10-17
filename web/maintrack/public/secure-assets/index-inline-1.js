@@ -368,7 +368,7 @@ $('sendLeave').onclick=async()=>{
  if(!start||!end||end<start){$('leaveFeedback').textContent='اختار فترة صحيحة للإجازة';return;}
  const durationKind=$('leaveDuration').value;
  if(durationKind==='HALF_DAY'&&(start!==end||!['annual','compensatory'].includes(type))){$('leaveFeedback').textContent='نصف اليوم متاح فقط للسنوية والبدلات، بتاريخ واحد.';return;}
- if(type==='compensatory'&&durationKind!=='HALF_DAY'){$('leaveFeedback').textContent='سياسة تحويل يوم البدلات الكامل لم تُعتمد بعد. اختر نصف يوم (4 ساعات).';return;}
+ if(type==='compensatory'&&start!==end){$('leaveFeedback').textContent='إجازة البدل متاحة ليوم واحد: نصف يوم 4 ساعات أو يوم كامل 8 ساعات.';return;}
  if(!confirm('تأكيد إرسال طلب الإجازة إلى Owner؟'))return;
  const btn=$('sendLeave');btn.disabled=true;btn.textContent='جارٍ إرسال الطلب…';
  try{const fingerprint=[start,end,type,reason,...(durationKind==='HALF_DAY'?[durationKind]:[])].join('|');let pending={};try{pending=JSON.parse(sessionStorage.getItem('pendingLeave')||'{}');}catch(e){}const cid=pending.fingerprint===fingerprint?pending.cid:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());sessionStorage.setItem('pendingLeave',JSON.stringify({cid,fingerprint}));const d=await api('leaveRequest',{start,end,type,reason,cid,...(durationKind==='HALF_DAY'?{durationKind}:{})});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);$('leaveFeedback').textContent='تم إرسال طلب الإجازة للمالك • '+d.id+' • في انتظار القرار';sessionStorage.removeItem('pendingLeave');$('leaveReason').value='';await showLeave();loadNotices(true);}
@@ -438,11 +438,6 @@ async function refreshOvertime(){
   overtimeHistory=data.items||[];showOvertimeHistory();
  }catch(e){$('otMine').textContent='تعذر تحميل سجل الوقت الإضافي: '+localizedError(e.message||'');}
 }
-$('leaveType').addEventListener('change',()=>{
- const substitute=$('leaveType').value==='compensatory';
- if(substitute)$('leaveDuration').value='HALF_DAY';
- $('leaveDuration').querySelector('option[value="FULL_DAY"]').disabled=substitute;
-});
 $('otSend').onclick=async()=>{
  if(!S||!canReport())return;
  const workDate=$('otDate').value,from=readOvertimeClock('otFrom'),to=readOvertimeClock('otTo'),compensation=$('otKind').value,reason=$('otReason').value;
