@@ -1,0 +1,75 @@
+name: MainTrack Unified Four — Unsigned Cross-Channel Review
+on:
+  push:
+    branches: [feature/maintrack-unified-four-updates-20261017]
+    paths:
+      - '.github/workflows/maintrack-unified-four-review.yml'
+      - 'android/maintrack-app/scripts/unified-four-review.py'
+      - 'android/maintrack-app/update-system/**'
+      - 'android/maintrack-app/tests/unified-four.test.mjs'
+      - 'android/maintrack-app/tests/ota-lab.test.mjs'
+      - 'android/maintrack-app/tests/update-policy.test.mjs'
+      - 'android/maintrack-app/tests/discovery-periodic.test.mjs'
+      - 'web/maintrack/public/**'
+      - 'web/maintrack/source-lock.json'
+      - 'android/maintrack-app/approved-assets.lock.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unsigned-review:
+    if: github.ref == 'refs/heads/feature/maintrack-unified-four-updates-20261017'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - name: Only accept exact checked-out commit
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED"
+      - name: Verify existing update safety & feature regression tests
+        run: |
+          npm ci --no-audit --no-fund
+          node --test tests/unified-four.test.mjs tests/ota-lab.test.mjs tests/update-policy.test.mjs tests/discovery-periodic.test.mjs
+      - name: Build review-only Web and Android bundles
+        run: |
+          python3 -m py_compile scripts/unified-four-review.py
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+      - name: Refuse signed or deployable artifacts and verify common hashes
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,hashlib
+          root=pathlib.Path('unified-four-review')
+          c=json.loads((root/'candidate.json').read_text())
+          assert c['mode']=='review-only'
+          assert c['signed'] is False and c['deployable'] is False and c['rolloutEnabled'] is False
+          assert c['appId']=='com.icc.maintrack'
+          assert c['sharedAssetHashes'] and len(c['sharedAssetHashes'])==16
+          for path,info in c['sharedAssetHashes'].items():
+              for base in (root/'native/www',root/'web/.vercel/output/static/releases'/c['gitCommit']):
+                  data=(base/path).read_bytes()
+                  assert len(data)==info['bytes']
+                  assert hashlib.sha256(data).hexdigest()==info['sha256']
+          print('PASS 16 immutable common resource hashes; NO release, NO signing')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Unified-Four-UNSIGNED-Review
+          path: |
+            android/maintrack-app/unified-four-review/candidate.json
+            android/maintrack-app/unified-four-review/MainTrack-Android-OTA-UNSIGNED-REVIEW.zip
+            android/maintrack-app/unified-four-review/MainTrack-Web-REVIEW-ONLY.zip
+          if-no-files-found: error
+          retention-days: 14
