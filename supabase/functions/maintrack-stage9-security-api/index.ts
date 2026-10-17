@@ -93,7 +93,7 @@ async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.sta
  const daySpan=Math.round((new Date(end+'T00:00:00Z')-new Date(start+'T00:00:00Z'))/86400000)+1;
  const half=durationKind==='HALF_DAY';
  if(half&&(start!==end||!['annual','compensatory'].includes(type)))die('HALF_DAY_NOT_ALLOWED');
- if(type==='compensatory'&&!half)die('LEAVE_POLICY_PENDING');
+ if(type==='compensatory'&&start!==end)die('LEAVE_POLICY_PENDING'); // Compensatory leave is limited to one 4h or 8h day.
  const days=half?0.5:daySpan;if(days<0.5||days>60)die('INVALID_LEAVE_DURATION');
  const f={cid:uuid(b.cid),start,end,days,type,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
  const digest=sha(JSON.stringify({user:u.id,...f,...(half?{durationKind}:{})})); // keep legacy full-day digest
@@ -104,12 +104,16 @@ async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.sta
   await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[u.id]);
   const overlap=await first(c,"SELECT public_id FROM mt_leave_requests WHERE requester_id=$1 AND status IN ('PENDING','APPROVED') AND start_date<=$3::date AND end_date>=$2::date LIMIT 1",[u.id,start,end]);
   if(overlap)die('OVERLAPPING_LEAVE_REQUEST',409);
+  // Pending requests reserve capacity; debit happens only when the owner approves.
+  // The employee row lock above serializes concurrent leave submissions.
+  const reserved=await first(c,"SELECT COALESCE(SUM(days) FILTER(WHERE type<>'compensatory'),0)::numeric AS annual,COALESCE(SUM(days*480) FILTER(WHERE type='compensatory'),0)::numeric AS substitute FROM mt_leave_requests WHERE requester_id=$1 AND status='PENDING'",[u.id]);
   if(type==='compensatory'){
-   const bank={minutes:await readSubstituteMinutes(c,u.id)};
-   if(Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
+   const available=Number(await readSubstituteMinutes(c,u.id))-Number(reserved.substitute);
+   if(available<days*480)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
   }else{
    const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1',[u.id]);
-   if(!bal)die('LEAVE_BALANCE_NOT_SET');if(Number(bal.days)<days)die('INSUFFICIENT_LEAVE_BALANCE');
+   if(!bal)die('LEAVE_BALANCE_NOT_SET');
+   if(Number(bal.days)-Number(reserved.annual)<days)die('INSUFFICIENT_LEAVE_BALANCE');
   }
   const publicId='LV-'+randomUUID().slice(0,8).toUpperCase();
   const r=await first(c,'INSERT INTO mt_leave_requests(public_id,requester_id,client_request_id,request_digest,type,start_date,end_date,days,reason,duration_kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,days,status',[publicId,u.id,f.cid,digest,type,start,end,days,f.reason,durationKind]);
@@ -123,15 +127,16 @@ async function decision(u,b){permit(u,'leave.approve');const publicId=text(b.id,
   if(req.status!=='PENDING'){if(req.status===d)return {ok:true,id:publicId,status:d,balanceAfter:req.balance_after==null?null:Number(req.balance_after),duplicate:true};die('LEAVE_ALREADY_DECIDED',409);}
   let before=null,after=null;
  if(req.type==='compensatory'){
-  if(req.duration_kind!=='HALF_DAY'||Number(req.days)!==0.5)die('LEAVE_POLICY_PENDING');
+  if(![0.5,1].includes(Number(req.days)))die('LEAVE_POLICY_PENDING');
+  const useMinutes=Math.round(Number(req.days)*480);
   // Serialize consumption against other approved substitute-time operations.
   await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[req.requester_id]);
   const bank={minutes:await readSubstituteMinutes(c,req.requester_id)};
   before=Number(bank.minutes)/60;
-  after=d==='APPROVED'?before-4:before;
-  if(d==='APPROVED'&&Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
+  after=d==='APPROVED'?before-useMinutes/60:before;
+  if(d==='APPROVED'&&Number(bank.minutes)<useMinutes)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
   if(d==='APPROVED'){
-   await c.query('INSERT INTO mt_substitute_time_ledger(user_id,delta_minutes,leave_id,approved_by) VALUES($1,-240,$2,$3)',[req.requester_id,req.id,u.id]);
+   await c.query('INSERT INTO mt_substitute_time_ledger(user_id,delta_minutes,leave_id,approved_by) VALUES($1,$2,$3,$4)',[req.requester_id,-useMinutes,req.id,u.id]);
   }
  }else{
   const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1 FOR UPDATE',[req.requester_id]);
