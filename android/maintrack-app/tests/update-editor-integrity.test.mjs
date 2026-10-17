@@ -7,7 +7,7 @@ import {readTrustedLocalWork} from '../update-system/local-work.mjs';
 
 const html=fs.readFileSync(path.resolve(import.meta.dirname,
   '../../../web/maintrack/public/index.html'),'utf8');
-const ids=new Set([...html.matchAll(/\\bid="([^"]+)"/g)].map(m=>m[1]));
+const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
 
 function dom() {
  const handlers=new Map(),fields=new Map();
