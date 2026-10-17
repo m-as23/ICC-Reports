@@ -485,7 +485,9 @@ function renderProfile(p){
  $('profileDepartment').textContent=p.department||'غير محدد';
  $('profileJob').textContent=p.jobTitle||'غير محدد';
 }
-const displayDays=value=>value==null?'غير محدد':fmt(Number(value),2);
+// Show whole and half days without unnecessary trailing zeros; minute precision stays in the API.
+const compactDays=value=>String(Number(Number(value).toFixed(2)));
+const displayDays=value=>value==null?'غير محدد':compactDays(value);
 const formatAccountPart=value=>value==null?'غير محدد':displayDays(value)+' يوم';
 async function refreshAccountSummary(){
  if(!S||!canReport())return;
@@ -562,7 +564,7 @@ const showOvertimeHistory=()=>{
  if(accountHistoryFilter!=='leave')overtimeRows('otMine',overtimeHistory.filter(x=>x.compensation===kind));
 };
 function overtimeRows(hostId,items){
- makeTable(hostId,['رقم الطلب','التاريخ','الفترة','أيام مكافئة','طبيعة الإضافي','الحالة'],(items||[]).map(r=>[r.id,r.date,showOvertimeClock(r.from)+'–'+showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':''),fmt(Number(r.minutes??Math.round(r.hours*60))/480,2),({AFTER_SHIFT:'بعد الوردية',INDEPENDENT_DAY:'يوم مستقل',UNSPECIFIED:'غير محدد'}[r.workKind]||'غير محدد')+' · '+(overtimeKinds[r.compensation]||r.compensation),leaveStateNames[r.status]||r.status]));
+ makeTable(hostId,['رقم الطلب','التاريخ','الفترة','أيام مكافئة','طبيعة الإضافي','الحالة'],(items||[]).map(r=>[r.id,r.date,showOvertimeClock(r.from)+'–'+showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':''),compactDays(Number(r.minutes??Math.round(r.hours*60))/480),({AFTER_SHIFT:'بعد الوردية',INDEPENDENT_DAY:'يوم مستقل',UNSPECIFIED:'غير محدد'}[r.workKind]||'غير محدد')+' · '+(overtimeKinds[r.compensation]||r.compensation),leaveStateNames[r.status]||r.status]));
 }
 async function refreshOvertime(){
  if(!S||!canReport())return;
@@ -647,7 +649,7 @@ async function loadOvertimeApprovals(){
    const type=r.compensation==='SUBSTITUTE'?'إضافي مقابل بدل':'إضافي بمقابل مادي';
    const workKind=({AFTER_SHIFT:'بعد الوردية',INDEPENDENT_DAY:'يوم مستقل',UNSPECIFIED:'غير محدد'})[r.workKind]||'غير محدد';
    const duration=Number(r.minutes??Math.round(Number(r.hours)*60));
-   const days=fmt(duration/480,2)+' يوم مكافئ';
+   const days=compactDays(duration/480)+' يوم مكافئ';
    const hours=fmt(duration/60,2)+' ساعة';
    const endText=showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':'');
    const card=approvalCardBase(r,type,'overtime');
