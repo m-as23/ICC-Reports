@@ -205,3 +205,47 @@ body.auth-screen #change{background:linear-gradient(135deg,#122d43,#091c31)!impo
 @media(max-width:380px){body.auth-screen .auth-stage{width:calc(100% - 16px)}body.auth-screen .auth-showcase{padding:15px 17px}body.auth-screen main#login.auth-card{padding:22px 17px!important}}
 @media(prefers-reduced-motion:reduce){body.auth-screen #login *{transition:none!important}}
 
+
+/* Unified My Account / leave & overtime UI — QA feature */
+#profile .account-identity{margin:14px 0 24px}
+#profile .account-section-heading{margin:14px 0 14px}
+#profile .account-section-heading h3{margin:0 0 4px;font-size:19px;color:var(--text,#183249)}
+#profile .account-section-heading p{margin:0;color:var(--muted,#648096);font-size:12px;line-height:1.8}
+#profile .account-balance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0 0 16px}
+#profile .account-balance-card{background:linear-gradient(135deg,#fff,#f5fafc);border:1px solid #cddde5;border-radius:17px;padding:18px;box-shadow:0 5px 20px rgba(16,46,67,.055);min-width:0;display:flex;flex-direction:column;gap:6px}
+#profile .account-balance-icon{width:42px;height:42px;display:grid;place-items:center;background:#eaf4fa;color:#166083;border-radius:12px;font-size:24px}
+#profile .account-balance-label{font-size:14px;font-weight:800;color:#243a51}
+#profile .account-balance-number{display:flex;align-items:baseline;gap:7px;margin:4px 0 10px;flex-wrap:wrap}
+#profile .account-balance-number strong{font-size:clamp(30px,5vw,44px);font-weight:900;line-height:1.1;color:#135b7c;font-variant-numeric:tabular-nums}
+#profile .account-balance-number span{font-size:12px;color:#536d81}
+#profile .account-balance-detail{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e3edf2;padding-top:8px;font-size:12px;color:#536d81}
+#profile .account-balance-detail strong{color:#273e54;white-space:nowrap;font-variant-numeric:tabular-nums}
+#profile .account-financial-card{display:flex;align-items:center;gap:14px;padding:18px;background:linear-gradient(120deg,#f4f9fc,#eaf4f8);border:1px solid #bcd7e2;border-radius:17px;margin-bottom:12px}
+#profile .account-financial-icon{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;border-radius:14px;background:#d5e9f2;color:#175b7e;font-size:31px}
+#profile .account-financial-description{flex:1;min-width:0}
+#profile .account-financial-description h3{margin:0 0 5px;color:#193b55;font-size:16px}
+#profile .account-financial-description p{font-size:12px;line-height:1.8;margin:0;color:#4e6a7c}
+#profile .account-financial-stat{text-align:center;min-width:85px;display:flex;flex-direction:column;gap:2px}
+#profile .account-financial-stat strong{color:#105e80;font-weight:900;font-size:35px;line-height:1.2;font-variant-numeric:tabular-nums}
+#profile .account-financial-stat span{font-size:11px;color:#536d81}
+#profile .account-policy-note{font-size:12px;color:#667d8b;line-height:1.8;margin:4px 0 25px}
+#profile .account-services-title{margin:0 0 13px;font-size:19px}
+#profile .account-service{background:#fff;border:1px solid #d9e4eb;border-radius:13px;margin:10px 0;overflow:hidden;box-shadow:0 3px 13px rgba(16,46,67,.035)}
+#profile .account-service>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:15px 17px;color:#223a50}
+#profile .account-service>summary::-webkit-details-marker{display:none}
+#profile .account-service>summary:focus-visible{outline:3px solid #439abc;outline-offset:-3px}
+#profile .account-service-icon{display:grid;place-items:center;width:37px;height:37px;flex:0 0 37px;border-radius:10px;background:#edf5f9;color:#135e82;font-size:21px}
+#profile .account-service-text{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+#profile .account-service-text strong{font-size:14px}
+#profile .account-service-text small{font-size:11px;color:#647b8e;line-height:1.5}
+#profile .account-chevron{font-size:24px;color:#718fa3;transition:transform .18s}
+#profile details[open]>.account-chevron,#profile details[open]>summary>.account-chevron{transform:rotate(180deg)}
+#profile .account-service-panel{border-top:1px solid #e2edf2;padding:16px}
+#profile .account-service-panel>.section-card{box-shadow:none;margin:0;padding:0;border:0;background:transparent}
+#profile .account-history-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 15px}
+#profile .account-history-tabs button{border:1px solid #d2e3ec;border-radius:10px;padding:11px 6px;background:#f5f9fb;color:#385468;font-weight:700;font-size:12px;cursor:pointer;line-height:1.35}
+#profile .account-history-tabs button[aria-pressed="true"]{background:#155f83;color:#fff;border-color:#155f83}
+#profile .account-history-tabs button:focus-visible{outline:3px solid #61b1d3;outline-offset:2px}
+#profile .account-pending{margin-top:10px;color:#596f80;font-size:12px}
+@media(max-width:610px){#profile .account-balance-grid{gap:9px}#profile .account-balance-card{padding:12px;border-radius:13px}#profile .account-balance-label{font-size:12px}#profile .account-balance-number strong{font-size:31px}#profile .account-balance-detail{font-size:11px}#profile .account-financial-card{gap:9px;padding:12px}#profile .account-financial-icon{flex-basis:40px;width:40px;height:40px;font-size:23px}#profile .account-financial-stat strong{font-size:27px}#profile .account-history-tabs{gap:4px}#profile .account-history-tabs button{font-size:10px;padding:9px 3px}#profile .account-service-panel{padding:10px}}
+@media(prefers-reduced-motion:reduce){#profile .account-chevron{transition:none}}
