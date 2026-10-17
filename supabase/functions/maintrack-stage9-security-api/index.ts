@@ -378,8 +378,8 @@ async function cmmsAudit(u,b){
 }
 
 
-const otSelect="SELECT o.id,o.public_id,o.work_date,o.start_time,o.end_time,o.minutes,o.compensation_kind,o.reason,o.status,o.created_at,o.decided_at,o.decision_reason,u.employee_code,u.name FROM mt_overtime_requests o JOIN mt_users u ON u.id=o.requester_id";
-const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.work_date),from:String(r.start_time).slice(0,5),to:String(r.end_time).slice(0,5),hours:round(Number(r.minutes)/60),compensation:r.compensation_kind,reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decisionReason:r.decision_reason||''});
+const otSelect="SELECT o.id,o.public_id,o.work_date,o.start_time,o.end_time,o.minutes,o.compensation_kind,o.work_kind,o.reason,o.status,o.created_at,o.decided_at,o.decision_reason,u.employee_code,u.name FROM mt_overtime_requests o JOIN mt_users u ON u.id=o.requester_id";
+const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.work_date),from:String(r.start_time).slice(0,5),to:String(r.end_time).slice(0,5),hours:round(Number(r.minutes)/60),compensation:r.compensation_kind,workKind:r.work_kind||'UNSPECIFIED',reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decisionReason:r.decision_reason||''});
 async function overtimeMine(u){permit(u,'leave.request');
  const [history,bank,totals]=await Promise.all([
   pool.query(otSelect+' WHERE o.requester_id=$1 ORDER BY o.created_at DESC LIMIT 150',[u.id]),
@@ -421,10 +421,44 @@ async function overtimeSummary(u,b){
   distinctDays:Number(x.distinct_days),pendingCount:Number(x.pending_count),
   approvedCount:Number(x.approved_count),employees:employees.rows};
 }
+
+async function accountSummary(u){
+ permit(u,'profile.view');
+ const [pr,annualUsed,subUsed,bank,financial]=await Promise.all([
+  profile(u),
+  pool.query('SELECT COALESCE(SUM(-delta),0)::numeric AS n FROM mt_leave_ledger WHERE user_id=$1',[u.id]),
+  pool.query('SELECT COALESCE(SUM(-delta_minutes),0)::bigint AS n FROM mt_substitute_time_ledger WHERE user_id=$1 AND delta_minutes<0',[u.id]),
+  readSubstituteMinutes(pool,u.id),
+  pool.query("SELECT COALESCE(SUM(minutes),0)::bigint AS n FROM mt_overtime_requests WHERE requester_id=$1 AND status='APPROVED' AND compensation_kind='FINANCIAL'",[u.id])
+ ]);
+ const available=pr.profile.leaveBalance==null?null:Number(pr.profile.leaveBalance),used=Number(annualUsed.rows[0].n);
+ const subAvailable=Number(bank)/480,subConsumed=Number(subUsed.rows[0].n)/480;
+ return {profile:pr.profile,
+  annualAvailableDays:available==null?null:round(available),annualUsedDays:round(used),
+  annualTotalDays:available==null?null:round(available+used),
+  substituteAvailableDays:round(subAvailable),substituteUsedDays:round(subConsumed),
+  substituteEarnedDays:round(subAvailable+subConsumed),
+  financialApprovedDays:round(Number(financial.rows[0].n)/480)};
+}
+function cairoLocalMinute(instant=new Date()){
+ const fields=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(instant).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ return fields.year+'-'+fields.month+'-'+fields.day+'T'+fields.hour+':'+fields.minute;
+}
+function overtimeEndLocal(workDate,from,to){
+ const rollover=mins(to)<=mins(from);
+ const finalDate=rollover?new Date(new Date(workDate+'T00:00:00Z').getTime()+86400000).toISOString().slice(0,10):workDate;
+ return finalDate+'T'+to.slice(0,5);
+}
+function validateCompletedOvertime(workDate,from,to){
+ if(overtimeEndLocal(workDate,from,to)>cairoLocalMinute())die('FUTURE_OVERTIME_NOT_ALLOWED',409);
+}
 async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day(b.workDate),from=clock(b.from),to=clock(b.to),minutes=(mins(to)-mins(from)+1440)%1440;
  if(minutes<1||minutes>1439)die('INVALID_OVERTIME_DURATION');
  const compensation=text(b.compensation,1,20,'INVALID_OVERTIME_KIND');if(!['FINANCIAL','SUBSTITUTE'].includes(compensation))die('INVALID_OVERTIME_KIND');
- const f={cid:uuid(b.cid),workDate,from,to,minutes,compensation,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
+ validateCompletedOvertime(workDate,from,to);
+ const workKind=String(b.workKind||'UNSPECIFIED'); // compatibility with older pilot clients
+ if(!['AFTER_SHIFT','INDEPENDENT_DAY','UNSPECIFIED'].includes(workKind))die('INVALID_OVERTIME_WORK_KIND');
+ const f={cid:uuid(b.cid),workDate,from,to,minutes,compensation,workKind,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
  const digest=sha(JSON.stringify({user:u.id,...f}));
  return transaction(async c=>{
   const old=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);
@@ -433,7 +467,7 @@ async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day
   const overlap=await first(c,"SELECT public_id FROM mt_overtime_requests WHERE requester_id=$1 AND status IN ('PENDING','APPROVED') AND tsrange(work_date+start_time,work_date+end_time+CASE WHEN end_time<=start_time THEN interval '1 day' ELSE interval '0 day' END,'[)') && tsrange($2::date+$3::time,$2::date+$4::time+CASE WHEN $4::time<=$3::time THEN interval '1 day' ELSE interval '0 day' END,'[)') LIMIT 1",[u.id,workDate,from,to]);
   if(overlap)die('OVERLAPPING_OVERTIME_REQUEST',409);
   const publicId='OT-'+randomUUID().slice(0,8).toUpperCase();
-  const ins=await first(c,'INSERT INTO mt_overtime_requests(public_id,requester_id,client_request_id,request_digest,work_date,start_time,end_time,minutes,compensation_kind,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,status',[publicId,u.id,f.cid,digest,workDate,from,to,minutes,compensation,f.reason]);
+  const ins=await first(c,'INSERT INTO mt_overtime_requests(public_id,requester_id,client_request_id,request_digest,work_date,start_time,end_time,minutes,compensation_kind,reason,work_kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,status',[publicId,u.id,f.cid,digest,workDate,from,to,minutes,compensation,f.reason,workKind]);
   if(!ins){const existing=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);if(!existing||existing.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:existing.public_id,status:existing.status,duplicate:true};}
   await c.query("INSERT INTO mt_audit(actor_id,action,entity,entity_id) VALUES($1,'overtime.requested','overtime',$2)",[u.id,publicId]);return {ok:true,id:publicId,status:'PENDING'};
  });
@@ -445,6 +479,7 @@ async function overtimeDecision(u,b){permit(u,'leave.approve');
   const r=await first(c,'SELECT * FROM mt_overtime_requests WHERE public_id=$1 FOR UPDATE',[id]);
   if(!r)die('OVERTIME_NOT_FOUND',404);
   if(r.status!=='PENDING'){if(r.status===decision)return {ok:true,id,status:decision,duplicate:true};die('OVERTIME_ALREADY_DECIDED',409);}
+  if(decision==='APPROVED')validateCompletedOvertime(String(r.work_date instanceof Date?r.work_date.toISOString().slice(0,10):r.work_date),String(r.start_time),String(r.end_time));
   if(decision==='APPROVED'&&r.compensation_kind==='SUBSTITUTE'){
    await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[r.requester_id]);
    await c.query('INSERT INTO mt_substitute_time_ledger(user_id,delta_minutes,overtime_id,approved_by) VALUES($1,$2,$3,$4)',[r.requester_id,r.minutes,r.id,u.id]);}
@@ -472,6 +507,7 @@ async function dispatch(u,b){const a=b.action;switch(a){
    case 'overtimeInbox':{permit(u,'leave.approve');const f=overtimeOwnerFilters(b);const r=await pool.query(otSelect+f.where+" ORDER BY (o.status='PENDING') DESC,o.created_at DESC LIMIT 150",f.params);return {items:r.rows.map(otView)};}
  case 'notifications':return notifications(u);
  case 'profile':return profile(u);
+  case 'accountSummary':return accountSummary(u);
  case 'updateProfile':{permit(u,'profile.update');const n=text(String(b.preferredName??''),0,50,'INVALID_NAME'),p=text(String(b.phone??''),0,32,'INVALID_PHONE');if(/[<>]/.test(n)||!/^[+0-9٠-٩\s()-]*$/.test(p))die('INVALID_PROFILE');await pool.query('UPDATE mt_users SET preferred_name=$1,phone=$2,updated_at=now() WHERE id=$3',[n,p,u.id]);return profile(u);}
  case 'leaveMine':{permit(u,'leave.request');const r=await pool.query(leaveSelect+' WHERE l.requester_id=$1 ORDER BY l.created_at DESC LIMIT 50',[u.id]);return {items:r.rows.map(leaveView),...(await profile(u))};}
  case 'leaveRequest':return leaveRequest(u,b);
