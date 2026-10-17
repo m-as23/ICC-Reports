@@ -79,6 +79,11 @@ async function dashboard(u,b){permit(u,'dashboard.view');const y=Number(b.year),
  items.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id,undefined,{numeric:true}));
  return {year:y,month:m,count:items.length,totalDowntime:round(downtime),mttr:done?round(downtime/done):null,machineCount:tab(machines).filter(x=>x.complete>0).length,topMachines:tab(machines).filter(x=>x.complete>0).slice(0,5).map(x=>({machine:x.name,hours:x.hours})),sectionHours:tab(sections).filter(x=>x.complete>0).map(x=>({section:x.name,hours:x.hours})),avgResponse:responseN?round(responseTotal/responseN):null,totalElapsed:round(elapsedTotal),machineTable:tab(machines),sectionTable:tab(sections),categoryTable:tab(categories),daily:tab(daily).sort((a,b)=>a.name.localeCompare(b.name)),dataQuality:{complete:done,incomplete:items.length-done},recent:items.slice(0,20)};}
 async function profile(u){permit(u,'profile.view');const r=await row('SELECT u.employee_code AS code,u.name,u.role::text AS role,u.department,u.job_title AS "jobTitle",u.preferred_name AS "preferredName",u.phone,b.days::float AS "leaveBalance" FROM mt_users u LEFT JOIN mt_leave_balances b ON b.user_id=u.id WHERE u.id=$1',[u.id]);return {profile:{...r,leaveBalance:r.leaveBalance??null}};}
+// Both journals are additive and append-only: earned/used overtime and owner adjustments.
+async function readSubstituteMinutes(c,userId){
+ const b=await first(c,'SELECT (SELECT COALESCE(SUM(delta_minutes),0) FROM mt_substitute_time_ledger WHERE user_id=$1)+(SELECT COALESCE(SUM(delta_minutes),0) FROM mt_substitute_time_adjustments WHERE user_id=$1) AS minutes',[userId]);
+ return Number(b?.minutes||0);
+}
 function leaveView(r){return {id:r.public_id,code:r.employee_code,name:r.name,type:r.type,start:iso(r.start_date),end:iso(r.end_date),days:Number(r.days),durationKind:r.duration_kind||'FULL_DAY',reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decidedBy:r.decider_code??'',decisionReason:r.decision_reason??''};}
 const leaveSelect="SELECT l.public_id,l.type,l.start_date,l.end_date,l.days,l.duration_kind,l.reason,l.status,l.created_at,l.decided_at,l.decision_reason,u.employee_code,u.name,d.employee_code AS decider_code FROM mt_leave_requests l JOIN mt_users u ON u.id=l.requester_id LEFT JOIN mt_users d ON d.id=l.decided_by";
 async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.start),end=day(b.end);
@@ -100,7 +105,7 @@ async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.sta
   const overlap=await first(c,"SELECT public_id FROM mt_leave_requests WHERE requester_id=$1 AND status IN ('PENDING','APPROVED') AND start_date<=$3::date AND end_date>=$2::date LIMIT 1",[u.id,start,end]);
   if(overlap)die('OVERLAPPING_LEAVE_REQUEST',409);
   if(type==='compensatory'){
-   const bank=await first(c,'SELECT COALESCE(SUM(delta_minutes),0)::integer AS minutes FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id]);
+   const bank={minutes:await readSubstituteMinutes(c,u.id)};
    if(Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
   }else{
    const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1',[u.id]);
@@ -121,7 +126,7 @@ async function decision(u,b){permit(u,'leave.approve');const publicId=text(b.id,
   if(req.duration_kind!=='HALF_DAY'||Number(req.days)!==0.5)die('LEAVE_POLICY_PENDING');
   // Serialize consumption against other approved substitute-time operations.
   await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[req.requester_id]);
-  const bank=await first(c,'SELECT COALESCE(SUM(delta_minutes),0)::integer AS minutes FROM mt_substitute_time_ledger WHERE user_id=$1',[req.requester_id]);
+  const bank={minutes:await readSubstituteMinutes(c,req.requester_id)};
   before=Number(bank.minutes)/60;
   after=d==='APPROVED'?before-4:before;
   if(d==='APPROVED'&&Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
@@ -373,11 +378,11 @@ const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.wor
 async function overtimeMine(u){permit(u,'leave.request');
  const [history,bank,totals]=await Promise.all([
   pool.query(otSelect+' WHERE o.requester_id=$1 ORDER BY o.created_at DESC LIMIT 150',[u.id]),
-  pool.query('SELECT COALESCE(SUM(delta_minutes),0)::integer AS n FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id]),
+  readSubstituteMinutes(pool,u.id),
   pool.query("SELECT COALESCE(SUM(minutes) FILTER (WHERE status='APPROVED' AND compensation_kind='FINANCIAL'),0)::integer AS financial,COALESCE(SUM(minutes) FILTER (WHERE status='APPROVED' AND compensation_kind='SUBSTITUTE'),0)::integer AS substitute FROM mt_overtime_requests WHERE requester_id=$1",[u.id])
  ]);
  return {items:history.rows.map(otView),hasMore:history.rows.length===150,
-  substituteAvailableHours:round(Number(bank.rows[0].n)/60),
+  substituteAvailableHours:round(Number(bank)/60),
   financialApprovedHours:round(Number(totals.rows[0].financial)/60),
   substituteApprovedHours:round(Number(totals.rows[0].substitute)/60)};
 }
@@ -446,8 +451,49 @@ async function dispatch(u,b){const a=b.action;switch(a){
  }
  case 'adminCatalog':case 'adminCatalogSave':return catalogAdmin(u,b);
  case 'adminCreateEmployee':case 'adminResetEmployeePassword':return employeeAdmin(u,b);
- case 'adminUsers':{permit(u,'users.manage');const r=await pool.query('SELECT u.employee_code AS code,u.name,u.role::text AS role,u.active,u.department,u.job_title AS "jobTitle",b.days::float AS "leaveBalance" FROM mt_users u LEFT JOIN mt_leave_balances b ON b.user_id=u.id ORDER BY u.employee_code LIMIT 1000');return {items:r.rows.map(x=>({...x,leaveBalance:x.leaveBalance??null}))};}
- case 'adminSaveUser':{permit(u,'users.manage');const code=text(b.code,1,32,'INVALID_CODE'),role=String(b.role);if(!['technician','engineer'].includes(role)||typeof b.active!=='boolean')die('INVALID_ROLE_OR_STATUS');const dept=text(String(b.department??''),0,80,'INVALID_DEPARTMENT'),job=text(String(b.jobTitle??''),0,80,'INVALID_JOB');const bal=b.leaveBalance===''||b.leaveBalance==null?null:Number(b.leaveBalance);if(bal!==null&&(!Number.isFinite(bal)||bal<0||bal>1000))die('INVALID_LEAVE_BALANCE');return transaction(async c=>{const t=await first(c,'SELECT * FROM mt_users WHERE employee_code=$1 FOR UPDATE',[code]);if(!t)die('NO_USER',404);if(t.id===u.id)die('SELF_ADMIN_CHANGE_BLOCKED');if(t.role==='owner')die('OWNER_ROLE_CANNOT_BE_EDITED_HERE');await c.query('UPDATE mt_users SET role=$1,active=$2,department=$3,job_title=$4,token_version=token_version+CASE WHEN role<>$1 OR active<>$2 THEN 1 ELSE 0 END,updated_at=now() WHERE id=$5',[role,b.active,dept,job,t.id]);if(bal!==null)await c.query('INSERT INTO mt_leave_balances(user_id,days) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET days=EXCLUDED.days',[t.id,bal]);else await c.query('DELETE FROM mt_leave_balances WHERE user_id=$1',[t.id]);return {ok:true};});}
+ case 'adminUsers':{
+  permit(u,'users.manage');
+  const q=`SELECT u.employee_code AS code,u.name,u.role::text AS role,u.active,u.department,u.job_title AS "jobTitle",b.days::float AS "leaveBalance",
+   (SELECT COALESCE(SUM(delta_minutes),0) FROM mt_substitute_time_ledger WHERE user_id=u.id)
+    +(SELECT COALESCE(SUM(delta_minutes),0) FROM mt_substitute_time_adjustments WHERE user_id=u.id) AS "substituteMinutes"
+   FROM mt_users u LEFT JOIN mt_leave_balances b ON b.user_id=u.id ORDER BY u.employee_code LIMIT 1000`;
+  const r=await pool.query(q);
+  return {items:r.rows.map(x=>({code:x.code,name:x.name,role:x.role,active:x.active,department:x.department,jobTitle:x.jobTitle,leaveBalance:x.leaveBalance??null,substituteAvailableHours:round(Number(x.substituteMinutes||0)/60)}))};
+ }
+ case 'adminSaveUser':{
+  permit(u,'users.manage');
+  const code=text(b.code,1,32,'INVALID_CODE'),role=String(b.role);
+  if(!['technician','engineer'].includes(role)||typeof b.active!=='boolean')die('INVALID_ROLE_OR_STATUS');
+  const dept=text(String(b.department??''),0,80,'INVALID_DEPARTMENT'),job=text(String(b.jobTitle??''),0,80,'INVALID_JOB');
+  const bal=b.leaveBalance===''||b.leaveBalance==null?null:Number(b.leaveBalance);
+  if(bal!==null&&(!Number.isFinite(bal)||bal<0||bal>1000||Math.abs(bal*2-Math.round(bal*2))>0.00001))die('INVALID_LEAVE_BALANCE');
+  const hasSub=Object.prototype.hasOwnProperty.call(b,'substituteHours');
+  const subHours=hasSub?Number(b.substituteHours):null;
+  const subMinutes=hasSub?Math.round(subHours*60):null;
+  if(hasSub&&(b.substituteHours===''||!Number.isFinite(subHours)||subHours<0||subHours>1000||!Number.isSafeInteger(subMinutes)||Math.abs(subMinutes-subHours*60)>0.00001))die('INVALID_SUBSTITUTE_HOURS');
+  const hasReason=Object.prototype.hasOwnProperty.call(b,'adjustmentReason');
+  const reason=hasReason?text(String(b.adjustmentReason??''),0,250,'INVALID_ADJUSTMENT_REASON'):'Legacy client: employee balance adjustment';
+  return transaction(async c=>{
+   const t=await first(c,'SELECT * FROM mt_users WHERE employee_code=$1 FOR UPDATE',[code]);
+   if(!t)die('NO_USER',404);if(t.id===u.id)die('SELF_ADMIN_CHANGE_BLOCKED');if(t.role==='owner')die('OWNER_ROLE_CANNOT_BE_EDITED_HERE');
+   const beforeAnnualRow=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1 FOR UPDATE',[t.id]);
+   const annualBefore=beforeAnnualRow?Number(beforeAnnualRow.days):null;
+   const annualChange=annualBefore!==bal&&(bal??0)!==(annualBefore??0);
+   const beforeSub=hasSub?await readSubstituteMinutes(c,t.id):null;
+   const substituteChange=hasSub&&beforeSub!==subMinutes;
+   if((annualChange||substituteChange)&&reason.length<3)die('BALANCE_ADJUSTMENT_REASON_REQUIRED');
+   await c.query('UPDATE mt_users SET role=$1,active=$2,department=$3,job_title=$4,token_version=token_version+CASE WHEN role<>$1 OR active<>$2 THEN 1 ELSE 0 END,updated_at=now() WHERE id=$5',[role,b.active,dept,job,t.id]);
+   if(bal!==null)await c.query('INSERT INTO mt_leave_balances(user_id,days) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET days=EXCLUDED.days',[t.id,bal]);
+   else await c.query('DELETE FROM mt_leave_balances WHERE user_id=$1',[t.id]);
+   if(annualChange)await c.query('INSERT INTO mt_leave_balance_adjustments(user_id,delta_days,balance_before,balance_after,reason,approved_by) VALUES($1,$2,$3,$4,$5,$6)',
+    [t.id,Number((bal??0)-(annualBefore??0)).toFixed(1),annualBefore,bal,reason,u.id]);
+   if(substituteChange)await c.query('INSERT INTO mt_substitute_time_adjustments(user_id,delta_minutes,reason,approved_by) VALUES($1,$2,$3,$4)',
+    [t.id,subMinutes-beforeSub,reason,u.id]);
+   await c.query('INSERT INTO mt_audit(actor_id,action,entity,entity_id,details) VALUES($1,$2,$3,$4,$5::jsonb)',
+    [u.id,'user.admin_updated','user',code,JSON.stringify({annualBefore,annualAfter:bal,substituteMinutesBefore:beforeSub,substituteMinutesAfter:subMinutes,reason:(annualChange||substituteChange)?reason:undefined,role,active:b.active})]);
+   return {ok:true,annualBalance:bal,substituteAvailableHours:subMinutes===null?undefined:round(subMinutes/60)};
+  });
+ }
  case 'change':{const pw=text(b.pw,8,256,'INVALID_PASSWORD');return transaction(async c=>{const t=await first(c,'SELECT * FROM mt_users WHERE id=$1 FOR UPDATE',[u.id]);if(!t)die('AUTH',401);if(!t.must_change){const x=await first(c,'SELECT ($1=extensions.crypt($1,$2)) AS valid',[String(b.old??''),t.password_hash]);if(!x.valid)die('BAD_PW',401);}const r=await first(c,"UPDATE mt_users SET password_hash=extensions.crypt($1,extensions.gen_salt('bf',11)),token_version=token_version+1,must_change=false,updated_at=now() WHERE id=$2 RETURNING id,employee_code,name,role::text AS role,token_version,must_change",[pw,u.id]);await c.query('DELETE FROM mt_sessions WHERE user_id=$1',[u.id]);return issue(r,c);});}
  default:die('UNKNOWN_ACTION',404);
 }}
