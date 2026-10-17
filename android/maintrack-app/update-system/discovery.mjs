@@ -6,6 +6,7 @@ export function createDiscovery({check, document = globalThis.document, events =
   cancel = clearTimeout, interval = DISCOVERY_INTERVAL}) {
   let last = -Infinity, running = null, stopped = false, timer;
   const active = () => !stopped && document.visibilityState === 'visible' && navigator.onLine !== false;
+  // Re-arm using remaining time; foreground focus storms must not multiply requests.
   function scheduleNext(delay) {
     if (timer !== undefined) cancel(timer);
     timer = undefined;
