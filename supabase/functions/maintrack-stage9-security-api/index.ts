@@ -364,6 +364,44 @@ async function cmmsAudit(u,b){
  return {items};
 }
 
+
+const otSelect="SELECT o.id,o.public_id,o.work_date,o.start_time,o.end_time,o.minutes,o.compensation_kind,o.reason,o.status,o.created_at,o.decided_at,o.decision_reason,u.employee_code,u.name FROM mt_overtime_requests o JOIN mt_users u ON u.id=o.requester_id";
+const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.work_date),from:String(r.start_time).slice(0,5),to:String(r.end_time).slice(0,5),hours:round(Number(r.minutes)/60),compensation:r.compensation_kind,reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decisionReason:r.decision_reason||''});
+async function overtimeMine(u){permit(u,'leave.request');
+ const [h,b]=await Promise.all([pool.query(otSelect+' WHERE o.requester_id=$1 ORDER BY o.created_at DESC LIMIT 150',[u.id]),pool.query('SELECT COALESCE(SUM(delta_minutes),0)::integer AS n FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id])]);
+ const items=h.rows.map(otView);return {items,substituteAvailableHours:round(Number(b.rows[0].n)/60),financialApprovedHours:round(items.filter(x=>x.status==='APPROVED'&&x.compensation==='FINANCIAL').reduce((a,x)=>a+x.hours,0)),substituteApprovedHours:round(items.filter(x=>x.status==='APPROVED'&&x.compensation==='SUBSTITUTE').reduce((a,x)=>a+x.hours,0))};
+}
+async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day(b.workDate),from=clock(b.from),to=clock(b.to),minutes=(mins(to)-mins(from)+1440)%1440;
+ if(minutes<1||minutes>1439)die('INVALID_OVERTIME_DURATION');
+ const compensation=text(b.compensation,1,20,'INVALID_OVERTIME_KIND');if(!['FINANCIAL','SUBSTITUTE'].includes(compensation))die('INVALID_OVERTIME_KIND');
+ const f={cid:uuid(b.cid),workDate,from,to,minutes,compensation,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
+ const digest=sha(JSON.stringify({user:u.id,...f}));
+ return transaction(async c=>{
+  const old=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);
+  if(old){if(old.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:old.public_id,status:old.status,duplicate:true};}
+  const publicId='OT-'+randomUUID().slice(0,8).toUpperCase();
+  const ins=await first(c,'INSERT INTO mt_overtime_requests(public_id,requester_id,client_request_id,request_digest,work_date,start_time,end_time,minutes,compensation_kind,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,status',[publicId,u.id,f.cid,digest,workDate,from,to,minutes,compensation,f.reason]);
+  if(!ins){const existing=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);if(!existing||existing.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:existing.public_id,status:existing.status,duplicate:true};}
+  await c.query("INSERT INTO mt_audit(actor_id,action,entity,entity_id) VALUES($1,'overtime.requested','overtime',$2)",[u.id,publicId]);return {ok:true,id:publicId,status:'PENDING'};
+ });
+}
+async function overtimeDecision(u,b){permit(u,'leave.approve');
+ const id=text(b.id,10,80,'INVALID_OVERTIME_ID'),decision=String(b.decision),reason=text(String(b.reason??''),0,500,'INVALID_REASON');
+ if(!['APPROVED','REJECTED'].includes(decision))die('INVALID_LEAVE_DECISION');
+ return transaction(async c=>{
+  const r=await first(c,'SELECT * FROM mt_overtime_requests WHERE public_id=$1 FOR UPDATE',[id]);
+  if(!r)die('OVERTIME_NOT_FOUND',404);
+  if(r.status!=='PENDING'){if(r.status===decision)return {ok:true,id,status:decision,duplicate:true};die('OVERTIME_ALREADY_DECIDED',409);}
+  if(decision==='APPROVED'&&r.compensation_kind==='SUBSTITUTE'){
+   await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[r.requester_id]);
+   await c.query('INSERT INTO mt_substitute_time_ledger(user_id,delta_minutes,overtime_id,approved_by) VALUES($1,$2,$3,$4)',[r.requester_id,r.minutes,r.id,u.id]);}
+  await c.query('UPDATE mt_overtime_requests SET status=$1,decided_by=$2,decided_at=now(),decision_reason=$3 WHERE id=$4',[decision,u.id,reason,r.id]);
+  await c.query("INSERT INTO mt_notifications(recipient_id,source_id,type,title,description,target) VALUES($1,$2,'overtimeDecision',$3,$4,'leave') ON CONFLICT DO NOTHING",[r.requester_id,id,decision==='APPROVED'?'تم اعتماد الوقت الإضافي':'تم رفض الوقت الإضافي',id+(reason?' — '+reason:'')]);
+  await c.query('INSERT INTO mt_audit(actor_id,action,entity,entity_id,details) VALUES($1,$2,$3,$4,$5::jsonb)',[u.id,'overtime.'+decision.toLowerCase(),'overtime',id,JSON.stringify({minutes:r.minutes,compensation:r.compensation_kind})]);
+  return {ok:true,id,status:decision};
+ });
+}
+
 async function dispatch(u,b){const a=b.action;switch(a){
  case 'session':permit(u,'profile.view');return {ok:true,role:u.role,name:u.name,must:false};
  case 'init':permit(u,'profile.view');return {...await getInit(),role:u.role,must:false};
@@ -374,6 +412,10 @@ async function dispatch(u,b){const a=b.action;switch(a){
  case 'cmmsAudit':return cmmsAudit(u,b);
  case 'cmms':return cmms(u,b);
  case 'dashboard':return dashboard(u,b);
+  case 'overtimeMine':return overtimeMine(u);
+  case 'overtimeRequest':return overtimeRequest(u,b);
+  case 'overtimeDecision':return overtimeDecision(u,b);
+  case 'overtimeInbox':{permit(u,'leave.approve');const r=await pool.query(otSelect+" ORDER BY (o.status='PENDING') DESC,o.created_at DESC LIMIT 150");return {items:r.rows.map(otView)};}
  case 'notifications':return notifications(u);
  case 'profile':return profile(u);
  case 'updateProfile':{permit(u,'profile.update');const n=text(String(b.preferredName??''),0,50,'INVALID_NAME'),p=text(String(b.phone??''),0,32,'INVALID_PHONE');if(/[<>]/.test(n)||!/^[+0-9٠-٩\s()-]*$/.test(p))die('INVALID_PROFILE');await pool.query('UPDATE mt_users SET preferred_name=$1,phone=$2,updated_at=now() WHERE id=$3',[n,p,u.id]);return profile(u);}
