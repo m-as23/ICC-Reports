@@ -45,7 +45,7 @@ export function mountPilotPanel({document = globalThis.document, autoDiscover = 
     close.disabled = ['activating','recovery-required'].includes(state.phase);
   };
   const session = createPilotSession({...options, onChange:render});
-  const discovery = autoDiscover ? createDiscovery({check:() => session.check(), document, events, navigator}) : null;
+  const discovery = autoDiscover ? createDiscovery({check:({manual = false} = {}) => session.check({manual}), document, events, navigator}) : null;
   check.onclick = () => {manualCheck = true; return discovery ? discovery.inspect({manual:true}) : session.check();};
   if (autoDiscover) {
     const settings = document.getElementById('profile');
