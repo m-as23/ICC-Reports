@@ -368,8 +368,15 @@ async function cmmsAudit(u,b){
 const otSelect="SELECT o.id,o.public_id,o.work_date,o.start_time,o.end_time,o.minutes,o.compensation_kind,o.reason,o.status,o.created_at,o.decided_at,o.decision_reason,u.employee_code,u.name FROM mt_overtime_requests o JOIN mt_users u ON u.id=o.requester_id";
 const otView=r=>({id:r.public_id,code:r.employee_code,name:r.name,date:iso(r.work_date),from:String(r.start_time).slice(0,5),to:String(r.end_time).slice(0,5),hours:round(Number(r.minutes)/60),compensation:r.compensation_kind,reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decisionReason:r.decision_reason||''});
 async function overtimeMine(u){permit(u,'leave.request');
- const [h,b]=await Promise.all([pool.query(otSelect+' WHERE o.requester_id=$1 ORDER BY o.created_at DESC LIMIT 150',[u.id]),pool.query('SELECT COALESCE(SUM(delta_minutes),0)::integer AS n FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id])]);
- const items=h.rows.map(otView);return {items,substituteAvailableHours:round(Number(b.rows[0].n)/60),financialApprovedHours:round(items.filter(x=>x.status==='APPROVED'&&x.compensation==='FINANCIAL').reduce((a,x)=>a+x.hours,0)),substituteApprovedHours:round(items.filter(x=>x.status==='APPROVED'&&x.compensation==='SUBSTITUTE').reduce((a,x)=>a+x.hours,0))};
+ const [history,bank,totals]=await Promise.all([
+  pool.query(otSelect+' WHERE o.requester_id=$1 ORDER BY o.created_at DESC LIMIT 150',[u.id]),
+  pool.query('SELECT COALESCE(SUM(delta_minutes),0)::integer AS n FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id]),
+  pool.query("SELECT COALESCE(SUM(minutes) FILTER (WHERE status='APPROVED' AND compensation_kind='FINANCIAL'),0)::integer AS financial,COALESCE(SUM(minutes) FILTER (WHERE status='APPROVED' AND compensation_kind='SUBSTITUTE'),0)::integer AS substitute FROM mt_overtime_requests WHERE requester_id=$1",[u.id])
+ ]);
+ return {items:history.rows.map(otView),hasMore:history.rows.length===150,
+  substituteAvailableHours:round(Number(bank.rows[0].n)/60),
+  financialApprovedHours:round(Number(totals.rows[0].financial)/60),
+  substituteApprovedHours:round(Number(totals.rows[0].substitute)/60)};
 }
 async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day(b.workDate),from=clock(b.from),to=clock(b.to),minutes=(mins(to)-mins(from)+1440)%1440;
  if(minutes<1||minutes>1439)die('INVALID_OVERTIME_DURATION');
