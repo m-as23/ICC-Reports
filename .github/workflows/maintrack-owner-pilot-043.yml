@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: \${{ github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +38,7 @@ jobs:
           name: MainTrack-Unified-Four-UNSIGNED-Review
           repository: m-as23/ICC-Reports
           run-id: 39067507471
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           path: android/maintrack-app/pilot-043
       - name: Read signed attestation for exact same candidate
         uses: actions/download-artifact@v4
@@ -46,7 +46,7 @@ jobs:
           name: MainTrack-Owner-Key-REVIEW-ONLY-Attestation
           repository: m-as23/ICC-Reports
           run-id: 39067610642
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           path: android/maintrack-app/pilot-043
       - name: Build byte-checked pilot package with QA API only
         run: |
@@ -83,7 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: \${{ github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -94,22 +94,22 @@ jobs:
           name: MainTrack-Unified-Four-UNSIGNED-Review
           repository: m-as23/ICC-Reports
           run-id: 39067507471
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           path: android/maintrack-app/pilot-043
       - uses: actions/download-artifact@v4
         with:
           name: MainTrack-Owner-Key-REVIEW-ONLY-Attestation
           repository: m-as23/ICC-Reports
           run-id: 39067610642
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           path: android/maintrack-app/pilot-043
       - name: Reconstruct verified candidate with one API rewrite
         run: python3 scripts/pilot-043-bundle.py make
       - name: Publish signed 0.4.3 to owner LAB channel only
         env:
-          GH_TOKEN: \${{ github.token }}
-          MT_OTA_PRIVATE_KEY_PEM: \${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
-          MT_OTA_PRIVATE_KEY_PASSWORD: \${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+          MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: ${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           node scripts/pilot-043-sign-release.mjs publish
