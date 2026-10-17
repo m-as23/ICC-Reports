@@ -14,8 +14,8 @@ let selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 const getQ = () => {try{return JSON.parse(localStorage.getItem('q')||'[]');}catch(e){return [];}};
 function setQ(q) { localStorage.setItem('q', JSON.stringify(q)); pend(); }
 function pend() { const n = getQ().filter(q=>S&&q.u===S.code).length; $('pend').style.display = n ? 'flex' : 'none'; $('pn').textContent = n; }
-const MAINTRACK_ERROR_MESSAGES=Object.freeze({INVALID_SECTION_MACHINE_COMPONENT:'الجزء المختار غير متاح لهذا القسم أو الماكينة. حدّث القوائم ثم حاول مجددًا.',INVALID_STATUS_OR_CATEGORY:'حالة البلاغ أو تصنيفه لم يعد متاحًا. حدّث القوائم.',IDEMPOTENCY_CONFLICT:'الطلب سبق إرساله ببيانات مختلفة. راجع البيانات قبل المحاولة.',INSUFFICIENT_LEAVE_BALANCE:'الرصيد المتاح غير كافٍ لهذا الطلب.',LEAVE_BALANCE_NOT_SET:'لم يتم تحديد رصيد الإجازات لهذا الموظف بعد.',AUTH_UNCONFIRMED:'تعذر التحقق من الجلسة حاليًا، حاول مجددًا.',HALF_DAY_NOT_ALLOWED:'نصف اليوم مسموح للسنوية والبدلات فقط، ولتاريخ واحد.',LEAVE_POLICY_PENDING:'سياسة تحويل البدلات إلى أيام كاملة لم تُعتمد بعد.',INSUFFICIENT_SUBSTITUTE_BALANCE:'رصيد ساعات البدلات المعتمدة لا يكفي لهذا الطلب.',INVALID_OVERTIME_DURATION:'اختر وقت بداية ونهاية مختلفين وصحيحين.',INVALID_OVERTIME_KIND:'اختر نوع التعويض المالي أو البدلات.',OVERTIME_ALREADY_DECIDED:'تم اتخاذ قرار على طلب الوقت الإضافي بالفعل.',OVERTIME_NOT_FOUND:'طلب الوقت الإضافي غير موجود.',OVERLAPPING_LEAVE_REQUEST:'يوجد طلب إجازة سابق متداخل مع هذه الفترة ولم يُرفض.',OVERLAPPING_OVERTIME_REQUEST:'يوجد طلب وقت إضافي سابق متداخل مع نفس الساعات.',INVALID_LEAVE_DURATION:'مدة الإجازة غير صحيحة.',INTERNAL_ERROR:'حدث خطأ في السيرفر. حاول لاحقًا أو تواصل مع المسؤول.'});
-function localizedError(t){return String(t||'').replace(/\b(?:INVALID_[A-Z_]+|INTERNAL_ERROR|IDEMPOTENCY_CONFLICT|INSUFFICIENT_LEAVE_BALANCE|LEAVE_BALANCE_NOT_SET|AUTH_UNCONFIRMED|HALF_DAY_NOT_ALLOWED|LEAVE_POLICY_PENDING|INSUFFICIENT_SUBSTITUTE_BALANCE|OVERTIME_ALREADY_DECIDED|OVERTIME_NOT_FOUND|OVERLAPPING_LEAVE_REQUEST|OVERLAPPING_OVERTIME_REQUEST)\b/g,code=>MAINTRACK_ERROR_MESSAGES[code]||'تعذّر إكمال العملية، راجع البيانات وحاول مجددًا.');}
+const MAINTRACK_ERROR_MESSAGES=Object.freeze({INVALID_SECTION_MACHINE_COMPONENT:'الجزء المختار غير متاح لهذا القسم أو الماكينة. حدّث القوائم ثم حاول مجددًا.',INVALID_STATUS_OR_CATEGORY:'حالة البلاغ أو تصنيفه لم يعد متاحًا. حدّث القوائم.',IDEMPOTENCY_CONFLICT:'الطلب سبق إرساله ببيانات مختلفة. راجع البيانات قبل المحاولة.',INSUFFICIENT_LEAVE_BALANCE:'الرصيد المتاح غير كافٍ لهذا الطلب.',LEAVE_BALANCE_NOT_SET:'لم يتم تحديد رصيد الإجازات لهذا الموظف بعد.',AUTH_UNCONFIRMED:'تعذر التحقق من الجلسة حاليًا، حاول مجددًا.',HALF_DAY_NOT_ALLOWED:'نصف اليوم مسموح للسنوية والبدلات فقط، ولتاريخ واحد.',LEAVE_POLICY_PENDING:'سياسة تحويل البدلات إلى أيام كاملة لم تُعتمد بعد.',INSUFFICIENT_SUBSTITUTE_BALANCE:'رصيد ساعات البدلات المعتمدة لا يكفي لهذا الطلب.',BALANCE_ADJUSTMENT_REASON_REQUIRED:'اذكر سبب تعديل رصيد الموظف (3 أحرف على الأقل).',INVALID_SUBSTITUTE_HOURS:'ادخل رصيد بدلات صحيح بالساعات.',INVALID_OVERTIME_DURATION:'اختر وقت بداية ونهاية مختلفين وصحيحين.',INVALID_OVERTIME_KIND:'اختر نوع التعويض المالي أو البدلات.',OVERTIME_ALREADY_DECIDED:'تم اتخاذ قرار على طلب الوقت الإضافي بالفعل.',OVERTIME_NOT_FOUND:'طلب الوقت الإضافي غير موجود.',OVERLAPPING_LEAVE_REQUEST:'يوجد طلب إجازة سابق متداخل مع هذه الفترة ولم يُرفض.',OVERLAPPING_OVERTIME_REQUEST:'يوجد طلب وقت إضافي سابق متداخل مع نفس الساعات.',INVALID_LEAVE_DURATION:'مدة الإجازة غير صحيحة.',INTERNAL_ERROR:'حدث خطأ في السيرفر. حاول لاحقًا أو تواصل مع المسؤول.'});
+function localizedError(t){return String(t||'').replace(/\b(?:INVALID_[A-Z_]+|INTERNAL_ERROR|IDEMPOTENCY_CONFLICT|INSUFFICIENT_LEAVE_BALANCE|LEAVE_BALANCE_NOT_SET|AUTH_UNCONFIRMED|HALF_DAY_NOT_ALLOWED|LEAVE_POLICY_PENDING|INSUFFICIENT_SUBSTITUTE_BALANCE|BALANCE_ADJUSTMENT_REASON_REQUIRED|INVALID_SUBSTITUTE_HOURS|OVERTIME_ALREADY_DECIDED|OVERTIME_NOT_FOUND|OVERLAPPING_LEAVE_REQUEST|OVERLAPPING_OVERTIME_REQUEST)\b/g,code=>MAINTRACK_ERROR_MESSAGES[code]||'تعذّر إكمال العملية، راجع البيانات وحاول مجددًا.');}
 function note(t, c) { const m = $('msg'); m.textContent = localizedError(t); m.className = t ? c : ''; }
 function fill(sel, arr, ph) { sel.length = 0; if (ph) sel.add(new Option(ph, '')); arr.forEach(x => sel.add(new Option(x, x))); }
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
@@ -468,7 +468,7 @@ $('otRefreshApprovals').onclick=loadOvertimeApprovals;
 
 function renderAdminSelection(){
  const code=$('adminUser').value,u=adminItems.find(x=>x.code===code);if(!u)return;
- $('adminRole').value=u.role;$('adminActive').checked=!!u.active;$('adminLeave').value=u.leaveBalance==null?'':u.leaveBalance;$('adminDepartment').value=u.department||'';$('adminJob').value=u.jobTitle||'';
+ $('adminRole').value=u.role;$('adminActive').checked=!!u.active;$('adminLeave').value=u.leaveBalance==null?'':u.leaveBalance;$('adminSubHours').value=u.substituteAvailableHours==null?'0':u.substituteAvailableHours;$('adminBalanceReason').value='';$('adminDepartment').value=u.department||'';$('adminJob').value=u.jobTitle||'';
  $('saveAdmin').disabled=!!S&&code===S.code;
 }
 $('adminUser').onchange=renderAdminSelection;
@@ -481,9 +481,15 @@ async function showAdmin(){
 }
 $('saveAdmin').onclick=async()=>{
  const code=$('adminUser').value;if(code===S.code)return note('لا يمكنك تعديل صلاحيات حسابك من الواجهة','err');
- if(!confirm('تأكيد حفظ صلاحيات ورصيد الموظف المختار؟'))return;
+ const current=adminItems.find(x=>x.code===code);
+ const annual=$('adminLeave').value,sub=$('adminSubHours').value,reason=$('adminBalanceReason').value.trim();
+ if(sub===''||Number(sub)<0||!Number.isFinite(Number(sub))){note('ادخل عدد ساعات البدلات الصحيح','err');return;}
+ const annualChanged=current&&String(current.leaveBalance??'')!==annual;
+ const subChanged=current&&Math.abs(Number(current.substituteAvailableHours||0)-Number(sub))>0.00001;
+ if((annualChanged||subChanged)&&reason.length<3){note('اكتب سبب تعديل الرصيد (3 أحرف على الأقل).','err');$('adminBalanceReason').focus();return;}
+ if(!confirm('تأكيد حفظ صلاحيات ورصيدي الإجازات السنوية والبدلات للموظف المختار؟'))return;
  const btn=$('saveAdmin');btn.disabled=true;
- try{const d=await api('adminSaveUser',{code,role:$('adminRole').value,active:$('adminActive').checked,leaveBalance:$('adminLeave').value,department:$('adminDepartment').value,jobTitle:$('adminJob').value});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);note('تم تحديث الحساب على السيرفر','ok');await showAdmin();}
+ try{const d=await api('adminSaveUser',{code,role:$('adminRole').value,active:$('adminActive').checked,leaveBalance:$('adminLeave').value,substituteHours:$('adminSubHours').value,adjustmentReason:$('adminBalanceReason').value.trim(),department:$('adminDepartment').value,jobTitle:$('adminJob').value});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);note('تم تحديث الحساب على السيرفر','ok');await showAdmin();}
  catch(e){note('تعذر حفظ الصلاحيات: '+(e.message||'خطأ اتصال'),'err');}finally{btn.disabled=false;}
 };
 $('tabProfile').onclick=showProfile;$('tabLeave').onclick=showLeave;$('tabApprove').onclick=showApprovals;$('tabAdmin').onclick=showAdmin;$('who').onclick=showProfile;
