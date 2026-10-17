@@ -1,6 +1,6 @@
 // Metadata only: never downloads, activates, or waits on application startup.
 // A bounded check runs on start and periodically only while foreground and online.
-export const DISCOVERY_INTERVAL = 5 * 60 * 1000;
+export const DISCOVERY_INTERVAL = 30 * 60 * 1000;
 export function createDiscovery({check, document = globalThis.document, events = globalThis,
   navigator = globalThis.navigator, clock = Date.now, schedule = setTimeout,
   cancel = clearTimeout, interval = DISCOVERY_INTERVAL}) {
