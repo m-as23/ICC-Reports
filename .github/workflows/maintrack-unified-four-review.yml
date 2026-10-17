@@ -9,6 +9,7 @@ on:
       - 'android/maintrack-app/tests/unified-four.test.mjs'
       - 'android/maintrack-app/tests/owner-release-continuity.test.mjs'
       - 'android/maintrack-app/tests/update-editor-integrity.test.mjs'
+      - 'android/maintrack-app/tests-browser/unified-four.browser.test.mjs'
       - 'android/maintrack-app/tests/ota-lab.test.mjs'
       - 'android/maintrack-app/tests/update-policy.test.mjs'
       - 'android/maintrack-app/tests/discovery-periodic.test.mjs'
@@ -83,6 +84,11 @@ jobs:
                   assert hashlib.sha256(data).hexdigest()==info['sha256']
           print('PASS 16 immutable common resource hashes; NO release, NO signing')
           PY
+      - name: Actual Chromium My Account, Owner inbox and dirty-form acceptance (mocked network)
+        run: |
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          node --test tests-browser/unified-four.browser.test.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: MainTrack-Unified-Four-UNSIGNED-Review
