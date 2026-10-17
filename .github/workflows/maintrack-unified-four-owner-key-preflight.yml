@@ -34,7 +34,7 @@ jobs:
         with:
           name: MainTrack-Unified-Four-UNSIGNED-Review
           repository: m-as23/ICC-Reports
-          run-id: 39066908032
+          run-id: 39067507471
           github-token: ${{ github.token }}
           path: android/maintrack-app/owner-signing-review
       - name: Sign verified *review attestation only*, not OTA/manifest
@@ -50,8 +50,8 @@ jobs:
           import crypto from 'node:crypto';
           import {canonicalJson} from './update-system/policy.mjs';
           const directory='owner-signing-review/';
-          const expectedSha='bfd8a5281ba7ea2193f414e1ec3cfce1eebf4494';
-          const runId=39066908032;
+          const expectedSha='7290df3ad14e94b4680cb41a6634fba16ecc6af1';
+          const runId=39067507471;
           const candidate=JSON.parse(fs.readFileSync(directory+'candidate.json','utf8'));
           assert.equal(candidate.gitCommit,expectedSha,'only exact previously reviewed feature commit');
           assert.equal(candidate.branch,'feature/maintrack-unified-four-updates-20261017');
