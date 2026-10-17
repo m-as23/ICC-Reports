@@ -514,6 +514,7 @@ const MT_ALLOWED_ORIGINS=new Set([
 'https://maintrack-security-stage9-review.vercel.app',
 'https://maintrack-security-bundle-audit.vercel.app',
 'https://maintrack-final-security-qa.vercel.app',
+ 'https://maintrack-final-security-3anyxd8ag-mohamedashrefsrag-5918.vercel.app', // QA-only exact deployment hostname; remove before release
 'https://localhost'
 ]);
 Deno.serve(async req=>{
