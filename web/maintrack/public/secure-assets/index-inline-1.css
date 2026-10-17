@@ -249,3 +249,9 @@ body.auth-screen #change{background:linear-gradient(135deg,#122d43,#091c31)!impo
 #profile .account-pending{margin-top:10px;color:#596f80;font-size:12px}
 @media(max-width:610px){#profile .account-balance-grid{gap:9px}#profile .account-balance-card{padding:12px;border-radius:13px}#profile .account-balance-label{font-size:12px}#profile .account-balance-number strong{font-size:31px}#profile .account-balance-detail{font-size:11px}#profile .account-financial-card{gap:9px;padding:12px}#profile .account-financial-icon{flex-basis:40px;width:40px;height:40px;font-size:23px}#profile .account-financial-stat strong{font-size:27px}#profile .account-history-tabs{gap:4px}#profile .account-history-tabs button{font-size:10px;padding:9px 3px}#profile .account-service-panel{padding:10px}}
 @media(prefers-reduced-motion:reduce){#profile .account-chevron{transition:none}}
+
+/* Overtime validation feedback (QA) */
+#profile #otDateHint{display:block;margin:7px 0 0;font-size:12px;line-height:1.65;color:#5b7183}
+#profile #otFeedback{display:block;font-weight:650;font-size:13px;line-height:1.8;min-height:23px}
+#profile #otFeedback[data-state="error"]{color:#b33c3c}
+#profile #otFeedback[data-state="success"]{color:#14775d}
