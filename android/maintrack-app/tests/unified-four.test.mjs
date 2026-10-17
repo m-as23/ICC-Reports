@@ -147,8 +147,7 @@ test('three previous request filters and owner approval logic remain present',as
  const js=await read(scriptFile);
  assert.ok(js.includes("setAccountHistoryFilter(filter)"));
  for(const v of ["'historyFilterLeave'","'historyFilterFinancial'","'historyFilterSubstitute'"])assert.ok(js.includes(v));
- assert.ok(js.includes("api('overtimeDecision'"));
- assert.ok(js.includes("api('leaveDecision'"));
+ assert.ok(js.includes("api(kind==='overtime'?'overtimeDecision':'leaveDecision'"));
 });
 
 test('real Cairo overtime guard rejects future work and accepts completed overnight time',async()=>{
