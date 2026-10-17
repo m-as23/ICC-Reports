@@ -14,8 +14,8 @@ let selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 const getQ = () => {try{return JSON.parse(localStorage.getItem('q')||'[]');}catch(e){return [];}};
 function setQ(q) { localStorage.setItem('q', JSON.stringify(q)); pend(); }
 function pend() { const n = getQ().filter(q=>S&&q.u===S.code).length; $('pend').style.display = n ? 'flex' : 'none'; $('pn').textContent = n; }
-const MAINTRACK_ERROR_MESSAGES=Object.freeze({INVALID_SECTION_MACHINE_COMPONENT:'الجزء المختار غير متاح لهذا القسم أو الماكينة. حدّث القوائم ثم حاول مجددًا.',INVALID_STATUS_OR_CATEGORY:'حالة البلاغ أو تصنيفه لم يعد متاحًا. حدّث القوائم.',IDEMPOTENCY_CONFLICT:'الطلب سبق إرساله ببيانات مختلفة. راجع البيانات قبل المحاولة.',INSUFFICIENT_LEAVE_BALANCE:'الرصيد المتاح غير كافٍ لهذا الطلب.',LEAVE_BALANCE_NOT_SET:'لم يتم تحديد رصيد الإجازات لهذا الموظف بعد.',AUTH_UNCONFIRMED:'تعذر التحقق من الجلسة حاليًا، حاول مجددًا.',HALF_DAY_NOT_ALLOWED:'نصف اليوم مسموح للسنوية والبدلات فقط، ولتاريخ واحد.',LEAVE_POLICY_PENDING:'سياسة تحويل البدلات إلى أيام كاملة لم تُعتمد بعد.',INSUFFICIENT_SUBSTITUTE_BALANCE:'رصيد ساعات البدلات المعتمدة لا يكفي لهذا الطلب.',BALANCE_ADJUSTMENT_REASON_REQUIRED:'اذكر سبب تعديل رصيد الموظف (3 أحرف على الأقل).',INVALID_SUBSTITUTE_HOURS:'ادخل رصيد بدلات صحيح بالساعات.',INVALID_OVERTIME_DURATION:'اختر وقت بداية ونهاية مختلفين وصحيحين.',INVALID_OVERTIME_KIND:'اختر نوع التعويض المالي أو البدلات.',OVERTIME_ALREADY_DECIDED:'تم اتخاذ قرار على طلب الوقت الإضافي بالفعل.',OVERTIME_NOT_FOUND:'طلب الوقت الإضافي غير موجود.',OVERLAPPING_LEAVE_REQUEST:'يوجد طلب إجازة سابق متداخل مع هذه الفترة ولم يُرفض.',OVERLAPPING_OVERTIME_REQUEST:'يوجد طلب وقت إضافي سابق متداخل مع نفس الساعات.',INVALID_LEAVE_DURATION:'مدة الإجازة غير صحيحة.',INTERNAL_ERROR:'حدث خطأ في السيرفر. حاول لاحقًا أو تواصل مع المسؤول.'});
-function localizedError(t){return String(t||'').replace(/\b(?:INVALID_[A-Z_]+|INTERNAL_ERROR|IDEMPOTENCY_CONFLICT|INSUFFICIENT_LEAVE_BALANCE|LEAVE_BALANCE_NOT_SET|AUTH_UNCONFIRMED|HALF_DAY_NOT_ALLOWED|LEAVE_POLICY_PENDING|INSUFFICIENT_SUBSTITUTE_BALANCE|BALANCE_ADJUSTMENT_REASON_REQUIRED|INVALID_SUBSTITUTE_HOURS|OVERTIME_ALREADY_DECIDED|OVERTIME_NOT_FOUND|OVERLAPPING_LEAVE_REQUEST|OVERLAPPING_OVERTIME_REQUEST)\b/g,code=>MAINTRACK_ERROR_MESSAGES[code]||'تعذّر إكمال العملية، راجع البيانات وحاول مجددًا.');}
+const MAINTRACK_ERROR_MESSAGES=Object.freeze({INVALID_SECTION_MACHINE_COMPONENT:'الجزء المختار غير متاح لهذا القسم أو الماكينة. حدّث القوائم ثم حاول مجددًا.',INVALID_STATUS_OR_CATEGORY:'حالة البلاغ أو تصنيفه لم يعد متاحًا. حدّث القوائم.',IDEMPOTENCY_CONFLICT:'الطلب سبق إرساله ببيانات مختلفة. راجع البيانات قبل المحاولة.',INSUFFICIENT_LEAVE_BALANCE:'الرصيد المتاح غير كافٍ لهذا الطلب.',LEAVE_BALANCE_NOT_SET:'لم يتم تحديد رصيد الإجازات لهذا الموظف بعد.',AUTH_UNCONFIRMED:'تعذر التحقق من الجلسة حاليًا، حاول مجددًا.',HALF_DAY_NOT_ALLOWED:'نصف اليوم مسموح للسنوية والبدلات فقط، ولتاريخ واحد.',LEAVE_POLICY_PENDING:'سياسة تحويل البدلات إلى أيام كاملة لم تُعتمد بعد.',INSUFFICIENT_SUBSTITUTE_BALANCE:'رصيد ساعات البدلات المعتمدة لا يكفي لهذا الطلب.',BALANCE_ADJUSTMENT_REASON_REQUIRED:'اذكر سبب تعديل رصيد الموظف (3 أحرف على الأقل).',INVALID_SUBSTITUTE_HOURS:'ادخل رصيد بدلات صحيح بالساعات.',INVALID_OVERTIME_DURATION:'اختر وقت بداية ونهاية مختلفين وصحيحين.',INVALID_OVERTIME_WORK_KIND:'اختر طبيعة العمل: بعد الوردية أو يوم مستقل.',FUTURE_OVERTIME_NOT_ALLOWED:'لا يمكن تسجيل وقت إضافي قبل انتهاء فترة العمل. اختر تاريخًا ووقت نهاية مضيا بالفعل (بتوقيت مصر).',INVALID_OVERTIME_KIND:'اختر نوع التعويض المالي أو البدلات.',OVERTIME_ALREADY_DECIDED:'تم اتخاذ قرار على طلب الوقت الإضافي بالفعل.',OVERTIME_NOT_FOUND:'طلب الوقت الإضافي غير موجود.',OVERLAPPING_LEAVE_REQUEST:'يوجد طلب إجازة سابق متداخل مع هذه الفترة ولم يُرفض.',OVERLAPPING_OVERTIME_REQUEST:'يوجد طلب وقت إضافي سابق متداخل مع نفس الساعات.',INVALID_LEAVE_DURATION:'مدة الإجازة غير صحيحة.',INTERNAL_ERROR:'حدث خطأ في السيرفر. حاول لاحقًا أو تواصل مع المسؤول.'});
+function localizedError(t){return String(t||'').replace(/\b(?:INVALID_[A-Z_]+|INTERNAL_ERROR|IDEMPOTENCY_CONFLICT|INSUFFICIENT_LEAVE_BALANCE|LEAVE_BALANCE_NOT_SET|AUTH_UNCONFIRMED|HALF_DAY_NOT_ALLOWED|LEAVE_POLICY_PENDING|INSUFFICIENT_SUBSTITUTE_BALANCE|BALANCE_ADJUSTMENT_REASON_REQUIRED|INVALID_SUBSTITUTE_HOURS|OVERTIME_ALREADY_DECIDED|OVERTIME_NOT_FOUND|OVERLAPPING_LEAVE_REQUEST|OVERLAPPING_OVERTIME_REQUEST|FUTURE_OVERTIME_NOT_ALLOWED)\b/g,code=>MAINTRACK_ERROR_MESSAGES[code]||'تعذّر إكمال العملية، راجع البيانات وحاول مجددًا.');}
 function note(t, c) { const m = $('msg'); m.textContent = localizedError(t); m.className = t ? c : ''; }
 function fill(sel, arr, ph) { sel.length = 0; if (ph) sel.add(new Option(ph, '')); arr.forEach(x => sel.add(new Option(x, x))); }
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
@@ -419,6 +419,7 @@ async function refreshAccountSummary(){
 }
 async function showProfile(){
  if(!S)return;show('profile');$('profileName').textContent='جارٍ تحميل ملفك...';
+ overtimeDateLimit();
  await Promise.all([refreshAccountSummary(),refreshLeave(),refreshOvertime()]);
 }
 
@@ -439,6 +440,24 @@ const readOvertimeClock=prefix=>{
  if(!(hours>=1&&hours<=12)||!/^\d{2}$/.test(minutes)||!['AM','PM'].includes(period))return '';
  return String((hours%12)+(period==='PM'?12:0)).padStart(2,'0')+':'+minutes;
 };
+// Same local calendar rule as the API: calculate overtime completion in Africa/Cairo.
+// Work may span midnight; store/compare sortable YYYY-MM-DDTHH:mm strings internally.
+const cairoLocalMinute=(instant=new Date())=>{
+ const fields=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+  timeZone:'Africa/Cairo',year:'numeric',month:'2-digit',day:'2-digit',
+  hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+ }).formatToParts(instant).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+ return fields.year+'-'+fields.month+'-'+fields.day+'T'+fields.hour+':'+fields.minute;
+};
+const overtimeEndLocal=(workDate,from,to)=>{
+ const pastMidnight=to<=from;
+ const endDate=pastMidnight?new Date(Date.parse(workDate+'T00:00:00Z')+86400000).toISOString().slice(0,10):workDate;
+ return endDate+'T'+to;
+};
+const overtimeHasEnded=(workDate,from,to,instant=new Date())=>
+ overtimeEndLocal(workDate,from,to)<=cairoLocalMinute(instant);
+const overtimeDateLimit=()=>{$('otDate').max=cairoLocalMinute().slice(0,10);};
+overtimeDateLimit();
 let overtimeHistory=[];
 let accountHistoryFilter='leave';
 function setAccountHistoryFilter(filter){
@@ -471,7 +490,15 @@ $('otRefreshMine').onclick=()=>{void refreshOvertime();void refreshAccountSummar
 $('otSend').onclick=async()=>{
  if(!S||!canReport())return;
  const workDate=$('otDate').value,from=readOvertimeClock('otFrom'),to=readOvertimeClock('otTo'),compensation=$('otKind').value,workKind=$('otWorkKind').value,reason=$('otReason').value;
- if(!workDate||!from||!to||from===to||!workKind){$('otFeedback').textContent='حدد تاريخ العمل ووقت البداية والنهاية وطبيعة الإضافي.';return;}
+ if(!workDate||!from||!to||from===to||!workKind){$('otFeedback').textContent='حدد تاريخ العمل ووقت البداية والنهاية وطبيعة الإضافي.';$('otFeedback').dataset.state='error';return;}
+ // Prevent a server round-trip for a future or unfinished work period.
+ // Server-side validation remains authoritative even if the browser clock is wrong.
+ if(!overtimeHasEnded(workDate,from,to)){
+  $('otFeedback').textContent=localizedError('FUTURE_OVERTIME_NOT_ALLOWED');
+  $('otFeedback').dataset.state='error';
+  $('otDate').focus();
+  return;
+ }
  if(!confirm('تأكيد إرسال ساعات الوقت الإضافي للـOwner؟'))return;
  const btn=$('otSend');btn.disabled=true;
  try{
@@ -482,9 +509,9 @@ $('otSend').onclick=async()=>{
   const d=await api('overtimeRequest',{workDate,from,to,compensation,workKind,reason,cid});
   if(d.error)throw new Error(d.error);
   sessionStorage.removeItem('pendingOvertime');
-  $('otFeedback').textContent='تم إرسال '+d.id+'، في انتظار اعتماد الـOwner.';
+  $('otFeedback').textContent='تم إرسال '+d.id+'، في انتظار اعتماد الـOwner.';$('otFeedback').dataset.state='success';
   $('otReason').value='';await Promise.all([refreshOvertime(),refreshAccountSummary()]);setAccountHistoryFilter(compensation==='FINANCIAL'?'financial':'substitute');loadNotices(true);
- }catch(e){$('otFeedback').textContent='تعذر إرسال الطلب: '+localizedError(e.message||'');}
+ }catch(e){$('otFeedback').textContent='تعذر إرسال الطلب: '+localizedError(e.message||'');$('otFeedback').dataset.state='error';}
  finally{btn.disabled=false;}
 };
 // Owner-only summary: distinct approved (employee, work_date) pairs differ from hours.
