@@ -1,0 +1,67 @@
+
+/* MainTrack account v2 overlay. Locked Stage11 assets remain byte-for-byte unchanged. */
+body.mt-account-v2-on #tabLeave{display:none!important}
+#profile.mt-account-ready{max-width:1180px}
+#profile.mt-account-ready>.page-hero,#profile.mt-account-ready>.profile-grid,#profile.mt-account-ready>.profile-editor{display:none!important}
+#profile.mt-account-ready #mtav2{display:block}
+.mtav2{color:#1c3645;--ac:#087e84;--line:#dfe9ec;--muted:#668092}
+.mtav2-hero{display:flex;align-items:center;gap:18px;background:linear-gradient(112deg,#081d2d,#0d3544);padding:28px;border-radius:20px;color:#fff;margin-bottom:15px;border:1px solid #2c5964}
+.mtav2-avatar{width:66px;height:66px;border-radius:19px;background:linear-gradient(145deg,#28787b,#11415a);border:1px solid #69bbb8;display:grid;place-items:center;font:900 29px Cairo,sans-serif;color:#d3fffa;flex-shrink:0}
+.mtav2-hero small,.mtav2-headline small{font:800 10px Arial,sans-serif;letter-spacing:1.8px;color:#48cbbd}
+.mtav2-hero h2{color:#fff;font:800 clamp(20px,3vw,27px) Cairo,sans-serif;margin:4px 0}
+.mtav2-hero p{margin:0;color:#b4cfd4;font-size:13px}
+.mtav2-role{margin-inline-start:auto;padding:7px 11px;border:1px solid #5c999e;border-radius:20px;color:#a8ebe3;direction:ltr;font:700 12px Arial}
+.mtav2-identity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 22px}
+.mtav2-identity>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0}
+.mtav2-identity small,.mtav2-balance small{display:block;color:var(--muted);font-weight:700;font-size:12px}
+.mtav2-identity strong{display:block;font-size:17px;margin-top:7px;color:#132f42;overflow-wrap:anywhere}
+.mtav2-headline{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:13px 0}
+.mtav2-headline h3{margin:3px 0 0;font-size:18px;color:#153646}
+.mtav2-headline>span{font:700 12px Cairo,sans-serif;color:#53818a;background:#eaf5f5;border-radius:40px;padding:6px 11px}
+.mtav2-balances{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mtav2-balance{background:#fff;border:1px solid var(--line);border-top:4px solid #4a9d9e;border-radius:16px;padding:20px;min-width:0;box-shadow:0 4px 22px #14395009}
+.mtav2-balance.annual{border-top-color:#24898b}.mtav2-balance.comp{border-top-color:#d19b41}.mtav2-balance.financial{border-top-color:#256582;background:linear-gradient(155deg,#0e3548,#0c2638);color:#fff}
+.mtav2-balance strong{display:block;color:#173748;font:900 34px Arial,sans-serif;direction:ltr;text-align:right;margin:10px 0 3px}
+.mtav2-balance>span{color:#66808c;font-size:12px;font-weight:700}
+.mtav2-balance.financial strong,.mtav2-balance.financial small,.mtav2-balance.financial>span{color:#e7fbfb}
+.mtav2-balance.financial em{display:block;font:600 10px Cairo,sans-serif;color:#b0c3cb;margin-top:10px}
+.mtav2-kvs{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #e7eef0;padding-top:11px;margin-top:19px;flex-wrap:wrap;font-size:11px;color:#61808d}
+.mtav2-kvs b{font:800 12px Arial,sans-serif;color:#244c5a;direction:ltr}
+.mtav2-financial .mtav2-kvs,.mtav2-balance.financial .mtav2-kvs{border-top-color:#54717e;color:#b7d2db}
+.mtav2-balance.financial .mtav2-kvs b{color:#fff}
+.mtav2-legacy{margin:12px 0 0;padding:10px 13px;color:#795d2e;background:#fff8e9;border:1px solid #e9d9a9;border-radius:10px;font-size:12px}
+.mtav2-banner{color:#486d79;background:#edf7f6;border:1px solid #cde7e3;padding:11px 14px;margin:12px 0 19px;border-radius:11px;font-size:12px;font-weight:650}
+.mtav2-columns{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:18px;align-items:start}
+.mtav2-panel,.mtav2-history{border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 4px 20px #15394a08}
+.mtav2-panel>summary{display:flex;align-items:center;gap:12px;padding:19px;cursor:pointer;list-style:none}
+.mtav2-panel>summary::-webkit-details-marker{display:none}
+.mtav2-panel summary b{display:block;color:#164150;font-size:15px}
+.mtav2-panel summary small{display:block;color:#7a909a;margin-top:2px;font-size:11px}
+.mtav2-symbol{width:37px;height:37px;display:grid;place-items:center;border-radius:11px;background:#e0f5f3;color:#117a7a;font-size:20px;flex-shrink:0}
+.mtav2-chevron{margin-inline-start:auto;color:#668591;font-size:20px}
+.mtav2-panel[open] summary{border-bottom:1px solid var(--line)}
+.mtav2-panel form,.mtav2-owner>.mtav2-formgrid,.mtav2-owner>.mtav2-feedback{margin:16px}
+.mtav2-formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.mtav2 form label,.mtav2-owner label{display:block;font-size:12px;color:#4c7180;font-weight:800;line-height:1.75}
+.mtav2 form input,.mtav2 form select,.mtav2 form textarea,.mtav2-owner input,.mtav2-owner select{display:block;width:100%;box-sizing:border-box;margin:6px 0 13px;border:1px solid #d5e4e9;border-radius:9px;padding:10px 11px;min-height:43px;font:600 13px Cairo,Arial,sans-serif;background:#fafdfe;color:#173a4c;outline-color:#1b9b9c}
+.mtav2 form input[type=datetime-local]{direction:ltr;text-align:right}
+.mtav2 form textarea{resize:vertical}
+.mtav2 form option:disabled{color:#777}
+.mtav2-primary,.mtav2-secondary{border:0;border-radius:10px;font:800 13px Cairo,sans-serif;padding:12px 17px;cursor:pointer}
+.mtav2-primary{color:white;background:#0b8187}.mtav2-secondary{color:#11616e;background:#e3f3f3;border:1px solid #a6d3d2}
+.mtav2 button:disabled{cursor:not-allowed;opacity:.52}
+.mtav2-feedback{font-size:11px;line-height:1.9;color:#647f89;min-height:20px}
+.mtav2-feedback.error{color:#ae3b42}.mtav2-feedback.success{color:#067e75}
+.mtav2-calculation{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#eff8f8;padding:13px;border:1px solid #d3e7e9;border-radius:12px;margin:10px 0}
+.mtav2-calculation small{display:block;font-size:11px;color:#65818d}.mtav2-calculation strong{display:block;color:#126d7b;font:900 22px Arial,sans-serif;direction:ltr;text-align:right;margin:6px 0}
+.mtav2-history{margin-top:17px;padding:17px}.mtav2-history .mtav2-headline{margin:0 0 17px}
+.mtav2-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}.mtav2-filters button{background:#eef4f5;color:#52727c;border:1px solid #dde6e8;border-radius:9px;padding:9px 14px;font:800 12px Cairo,sans-serif;cursor:pointer}
+.mtav2-filters button[aria-pressed=true]{background:#0e747d;color:white;border-color:#0e747d}
+.mtav2-history-list{display:grid;gap:9px}.mtav2-entry{padding:13px;border:1px solid #e2ebed;border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mtav2-entry strong{display:block;font-size:13px;color:#244752}.mtav2-entry small{display:block;color:#76909d;font-size:11px;margin-top:3px}
+.mtav2-entry span{font-size:11px;font-weight:800;border-radius:20px;padding:6px 10px;color:#6d7a80;background:#f3f5f6;white-space:nowrap}
+.mtav2-entry span.approved{background:#e0f6ed;color:#16734f}.mtav2-entry span.pending{background:#fff3d9;color:#8a631c}.mtav2-entry span.rejected{background:#fae9ea;color:#9a4149}
+.mtav2-empty{color:#6c8792;text-align:center;border:1px dashed #d8e4e7;border-radius:10px;padding:22px;font-size:12px}
+.mtav2-owner{margin-top:17px}
+@media(max-width:760px){.mtav2-balances{grid-template-columns:1fr 1fr}.mtav2-balance.financial{grid-column:span 2}.mtav2-columns{grid-template-columns:1fr}.mtav2-identity{gap:8px}.mtav2-identity>div{padding:12px}}
+@media(max-width:520px){.mtav2-hero{padding:17px;gap:11px}.mtav2-avatar{width:51px;height:51px;font-size:23px}.mtav2-role{font-size:10px;padding:5px}.mtav2-identity{grid-template-columns:1fr 1fr}.mtav2-identity>div:last-child{grid-column:span 2}.mtav2-headline{align-items:start;flex-direction:column;gap:8px}.mtav2-balances{grid-template-columns:1fr}.mtav2-balance.financial{grid-column:span 1}.mtav2-balance{padding:17px}.mtav2-balance strong{font-size:30px}.mtav2-formgrid{grid-template-columns:1fr}.mtav2-history{padding:13px}.mtav2-filters button{flex:1;padding:9px 6px;font-size:11px}.mtav2-entry{align-items:start;flex-direction:column}}
