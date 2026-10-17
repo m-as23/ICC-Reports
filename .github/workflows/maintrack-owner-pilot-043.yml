@@ -1,0 +1,121 @@
+name: MainTrack Owner Phone Pilot — Signed OTA 0.4.3
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths:
+      - '.github/workflows/maintrack-owner-pilot-043.yml'
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: \${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify owner OTA protections
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 -m py_compile scripts/pilot-043-bundle.py
+          node --check scripts/pilot-043-sign-release.mjs
+          npm ci --no-audit --no-fund
+          node --test tests/ota-lab.test.mjs tests/update-policy.test.mjs
+      - name: Read immutable QA source review bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Unified-Four-UNSIGNED-Review
+          repository: m-as23/ICC-Reports
+          run-id: 39067507471
+          github-token: \${{ github.token }}
+          path: android/maintrack-app/pilot-043
+      - name: Read signed attestation for exact same candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Owner-Key-REVIEW-ONLY-Attestation
+          repository: m-as23/ICC-Reports
+          run-id: 39067610642
+          github-token: \${{ github.token }}
+          path: android/maintrack-app/pilot-043
+      - name: Build byte-checked pilot package with QA API only
+        run: |
+          set -euo pipefail
+          python3 scripts/pilot-043-bundle.py make
+          node scripts/pilot-043-sign-release.mjs preflight
+      - name: Verify QA Edge service read-only
+        run: |
+          curl --fail --silent --show-error --max-time 15 \
+            https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/healthz
+          curl --fail --silent --show-error --max-time 15 \
+            https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/readyz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.3-Owner-PILOT-Preflight
+          path: |
+            android/maintrack-app/pilot-043/pilot-build.json
+            android/maintrack-app/pilot-043/maintrack-0.4.3.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: preflight
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: maintrack-android-release
+    permissions:
+      contents: write
+      actions: read
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: \${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Unified-Four-UNSIGNED-Review
+          repository: m-as23/ICC-Reports
+          run-id: 39067507471
+          github-token: \${{ github.token }}
+          path: android/maintrack-app/pilot-043
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Owner-Key-REVIEW-ONLY-Attestation
+          repository: m-as23/ICC-Reports
+          run-id: 39067610642
+          github-token: \${{ github.token }}
+          path: android/maintrack-app/pilot-043
+      - name: Reconstruct verified candidate with one API rewrite
+        run: python3 scripts/pilot-043-bundle.py make
+      - name: Publish signed 0.4.3 to owner LAB channel only
+        env:
+          GH_TOKEN: \${{ github.token }}
+          MT_OTA_PRIVATE_KEY_PEM: \${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: \${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          node scripts/pilot-043-sign-release.mjs publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.3-Owner-PILOT-Signed-Release-Record
+          path: android/maintrack-app/release-output/pilot-0.4.3.json
+          if-no-files-found: error
+          retention-days: 14
