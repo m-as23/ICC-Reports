@@ -91,6 +91,11 @@ jobs:
               if p.is_file(): z.write(p,p.relative_to(root).as_posix())
           print('PASS matching locked Web/OTA core on same commit; QA-only Build Output packaged')
           PY
+      - name: Run actual MainTrack UI browser regression — no Android emulator or live backend
+        run: |
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          npm --prefix tests-browser test
       - uses: actions/upload-artifact@v4
         with:
           name: MainTrack-Stage14-Review-Candidates
