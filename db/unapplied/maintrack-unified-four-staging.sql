@@ -10,7 +10,21 @@ ALTER TABLE public.mt_leave_requests
 ALTER TABLE public.mt_leave_requests
   ADD COLUMN IF NOT EXISTS duration_kind text NOT NULL DEFAULT 'FULL_DAY';
 ALTER TABLE public.mt_leave_requests
-  ADD CONSTRAINT mt_leave_duration_kind_chk CHECK (duration_kind IN ('FULL_DAY','HALF_DAY'));
+  DROP CONSTRAINT mt_leave_requests_days_check,
+  DROP CONSTRAINT mt_leave_requests_calendar_days_check,
+  DROP CONSTRAINT mt_leave_requests_type_check;
+ALTER TABLE public.mt_leave_requests
+  ADD CONSTRAINT mt_leave_duration_kind_chk CHECK (duration_kind IN ('FULL_DAY','HALF_DAY')),
+  ADD CONSTRAINT mt_leave_requests_days_check CHECK (days BETWEEN 0.5 AND 60),
+  ADD CONSTRAINT mt_leave_requests_calendar_days_check CHECK (
+    (duration_kind='FULL_DAY' AND days=(end_date-start_date+1))
+    OR (duration_kind='HALF_DAY' AND start_date=end_date AND days=0.5)
+  ),
+  ADD CONSTRAINT mt_leave_requests_type_check CHECK (
+   type IN ('annual','casual','sick','other','compensatory')
+   AND (duration_kind<>'HALF_DAY' OR type IN ('annual','compensatory'))
+   AND (type<>'compensatory' OR duration_kind='HALF_DAY')
+  );
 
 CREATE TABLE IF NOT EXISTS public.mt_overtime_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
