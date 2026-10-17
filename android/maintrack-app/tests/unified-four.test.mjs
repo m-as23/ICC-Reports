@@ -189,3 +189,21 @@ test('real owner balance summary displays remaining, earned and financial equiva
  financialMinutes=240;
  assert.equal((await fn({id:'qa'})).financialApprovedDays,0.5);
 });
+
+test('future overtime returns Arabic and browser blocks unfinished periods before request',async()=>{
+ const js=await read(scriptFile),html=await read(htmlFile);
+ assert.ok(js.includes("FUTURE_OVERTIME_NOT_ALLOWED:'لا يمكن تسجيل وقت إضافي"));
+ assert.ok(js.includes("if(!overtimeHasEnded(workDate,from,to))"));
+ assert.ok(js.includes("const overtimeEndLocal="));
+ assert.ok(js.includes("timeZone:'Africa/Cairo'"));
+ assert.ok(html.includes('id="otDateHint"'));
+ assert.ok(html.includes('id="otFeedback"'));
+ const a=js.indexOf('const cairoLocalMinute='),b=js.indexOf('let overtimeHistory=[];',a);
+ const methods=new Function('$',js.slice(a,b)+'return {cairoLocalMinute,overtimeEndLocal,overtimeHasEnded};')(()=>({max:''}));
+ const now=new Date('2026-10-17T19:07:00Z');
+ assert.equal(methods.cairoLocalMinute(now),'2026-10-17T22:07');
+ assert.equal(methods.overtimeHasEnded('2026-10-18','07:00','15:00',now),false);
+ assert.equal(methods.overtimeHasEnded('2026-10-17','07:00','15:00',now),true);
+ assert.equal(methods.overtimeHasEnded('2026-10-17','23:00','03:00',now),false);
+ assert.equal(methods.overtimeHasEnded('2026-10-16','23:00','03:00',now),true);
+});
