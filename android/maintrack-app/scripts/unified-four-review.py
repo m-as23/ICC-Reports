@@ -113,22 +113,54 @@ def build():
 
     esbuild = ROOT / "node_modules/.bin/esbuild"
     check(esbuild.is_file(), "RUN_NPM_CI_FIRST")
-    def bundle(sourcefile, outfile, define=None):
+    def bundle(sourcefile, outfile, define=None, define_name='__MAINTRACK_WEB_CONFIG__'):
         outfile.parent.mkdir(parents=True, exist_ok=True)
         command = [str(esbuild), str(ROOT / sourcefile), "--bundle",
                    "--format=iife", "--platform=browser", "--target=es2022",
                    "--minify", "--outfile=" + str(outfile)]
         if define is not None:
-            command.append("--define:__MAINTRACK_WEB_CONFIG__=" + json.dumps(define, separators=(",", ":")))
+            command.append("--define:" + define_name + "=" + json.dumps(define, separators=(",", ":")))
         subprocess.run(command, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
 
     bundle("update-system/startup.mjs", native / "secure-assets/stage13-native-ready.js")
     bundle("update-system/local-work-startup.mjs", native / "secure-assets/stage14-local-work.js")
+    # The installed Android app must retain its existing trusted OTA updater UI,
+    # otherwise the user cannot receive the next update without installing APK.
+    trusted_config = json.loads((ROOT / "release/owner-public.json").read_text())
+    check(trusted_config.get("schema") == 1 and trusted_config.get("channel") == "lab",
+          "UNEXPECTED_OWNER_PILOT_CONFIG")
+    check(trusted_config.get("manifestUrl") ==
+          "https://raw.githubusercontent.com/m-as23/ICC-Reports/android/stage14-ota-native-lab/updates/android/release.json",
+          "NATIVE_UPDATE_CHANNEL_CHANGED")
+    check(trusted_config.get("allowedOrigins") == ["https://raw.githubusercontent.com"],
+          "NATIVE_UPDATE_ALLOWED_ORIGINS_CHANGED")
+    check(len(trusted_config.get("publicKeyBase64", "")) == 43,
+          "INVALID_PINNED_OWNER_PUBLIC_KEY")
+    bundle("update-system/pilot-entry.mjs",
+           native / "secure-assets/stage15-pilot-update.js",
+           trusted_config, "__MAINTRACK_PILOT_CONFIG__")
+    shutil.copyfile(ROOT / "update-system/pilot-panel.css",
+                    native / "secure-assets/stage15-pilot-update.css")
     native_html = (native / "index.html").read_text()
     native_html = native_html.replace("<head>",
         '<head>\n<script src="secure-assets/stage13-native-ready.js"></script>', 1)
+    expected_csp = "connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co;"
+    check(native_html.count(expected_csp) == 1, "UNEXPECTED_NATIVE_CSP")
+    native_html = native_html.replace(
+        expected_csp,
+        "connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co https://raw.githubusercontent.com;"
+    )
+    native_html = native_html.replace("</head>",
+        '<link rel="stylesheet" href="secure-assets/stage15-pilot-update.css"></head>', 1)
     native_html = native_html.replace("</body>",
-        '<script src="secure-assets/stage14-local-work.js"></script></body>', 1)
+        '<script src="secure-assets/stage14-local-work.js"></script>'
+        '<script src="secure-assets/stage15-pilot-update.js"></script></body>', 1)
+    check("secure-assets/stage15-pilot-update.js" in native_html and
+          native_html.index("stage14-local-work.js") < native_html.index("stage15-pilot-update.js"),
+          "NATIVE_UPDATE_UI_MISSING_OR_BAD_ORDER")
+    check("__MAINTRACK_PILOT_CONFIG__" not in
+          (native / "secure-assets/stage15-pilot-update.js").read_text(),
+          "UPDATE_PUBLIC_CONFIG_NOT_PINNED")
     (native / "index.html").write_text(native_html)
 
     # Build the Web update UI from the *same* locked feature branch source.
@@ -186,6 +218,12 @@ def build():
             for p in sorted(web.rglob("*")) if p.is_file()
         },
         "sharedAssetHashes": {p: entry(original[p]) for p in shared},
+        "nativePilotUpdatePanel": {
+            "script": entry((native / "secure-assets/stage15-pilot-update.js").read_bytes()),
+            "styles": entry((native / "secure-assets/stage15-pilot-update.css").read_bytes()),
+            "pinnedPublicKey": trusted_config["publicKeyBase64"],
+            "trustedManifestUrl": trusted_config["manifestUrl"],
+        },
         "archives": {},
     }
     for directory, filename in (
@@ -216,6 +254,15 @@ def verify():
                 check(entry(z.read(member))["bytes"] >= 0, "INVALID_MEMBER")
     check(set(manifest["changedFromApprovedBaseline"]) == MAY_CHANGE,
           "UNREVIEWED_SOURCE_DRIFT")
+    panel = manifest.get("nativePilotUpdatePanel")
+    check(panel and len(panel["pinnedPublicKey"]) == 43 and
+          panel["trustedManifestUrl"] ==
+          "https://raw.githubusercontent.com/m-as23/ICC-Reports/android/stage14-ota-native-lab/updates/android/release.json",
+          "OTA_UPDATE_PANEL_NOT_PINNED")
+    for key, name in (("script", "stage15-pilot-update.js"),
+                      ("styles", "stage15-pilot-update.css")):
+        p = REVIEW / "native/www/secure-assets" / name
+        check(entry(p.read_bytes()) == panel[key], "OTA_PANEL_HASH_CHANGED")
     print("PASS review package SHA256/size, identities and release-disabled gates")
 
 
