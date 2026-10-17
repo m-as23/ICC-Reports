@@ -113,12 +113,14 @@ def build():
 
     esbuild = ROOT / "node_modules/.bin/esbuild"
     check(esbuild.is_file(), "RUN_NPM_CI_FIRST")
-    def bundle(sourcefile, outfile):
+    def bundle(sourcefile, outfile, define=None):
         outfile.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run([str(esbuild), str(ROOT / sourcefile), "--bundle",
-                        "--format=iife", "--platform=browser", "--target=es2022",
-                        "--minify", "--outfile=" + str(outfile)],
-                       cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
+        command = [str(esbuild), str(ROOT / sourcefile), "--bundle",
+                   "--format=iife", "--platform=browser", "--target=es2022",
+                   "--minify", "--outfile=" + str(outfile)]
+        if define is not None:
+            command.append("--define:__MAINTRACK_WEB_CONFIG__=" + json.dumps(define, separators=(",", ":")))
+        subprocess.run(command, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
 
     bundle("update-system/startup.mjs", native / "secure-assets/stage13-native-ready.js")
     bundle("update-system/local-work-startup.mjs", native / "secure-assets/stage14-local-work.js")
@@ -130,7 +132,7 @@ def build():
     (native / "index.html").write_text(native_html)
 
     # Build the Web update UI from the *same* locked feature branch source.
-    bundle("update-system/web-entry.mjs", web / "secure-assets/web-update.js")
+    bundle("update-system/web-entry.mjs", web / "secure-assets/web-update.js", {"commit": head})
     shutil.copyfile(ROOT / "update-system/web-panel.css", web / "secure-assets/web-update.css")
     web_html = (web / "index.html").read_text()
     web_html = web_html.replace("</head>",
@@ -151,11 +153,20 @@ def build():
             {"src": "/(.*)", "headers": {"X-Robots-Tag": "noindex, nofollow"}, "continue": True},
             {"src": "/", "status": 307, "headers": {
                 "Location": "/releases/" + head + "/", "Cache-Control": "no-store"}},
+            {"src": "/maintrack-release.json", "headers": {"Cache-Control": "no-store"}, "continue": True},
+            {"src": "/releases/(.*)", "headers": {"Cache-Control": "public, max-age=31536000, immutable"}, "continue": True},
             {"handle": "filesystem"},
             {"src": "/(.*)", "status": 404},
         ],
     }
     top = REVIEW / "web/.vercel/output"
+    static_root = top / "static"
+    # Review-only discovery metadata; NOT published to a stable or employee host.
+    (static_root / "maintrack-release.json").write_text(json.dumps({
+        "schema": 1, "appId": "com.icc.maintrack", "channel": "web-pilot",
+        "commit": head, "path": "/releases/" + head + "/",
+        "expiresAt": 0  # deliberately unusable until an approved release publisher regenerates it
+    }, separators=(",", ":")) + "\\n")
     (top / "config.json").write_text(json.dumps(config, indent=2) + "\\n")
     manifest = {
         "schema": 1, "mode": "review-only", "signed": False,
