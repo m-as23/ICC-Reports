@@ -207,3 +207,28 @@ test('future overtime returns Arabic and browser blocks unfinished periods befor
  assert.equal(methods.overtimeHasEnded('2026-10-17','23:00','03:00',now),false);
  assert.equal(methods.overtimeHasEnded('2026-10-16','23:00','03:00',now),true);
 });
+
+test('owner overtime approval notification matches staging DB type constraint',async()=>{
+ const api=await read(apiFile);
+ const sql=await read('db/applied/maintrack_overtime_notifications_staging.sql');
+ assert.ok(api.includes("'overtimeDecision'"));
+ assert.ok(api.includes("INSERT INTO mt_notifications(recipient_id,source_id,type,title,description,target)"));
+ assert.ok(sql.includes("CHECK (type IN ('report','leaveDecision','leaveBalance','overtimeDecision'))"));
+ assert.ok(sql.includes("COMMIT;"));
+});
+test('owner approval cards present named details and inline decision feedback',async()=>{
+ const js=await read(scriptFile);
+ assert.ok(js.includes('function approvalCardBase('));
+ assert.ok(js.includes('function approvalDetails('));
+ assert.ok(js.includes("['تاريخ العمل',r.date]"));
+ assert.ok(js.includes("['بداية الإضافي',showOvertimeClock(r.from)]"));
+ assert.ok(js.includes("['نهاية الإضافي',endText]"));
+ assert.ok(js.includes("['المدة',days+' · '+hours]"));
+ assert.ok(js.includes("['طبيعة العمل',workKind]"));
+ assert.ok(js.includes("['نوع الإجازة',leaveTypeNames[r.type]||r.type]"));
+ assert.ok(js.includes("['تاريخ البداية',r.start]"));
+ assert.ok(js.includes("['تاريخ النهاية',r.end]"));
+ assert.ok(js.includes("role','status'"));
+ assert.ok(js.includes('buttons.forEach(b=>b.disabled=true)'));
+ assert.ok(js.includes('buttons.forEach(b=>b.disabled=false)'));
+});
