@@ -39,11 +39,11 @@ test('technician dashboard is restricted at API and client boundary',async()=>{
  assert.ok(js.includes('setDashboardRoleView()'));
 });
 
-test('only annual and compensatory leave permit 4h half-day',async()=>{
+test('annual and compensatory leave permit 4h half-day',async()=>{
  const api=await read(apiFile),sql=await read(schemaFile),html=await read(htmlFile);
  assert.ok(api.includes("!['annual','compensatory'].includes(type)"));
  assert.ok(api.includes("const days=half?0.5:daySpan"));
- assert.ok(api.includes("if(type==='compensatory'&&!half)die('LEAVE_POLICY_PENDING')"));
+ assert.ok(api.includes("if(type==='compensatory'&&start!==end)die('LEAVE_POLICY_PENDING')"));
  assert.ok(sql.includes("duration_kind='HALF_DAY' AND start_date=end_date AND days=0.5"));
  assert.ok(html.includes('id="leaveDuration"'));
  assert.ok(html.includes('value="compensatory"'));
@@ -74,4 +74,34 @@ test('staging backend TypeScript source retains valid JavaScript grammar',async(
  const ts=await read(apiFile);
  const plain=ts.replace(/^import[^\n]+$/gm,'').replace(/body:any/g,'body').replace(/h:Record<string,string>/g,'h');
  assert.doesNotThrow(()=>new Function(plain));
+});
+
+test('single-day compensatory leave supports 4h and 8h, but never unapproved spans',async()=>{
+ const api=await read(apiFile),js=await read(scriptFile);
+ const migration=await read('db/applied/maintrack-compensatory-full-day-staging.sql');
+ assert.ok(api.includes("if(type==='compensatory'&&start!==end)die('LEAVE_POLICY_PENDING')"));
+ assert.ok(api.includes('useMinutes=Math.round(Number(req.days)*480)'));
+ assert.ok(migration.includes('start_date=end_date AND days IN (0.5,1)'));
+ assert.ok(!js.includes("disabled=substitute"));
+});
+
+test('pending annual and substitute requests reserve balances without debiting early',async()=>{
+ const api=await read(apiFile);
+ assert.ok(api.includes("status='PENDING'"));
+ assert.ok(api.includes('reserved.annual'));
+ assert.ok(api.includes('reserved.substitute'));
+ assert.ok(api.includes('Number(bank.minutes)<useMinutes'));
+});
+
+test('employee overtime entry and history use explicit Arabic 12h controls',async()=>{
+ const html=await read(htmlFile),js=await read(scriptFile);
+ for(const name of ['otFrom','otTo']){
+  for(const part of ['Hour','Minute','Period'])assert.ok(html.includes('id="'+name+part+'"'));
+  assert.ok(!html.includes('id="'+name+'"'));
+ }
+ assert.ok(html.includes('الإجازات والعمل الإضافي'));
+ assert.ok(html.indexOf('id="overtimeCard"')>html.indexOf('id="leave"'));
+ assert.ok(js.includes('showOvertimeClock(r.from)'));
+ assert.ok(js.includes('readOvertimeClock'));
+ assert.ok(html.includes('id="otMineFilter"'));
 });
