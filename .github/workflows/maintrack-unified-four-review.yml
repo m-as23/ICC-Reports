@@ -8,6 +8,7 @@ on:
       - 'android/maintrack-app/update-system/**'
       - 'android/maintrack-app/tests/unified-four.test.mjs'
       - 'android/maintrack-app/tests/owner-release-continuity.test.mjs'
+      - 'android/maintrack-app/tests/update-editor-integrity.test.mjs'
       - 'android/maintrack-app/tests/ota-lab.test.mjs'
       - 'android/maintrack-app/tests/update-policy.test.mjs'
       - 'android/maintrack-app/tests/discovery-periodic.test.mjs'
@@ -42,7 +43,7 @@ jobs:
       - name: Verify existing update safety & feature regression tests
         run: |
           npm ci --no-audit --no-fund
-          node --test tests/unified-four.test.mjs tests/ota-lab.test.mjs tests/update-policy.test.mjs tests/discovery-periodic.test.mjs tests/owner-release-continuity.test.mjs
+          node --test tests/unified-four.test.mjs tests/ota-lab.test.mjs tests/update-policy.test.mjs tests/discovery-periodic.test.mjs tests/owner-release-continuity.test.mjs tests/update-editor-integrity.test.mjs
       - name: Build review-only Web and Android bundles
         run: |
           python3 -m py_compile scripts/unified-four-review.py
@@ -57,6 +58,14 @@ jobs:
           assert c['mode']=='review-only'
           assert c['signed'] is False and c['deployable'] is False and c['rolloutEnabled'] is False
           assert c['appId']=='com.icc.maintrack'
+          guard=c['sharedLocalWorkGuard']
+          for p in (root/'native/www/secure-assets/stage14-local-work.js',
+                    root/'web/.vercel/output/static/releases'/c['gitCommit']/'secure-assets/stage14-local-work.js'):
+              data=p.read_bytes()
+              assert len(data)==guard['bytes']
+              assert hashlib.sha256(data).hexdigest()==guard['sha256']
+          html=(root/'web/.vercel/output/static/releases'/c['gitCommit']/'index.html').read_text()
+          assert html.index('stage14-local-work.js') < html.index('web-update.js')
           assert c['sharedAssetHashes'] and len(c['sharedAssetHashes'])==16
           panel=c['nativePilotUpdatePanel']
           assert panel['pinnedPublicKey'] and panel['trustedManifestUrl'].endswith('/updates/android/release.json')
