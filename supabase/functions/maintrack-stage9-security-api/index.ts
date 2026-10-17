@@ -79,17 +79,33 @@ async function dashboard(u,b){permit(u,'dashboard.view');const y=Number(b.year),
  items.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id,undefined,{numeric:true}));
  return {year:y,month:m,count:items.length,totalDowntime:round(downtime),mttr:done?round(downtime/done):null,machineCount:tab(machines).filter(x=>x.complete>0).length,topMachines:tab(machines).filter(x=>x.complete>0).slice(0,5).map(x=>({machine:x.name,hours:x.hours})),sectionHours:tab(sections).filter(x=>x.complete>0).map(x=>({section:x.name,hours:x.hours})),avgResponse:responseN?round(responseTotal/responseN):null,totalElapsed:round(elapsedTotal),machineTable:tab(machines),sectionTable:tab(sections),categoryTable:tab(categories),daily:tab(daily).sort((a,b)=>a.name.localeCompare(b.name)),dataQuality:{complete:done,incomplete:items.length-done},recent:items.slice(0,20)};}
 async function profile(u){permit(u,'profile.view');const r=await row('SELECT u.employee_code AS code,u.name,u.role::text AS role,u.department,u.job_title AS "jobTitle",u.preferred_name AS "preferredName",u.phone,b.days::float AS "leaveBalance" FROM mt_users u LEFT JOIN mt_leave_balances b ON b.user_id=u.id WHERE u.id=$1',[u.id]);return {profile:{...r,leaveBalance:r.leaveBalance??null}};}
-function leaveView(r){return {id:r.public_id,code:r.employee_code,name:r.name,type:r.type,start:iso(r.start_date),end:iso(r.end_date),days:Number(r.days),reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decidedBy:r.decider_code??'',decisionReason:r.decision_reason??''};}
-const leaveSelect="SELECT l.public_id,l.type,l.start_date,l.end_date,l.days,l.reason,l.status,l.created_at,l.decided_at,l.decision_reason,u.employee_code,u.name,d.employee_code AS decider_code FROM mt_leave_requests l JOIN mt_users u ON u.id=l.requester_id LEFT JOIN mt_users d ON d.id=l.decided_by";
-async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.start),end=day(b.end),days=Math.round((new Date(end+'T00:00:00Z')-new Date(start+'T00:00:00Z'))/86400000)+1;
- if(days<1||days>60)die('INVALID_LEAVE_DURATION');const type=text(b.type,1,30,'INVALID_LEAVE_TYPE');if(!['annual','casual','sick','other'].includes(type))die('INVALID_LEAVE_TYPE');
- const f={cid:uuid(b.cid),start,end,days,type,reason:text(String(b.reason??''),0,500,'INVALID_REASON')},digest=sha(JSON.stringify({user:u.id,...f}));
+function leaveView(r){return {id:r.public_id,code:r.employee_code,name:r.name,type:r.type,start:iso(r.start_date),end:iso(r.end_date),days:Number(r.days),durationKind:r.duration_kind||'FULL_DAY',reason:r.reason,status:r.status,createdAt:r.created_at,decidedAt:r.decided_at,decidedBy:r.decider_code??'',decisionReason:r.decision_reason??''};}
+const leaveSelect="SELECT l.public_id,l.type,l.start_date,l.end_date,l.days,l.duration_kind,l.reason,l.status,l.created_at,l.decided_at,l.decision_reason,u.employee_code,u.name,d.employee_code AS decider_code FROM mt_leave_requests l JOIN mt_users u ON u.id=l.requester_id LEFT JOIN mt_users d ON d.id=l.decided_by";
+async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.start),end=day(b.end);
+ const type=text(b.type,1,30,'INVALID_LEAVE_TYPE'),durationKind=String(b.durationKind||'FULL_DAY');
+ if(!['annual','casual','sick','other','compensatory'].includes(type))die('INVALID_LEAVE_TYPE');
+ if(!['FULL_DAY','HALF_DAY'].includes(durationKind))die('INVALID_LEAVE_DURATION');
+ const daySpan=Math.round((new Date(end+'T00:00:00Z')-new Date(start+'T00:00:00Z'))/86400000)+1;
+ const half=durationKind==='HALF_DAY';
+ if(half&&(start!==end||!['annual','compensatory'].includes(type)))die('HALF_DAY_NOT_ALLOWED');
+ if(type==='compensatory'&&!half)die('LEAVE_POLICY_PENDING');
+ const days=half?0.5:daySpan;if(days<0.5||days>60)die('INVALID_LEAVE_DURATION');
+ const f={cid:uuid(b.cid),start,end,days,type,reason:text(String(b.reason??''),0,500,'INVALID_REASON')};
+ if(half)f.durationKind=durationKind; // preserve legacy full-day idempotency hashes
+ const digest=sha(JSON.stringify({user:u.id,...f}));
  return transaction(async c=>{
   const old=await first(c,'SELECT public_id,days,status,request_digest FROM mt_leave_requests WHERE client_request_id=$1',[f.cid]);
   if(old){if(old.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:old.public_id,days:old.days,status:old.status,duplicate:true};}
-  const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1',[u.id]);if(!bal)die('LEAVE_BALANCE_NOT_SET');if(Number(bal.days)<days)die('INSUFFICIENT_LEAVE_BALANCE');
+  if(type==='compensatory'){
+   await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[u.id]);
+   const bank=await first(c,'SELECT COALESCE(SUM(delta_minutes),0)::integer AS minutes FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id]);
+   if(Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
+  }else{
+   const bal=await first(c,'SELECT days FROM mt_leave_balances WHERE user_id=$1',[u.id]);
+   if(!bal)die('LEAVE_BALANCE_NOT_SET');if(Number(bal.days)<days)die('INSUFFICIENT_LEAVE_BALANCE');
+  }
   const publicId='LV-'+randomUUID().slice(0,8).toUpperCase();
-  const r=await first(c,'INSERT INTO mt_leave_requests(public_id,requester_id,client_request_id,request_digest,type,start_date,end_date,days,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,days,status',[publicId,u.id,f.cid,digest,type,start,end,days,f.reason]);
+  const r=await first(c,'INSERT INTO mt_leave_requests(public_id,requester_id,client_request_id,request_digest,type,start_date,end_date,days,reason,duration_kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,days,status',[publicId,u.id,f.cid,digest,type,start,end,days,f.reason,durationKind]);
   if(!r){const x=await first(c,'SELECT public_id,days,status,request_digest FROM mt_leave_requests WHERE client_request_id=$1',[f.cid]);if(!x||x.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:x.public_id,days:x.days,status:x.status,duplicate:true};}
   await c.query("INSERT INTO mt_audit(actor_id,action,entity,entity_id) VALUES($1,'leave.requested','leave',$2)",[u.id,publicId]);
   return {ok:true,id:publicId,days,status:'PENDING'};
