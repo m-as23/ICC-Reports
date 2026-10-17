@@ -10,6 +10,7 @@ on:
       - 'android/maintrack-app/scripts/prepare-web-pilot.mjs'
       - 'android/maintrack-app/scripts/prepare-pilot-ui.mjs'
       - 'android/maintrack-app/tests/**'
+      - 'android/maintrack-app/tests-browser/**'
       - 'android/maintrack-app/tests-release/**'
       - 'android/maintrack-app/scripts/snapshot.mjs'
       - 'android/maintrack-app/update-system/**'
