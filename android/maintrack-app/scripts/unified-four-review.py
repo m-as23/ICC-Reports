@@ -132,6 +132,7 @@ def build():
             command.append("--define:" + define_name + "=" + json.dumps(define, separators=(",", ":")))
         subprocess.run(command, cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
 
+    bundle("update-system/native-session-entry.mjs", native / "secure-assets/stage20-native-session.js")
     bundle("update-system/startup.mjs", native / "secure-assets/stage13-native-ready.js")
     bundle("update-system/local-work-startup.mjs", native / "secure-assets/stage14-local-work.js")
     # The installed Android app must retain its existing trusted OTA updater UI,
@@ -153,6 +154,8 @@ def build():
                     native / "secure-assets/stage15-pilot-update.css")
     native_html = remove_pilot_badge((native / "index.html").read_text())
     native_html = native_html.replace("<head>",
+        '<head>\n<script src="secure-assets/stage20-native-session.js"></script>', 1)
+    native_html = native_html.replace("<head>",
         '<head>\n<script src="secure-assets/stage13-native-ready.js"></script>', 1)
     expected_csp = "connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co;"
     check(native_html.count(expected_csp) == 1, "UNEXPECTED_NATIVE_CSP")
@@ -168,6 +171,8 @@ def build():
     check("secure-assets/stage15-pilot-update.js" in native_html and
           native_html.index("stage14-local-work.js") < native_html.index("stage15-pilot-update.js"),
           "NATIVE_UPDATE_UI_MISSING_OR_BAD_ORDER")
+    check("secure-assets/stage20-native-session.js" in native_html,
+          "NATIVE_SECURE_SESSION_ENTRY_MISSING")
     check("__MAINTRACK_PILOT_CONFIG__" not in
           (native / "secure-assets/stage15-pilot-update.js").read_text(),
           "UPDATE_PUBLIC_CONFIG_NOT_PINNED")
@@ -285,6 +290,9 @@ def verify():
           entry((REVIEW / "web/.vercel/output/static/releases" /
                  manifest["gitCommit"] / "secure-assets/stage14-local-work.js").read_bytes()),
           "SHARED_LOCAL_WORK_GUARD_INVALID")
+    native_entry = (REVIEW / "native/www/secure-assets/stage20-native-session.js")
+    check(native_entry.is_file() and native_entry.stat().st_size > 0,
+          "NATIVE_SESSION_BRIDGE_MISSING")
     panel = manifest.get("nativePilotUpdatePanel")
     check(panel and len(panel["pinnedPublicKey"]) == 43 and
           panel["trustedManifestUrl"] ==
