@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -16,7 +17,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[1]
 PUBLIC = REPO / "web/maintrack/public"
 REVIEW = ROOT / "unified-four-review"
-EXPECTED_BRANCH = "feature/maintrack-unified-four-updates-20261017"
+EXPECTED_BRANCHES = {"feature/maintrack-unified-four-updates-20261017", "fix/maintrack-pilot-session-candidate-20261018"}
+PILOT_BADGE = re.compile(r'<div role="note" aria-label="Pilot demo system"[^>]*>🧪 PILOT — بلاغات تجريبية فقط</div>')
 MAY_CHANGE = {
     "index.html",
     "secure-assets/index-inline-1.js",
@@ -42,6 +44,14 @@ def entry(data):
     return {"sha256": sha(data), "bytes": len(data)}
 
 
+def remove_pilot_badge(html):
+    """Never ship the staging-only floating overlay in a release candidate."""
+    check(len(PILOT_BADGE.findall(html)) == 1, "PILOT_BADGE_EXPECTED_ONCE")
+    result = PILOT_BADGE.sub("", html)
+    check(not PILOT_BADGE.search(result), "PILOT_BADGE_REMOVAL_FAILED")
+    return result
+
+
 def safe_name(name):
     return (
         isinstance(name, str) and name and not name.startswith("/")
@@ -63,8 +73,8 @@ def zipdir(where, target):
 
 def build():
     head = git("rev-parse", "HEAD")
-    valid = (git("branch", "--show-current") == EXPECTED_BRANCH
-             or (os.environ.get("GITHUB_REF") == "refs/heads/" + EXPECTED_BRANCH
+    valid = (git("branch", "--show-current") in EXPECTED_BRANCHES
+             or (os.environ.get("GITHUB_REF", "").removeprefix("refs/heads/") in EXPECTED_BRANCHES
                  and os.environ.get("GITHUB_SHA") == head))
     check(valid, "WRONG_QA_BRANCH_OR_UNPINNED_CI")
     check(not git("diff", "HEAD", "--name-only"), "COMMIT_TRACKED_CHANGES_BEFORE_BUILD")
@@ -141,7 +151,7 @@ def build():
            trusted_config, "__MAINTRACK_PILOT_CONFIG__")
     shutil.copyfile(ROOT / "update-system/pilot-panel.css",
                     native / "secure-assets/stage15-pilot-update.css")
-    native_html = (native / "index.html").read_text()
+    native_html = remove_pilot_badge((native / "index.html").read_text())
     native_html = native_html.replace("<head>",
         '<head>\n<script src="secure-assets/stage13-native-ready.js"></script>', 1)
     expected_csp = "connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co;"
@@ -170,7 +180,7 @@ def build():
                     web / "secure-assets/stage14-local-work.js")
     bundle("update-system/web-entry.mjs", web / "secure-assets/web-update.js", {"commit": head})
     shutil.copyfile(ROOT / "update-system/web-panel.css", web / "secure-assets/web-update.css")
-    web_html = (web / "index.html").read_text()
+    web_html = remove_pilot_badge((web / "index.html").read_text())
     web_html = web_html.replace("</head>",
         '<link rel="stylesheet" href="secure-assets/web-update.css"></head>', 1)
     web_html = web_html.replace("</body>",
@@ -260,9 +270,13 @@ def verify():
         check(entry(data) == wanted, "ARCHIVE_CHECKSUM_MISMATCH: " + filename)
         with zipfile.ZipFile(REVIEW / filename) as z:
             check(len(z.namelist()) == len(set(z.namelist())), "DUPLICATE_MEMBERS")
+            html_members = [m for m in z.namelist() if m.endswith("/index.html") or m == "index.html"]
+            check(len(html_members) == 1, "EXPECTED_SINGLE_ENTRY_HTML")
             for member in z.namelist():
                 check(safe_name(member), "UNSAFE_ARCHIVE_MEMBER")
                 check(entry(z.read(member))["bytes"] >= 0, "INVALID_MEMBER")
+            check(not PILOT_BADGE.search(z.read(html_members[0]).decode("utf-8")),
+                  "PILOT_BADGE_IN_DELIVERY_ARCHIVE")
     check(set(manifest["changedFromApprovedBaseline"]) == MAY_CHANGE,
           "UNREVIEWED_SOURCE_DRIFT")
     guard = manifest.get("sharedLocalWorkGuard")
