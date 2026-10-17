@@ -126,7 +126,7 @@ def build():
     bundle("update-system/local-work-startup.mjs", native / "secure-assets/stage14-local-work.js")
     native_html = (native / "index.html").read_text()
     native_html = native_html.replace("<head>",
-        '<head>\\n<script src="secure-assets/stage13-native-ready.js"></script>', 1)
+        '<head>\n<script src="secure-assets/stage13-native-ready.js"></script>', 1)
     native_html = native_html.replace("</body>",
         '<script src="secure-assets/stage14-local-work.js"></script></body>', 1)
     (native / "index.html").write_text(native_html)
@@ -166,8 +166,8 @@ def build():
         "schema": 1, "appId": "com.icc.maintrack", "channel": "web-pilot",
         "commit": head, "path": "/releases/" + head + "/",
         "expiresAt": 0  # deliberately unusable until an approved release publisher regenerates it
-    }, separators=(",", ":")) + "\\n")
-    (top / "config.json").write_text(json.dumps(config, indent=2) + "\\n")
+    }, separators=(",", ":")) + "\n")
+    (top / "config.json").write_text(json.dumps(config, indent=2) + "\n")
     manifest = {
         "schema": 1, "mode": "review-only", "signed": False,
         "deployable": False, "rolloutEnabled": False, "gitCommit": head,
@@ -195,7 +195,7 @@ def build():
         dest = REVIEW / filename
         zipdir(directory, dest)
         manifest["archives"][filename] = entry(dest.read_bytes())
-    (REVIEW / "candidate.json").write_text(json.dumps(manifest, indent=2) + "\\n")
+    (REVIEW / "candidate.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("PASS review-only synchronized candidate", head,
           "changed assets:", sorted(changes), "shared assets:", len(shared))
 
