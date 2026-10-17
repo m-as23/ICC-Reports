@@ -391,6 +391,36 @@ async function overtimeMine(u){permit(u,'leave.request');
   financialApprovedHours:round(Number(totals.rows[0].financial)/60),
   substituteApprovedHours:round(Number(totals.rows[0].substitute)/60)};
 }
+function overtimeOwnerFilters(b){
+ const year=Number(b.year??0),month=Number(b.month??0);
+ if(!Number.isSafeInteger(year)||(year!==0&&(year<2000||year>2100)))die('INVALID_YEAR');
+ if(!Number.isSafeInteger(month)||month<0||month>12)die('INVALID_MONTH');
+ const code=text(String(b.employeeCode??''),0,32,'INVALID_EMPLOYEE');
+ const compensation=String(b.compensation??'');
+ if(!['','FINANCIAL','SUBSTITUTE'].includes(compensation))die('INVALID_OVERTIME_KIND');
+ return {params:[year,month,code,compensation],where:" WHERE ($1::int=0 OR EXTRACT(YEAR FROM o.work_date)::int=$1) AND ($2::int=0 OR EXTRACT(MONTH FROM o.work_date)::int=$2) AND ($3::text='' OR u.employee_code=$3) AND ($4::text='' OR o.compensation_kind=$4)"};
+}
+async function overtimeSummary(u,b){
+ permit(u,'leave.approve');
+ const f=overtimeOwnerFilters(b);
+ const [r,employees]=await Promise.all([
+ pool.query(`SELECT
+   COALESCE(SUM(o.minutes) FILTER (WHERE o.status='APPROVED'),0)::bigint AS approved_minutes,
+   COALESCE(SUM(o.minutes) FILTER (WHERE o.status='APPROVED' AND o.compensation_kind='FINANCIAL'),0)::bigint AS financial_minutes,
+   COALESCE(SUM(o.minutes) FILTER (WHERE o.status='APPROVED' AND o.compensation_kind='SUBSTITUTE'),0)::bigint AS substitute_minutes,
+   COUNT(DISTINCT (o.requester_id,o.work_date)) FILTER (WHERE o.status='APPROVED')::int AS distinct_days,
+   COUNT(*) FILTER (WHERE o.status='PENDING')::int AS pending_count,
+   COUNT(*) FILTER (WHERE o.status='APPROVED')::int AS approved_count
+   FROM mt_overtime_requests o JOIN mt_users u ON u.id=o.requester_id`+f.where,f.params),
+ pool.query('SELECT employee_code AS code,name FROM mt_users WHERE active ORDER BY name,employee_code LIMIT 1000')
+ ]);
+ const x=r.rows[0];
+ return {approvedHours:round(Number(x.approved_minutes)/60),
+  financialHours:round(Number(x.financial_minutes)/60),
+  substituteHours:round(Number(x.substitute_minutes)/60),
+  distinctDays:Number(x.distinct_days),pendingCount:Number(x.pending_count),
+  approvedCount:Number(x.approved_count),employees:employees.rows};
+}
 async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day(b.workDate),from=clock(b.from),to=clock(b.to),minutes=(mins(to)-mins(from)+1440)%1440;
  if(minutes<1||minutes>1439)die('INVALID_OVERTIME_DURATION');
  const compensation=text(b.compensation,1,20,'INVALID_OVERTIME_KIND');if(!['FINANCIAL','SUBSTITUTE'].includes(compensation))die('INVALID_OVERTIME_KIND');
@@ -438,7 +468,8 @@ async function dispatch(u,b){const a=b.action;switch(a){
   case 'overtimeMine':return overtimeMine(u);
   case 'overtimeRequest':return overtimeRequest(u,b);
   case 'overtimeDecision':return overtimeDecision(u,b);
-  case 'overtimeInbox':{permit(u,'leave.approve');const r=await pool.query(otSelect+" ORDER BY (o.status='PENDING') DESC,o.created_at DESC LIMIT 150");return {items:r.rows.map(otView)};}
+  case 'overtimeSummary':return overtimeSummary(u,b);
+   case 'overtimeInbox':{permit(u,'leave.approve');const f=overtimeOwnerFilters(b);const r=await pool.query(otSelect+f.where+" ORDER BY (o.status='PENDING') DESC,o.created_at DESC LIMIT 150",f.params);return {items:r.rows.map(otView)};}
  case 'notifications':return notifications(u);
  case 'profile':return profile(u);
  case 'updateProfile':{permit(u,'profile.update');const n=text(String(b.preferredName??''),0,50,'INVALID_NAME'),p=text(String(b.phone??''),0,32,'INVALID_PHONE');if(/[<>]/.test(n)||!/^[+0-9٠-٩\s()-]*$/.test(p))die('INVALID_PROFILE');await pool.query('UPDATE mt_users SET preferred_name=$1,phone=$2,updated_at=now() WHERE id=$3',[n,p,u.id]);return profile(u);}
