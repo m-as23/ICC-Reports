@@ -1,0 +1,55 @@
+<template id="mt-account-v2-template">
+<div class="mtav2" id="mtav2" dir="rtl">
+  <header class="mtav2-hero">
+    <div class="mtav2-avatar" id="mtav2Avatar">M</div>
+    <div><small>MAINTRACK / MY ACCOUNT</small><h2 id="mtav2Name">حسابي</h2><p id="mtav2Job">الملف الوظيفي</p></div>
+    <span class="mtav2-role" id="mtav2Role">—</span>
+  </header>
+  <div class="mtav2-identity">
+    <div><small>كود الموظف</small><strong id="mtav2Code">—</strong></div>
+    <div><small>القسم</small><strong id="mtav2Department">—</strong></div>
+    <div><small>المسمى الوظيفي</small><strong id="mtav2Title">—</strong></div>
+  </div>
+  <div class="mtav2-headline"><div><small>LEAVE & OVERTIME</small><h3>أرصدة الإجازات والمكافآت</h3></div><span>8 ساعات إضافية = يوم مكافئ</span></div>
+  <div class="mtav2-balances">
+    <article class="mtav2-balance annual"><small>الإجازات السنوية</small><strong id="mtav2AnnualAvailable">—</strong><span>يوم متاح</span><div class="mtav2-kvs"><span>الإجمالي <b id="mtav2AnnualTotal">—</b></span><span>المستخدم <b id="mtav2AnnualUsed">—</b></span></div></article>
+    <article class="mtav2-balance comp"><small>إجازات البدل</small><strong id="mtav2CompAvailable">—</strong><span>ساعة متاحة / <b id="mtav2CompDays">—</b> يوم مكافئ</span><div class="mtav2-kvs"><span>المكتسب <b id="mtav2CompEarned">—</b> س</span><span>المستخدم <b id="mtav2CompUsed">—</b> س</span></div></article>
+    <article class="mtav2-balance financial"><small>الإضافي بمقابل مالي</small><strong id="mtav2FinancialDays">—</strong><span>يوم مكافئ معتمد</span><div class="mtav2-kvs"><span>الساعات المعتمدة <b id="mtav2FinancialHours">—</b> س</span></div><em>تصنيف مالي فقط، وليس تأكيدًا لصرف مبلغ.</em></article>
+  </div>
+  <p class="mtav2-legacy" id="mtav2Legacy" hidden></p>
+  <p class="mtav2-banner" id="mtav2State" role="status" aria-live="polite">يتم تحميل الأرصدة من السيرفر…</p>
+  <div class="mtav2-columns">
+    <details class="mtav2-panel" id="mtav2LeavePanel"><summary><span class="mtav2-symbol">↗</span><span><b>طلب إجازة</b><small>سنوية، عارضة، مرضية أو بدل</small></span><span class="mtav2-chevron">⌄</span></summary>
+      <form id="mtav2LeaveForm"><div class="mtav2-formgrid">
+        <label>نوع الإجازة<select id="mtav2LeaveType"><option value="annual">إجازة سنوية</option><option value="casual">إجازة عارضة</option><option value="sick">إجازة مرضية</option><option value="other">أخرى</option><option value="compensatory" disabled>إجازة بدل — عند تفعيل الرصيد المنفصل</option></select></label>
+        <label>من تاريخ<input type="date" id="mtav2LeaveStart" required></label><label>إلى تاريخ<input type="date" id="mtav2LeaveEnd" required></label>
+      </div><label>ملاحظة للمالك (اختياري)<textarea id="mtav2LeaveReason" maxlength="500" rows="2" placeholder="سبب الطلب أو تفاصيل إضافية"></textarea></label>
+      <button type="submit" class="mtav2-primary" id="mtav2LeaveSubmit">إرسال طلب الإجازة</button><p class="mtav2-feedback" id="mtav2LeaveStatus" role="status" aria-live="polite"></p></form>
+    </details>
+    <details class="mtav2-panel" id="mtav2OvertimePanel"><summary><span class="mtav2-symbol">◷</span><span><b>تسجيل وقت إضافي</b><small>بالساعات الفعلية مع اعتماد المالك</small></span><span class="mtav2-chevron">⌄</span></summary>
+      <form id="mtav2OvertimeForm">
+        <div class="mtav2-formgrid">
+          <label>نوع العمل<select id="mtav2WorkMode"><option value="extension">ساعات بعد الوردية الرسمية</option><option value="separate">عمل إضافي مستقل</option></select></label>
+          <label>تاريخ بداية العمل<input id="mtav2WorkDate" type="date" required></label>
+          <label id="mtav2ShiftRow">الوردية الرسمية<select id="mtav2Shift"><option value="1">الأولى · 07:00–15:00</option><option value="2">الثانية · 15:00–23:00</option><option value="3">الثالثة · 23:00–07:00 (+1)</option></select></label>
+          <label>بداية الساعات الإضافية<input id="mtav2WorkStart" type="datetime-local" required></label>
+          <label>نهاية الساعات الإضافية<input id="mtav2WorkEnd" type="datetime-local" required></label>
+          <label>نوع المقابل<select id="mtav2Compensation"><option value="financial">مقابل مالي (تصنيف الساعات فقط)</option><option value="compensatory">بدل إجازة (رصيد ساعات)</option></select></label>
+        </div>
+        <label>سبب العمل الإضافي (اختياري)<textarea id="mtav2WorkReason" maxlength="500" rows="2" placeholder="صيانة طارئة، دعم إنتاج، متابعة عطل…"></textarea></label>
+        <div class="mtav2-calculation"><div><small>ساعات إضافية فعلية</small><strong id="mtav2CalcHours">—</strong></div><div><small>الأيام المكافئة</small><strong id="mtav2CalcDays">—</strong></div></div>
+        <button type="submit" class="mtav2-secondary" id="mtav2Preview">معاينة الحساب</button>
+        <p class="mtav2-feedback" id="mtav2OvertimeStatus" role="status" aria-live="polite">المعاينة لا تحفظ طلبًا. إرسال واعتماد الإضافي يتفعّلان بعد تجهيز خدمة السيرفر.</p>
+      </form>
+    </details>
+  </div>
+  <section class="mtav2-history"><div class="mtav2-headline"><div><small>REQUESTS & HISTORY</small><h3>طلباتي السابقة</h3></div><span id="mtav2Pending">— طلب قيد المراجعة</span></div>
+    <div class="mtav2-filters" role="group" aria-label="تصفية الطلبات"><button type="button" data-history="leave" aria-pressed="true">الإجازات</button><button type="button" data-history="financial" aria-pressed="false">إضافي مالي</button><button type="button" data-history="compensatory" aria-pressed="false">إضافي بدل</button></div>
+    <div id="mtav2History" class="mtav2-history-list" aria-live="polite">جارٍ تحميل الطلبات…</div>
+  </section>
+  <details class="mtav2-panel mtav2-owner" id="mtav2Owner" hidden><summary><span class="mtav2-symbol">▤</span><span><b>حضور الفريق والإضافي</b><small>لوحة المالك للتصفية والمراجعة</small></span><span class="mtav2-chevron">⌄</span></summary><div class="mtav2-formgrid">
+    <label>السنة<input type="number" id="mtav2OwnerYear" min="2020" max="2100"></label><label>الشهر<select id="mtav2OwnerMonth"><option value="">كل الشهور</option><option value="1">يناير</option><option value="2">فبراير</option><option value="3">مارس</option><option value="4">أبريل</option><option value="5">مايو</option><option value="6">يونيو</option><option value="7">يوليو</option><option value="8">أغسطس</option><option value="9">سبتمبر</option><option value="10">أكتوبر</option><option value="11">نوفمبر</option><option value="12">ديسمبر</option></select></label>
+    <label>تصنيف المقابل<select id="mtav2OwnerKind"><option value="">الكل</option><option value="financial">مالي</option><option value="compensatory">بدل</option></select></label>
+  </div><p class="mtav2-feedback">لوحة المالك ستعرض الأيام الفعلية والساعات والأيام المكافئة بشكل منفصل بعد تفعيل بيانات الإضافي. لا تُحسب ساعات غير معتمدة ضمن الأرصدة.</p></details>
+</div>
+</template>
