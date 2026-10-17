@@ -14,7 +14,9 @@ let selectedMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 const getQ = () => {try{return JSON.parse(localStorage.getItem('q')||'[]');}catch(e){return [];}};
 function setQ(q) { localStorage.setItem('q', JSON.stringify(q)); pend(); }
 function pend() { const n = getQ().filter(q=>S&&q.u===S.code).length; $('pend').style.display = n ? 'flex' : 'none'; $('pn').textContent = n; }
-function note(t, c) { const m = $('msg'); m.textContent = t || ''; m.className = t ? c : ''; }
+const MAINTRACK_ERROR_MESSAGES=Object.freeze({INVALID_SECTION_MACHINE_COMPONENT:'الجزء المختار غير متاح لهذا القسم أو الماكينة. حدّث القوائم ثم حاول مجددًا.',INVALID_STATUS_OR_CATEGORY:'حالة البلاغ أو تصنيفه لم يعد متاحًا. حدّث القوائم.',IDEMPOTENCY_CONFLICT:'الطلب سبق إرساله ببيانات مختلفة. راجع البيانات قبل المحاولة.',INSUFFICIENT_LEAVE_BALANCE:'الرصيد المتاح غير كافٍ لهذا الطلب.',LEAVE_BALANCE_NOT_SET:'لم يتم تحديد رصيد الإجازات لهذا الموظف بعد.',AUTH_UNCONFIRMED:'تعذر التحقق من الجلسة حاليًا، حاول مجددًا.',INTERNAL_ERROR:'حدث خطأ في السيرفر. حاول لاحقًا أو تواصل مع المسؤول.'});
+function localizedError(t){return String(t||'').replace(/\b(?:INVALID_[A-Z_]+|INTERNAL_ERROR|IDEMPOTENCY_CONFLICT|INSUFFICIENT_LEAVE_BALANCE|LEAVE_BALANCE_NOT_SET|AUTH_UNCONFIRMED)\b/g,code=>MAINTRACK_ERROR_MESSAGES[code]||'تعذّر إكمال العملية، راجع البيانات وحاول مجددًا.');}
+function note(t, c) { const m = $('msg'); m.textContent = localizedError(t); m.className = t ? c : ''; }
 function fill(sel, arr, ph) { sel.length = 0; if (ph) sel.add(new Option(ph, '')); arr.forEach(x => sel.add(new Option(x, x))); }
 function today() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 // Read operations should fail quickly and recover from the UI; a possibly committed
@@ -84,6 +86,8 @@ function setSync(text,state){ const el=$('syncStatus'); if(!el)return; el.innerH
 const netMsg = e => !navigator.onLine ? 'لا يوجد اتصال بالإنترنت. تسجيل الدخول يحتاج نت' : (e && e.name === 'AbortError' ? 'انتهت مهلة الاتصال بعد '+Math.round((e.timeoutMs||API_DEFAULT_TIMEOUT_MS)/1000)+' ثانية. الطلب لم يكتمل على جهازك؛ حاول مجددًا.' : 'تعذر الوصول للسيرفر. تحقق من الاتصال ثم أعد المحاولة.');
 const norm = s => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 function show(v) {
+ if(window.__maintrackActiveView!==v)note('','');
+ window.__maintrackActiveView=v;
   document.body.classList.toggle('auth-screen', v === 'login' || v === 'change');
   ['login','change','form','profile','leave','approvals','admin','cmms','catalog'].forEach(x => $(x).style.display = x === v ? 'block' : 'none');
   $('authStage').style.display = v==='login' ? 'grid' : 'none';
@@ -277,11 +281,27 @@ function renderSectionHoursChart(items){
   host.className='section-chart'; const max=Math.max(...rows.map(x=>Number(x.hours)||0),0.01);
   rows.forEach(x=>{const row=document.createElement('div');row.className='section-chart-row';const name=document.createElement('div');name.className='section-chart-name';name.textContent=x.section||'غير محدد';const track=document.createElement('div');track.className='section-chart-track';track.setAttribute('role','img');track.setAttribute('aria-label',(x.section||'غير محدد')+': '+fmt(x.hours,2)+' ساعة');const bar=document.createElement('div');bar.className='section-chart-bar';bar.style.width=Math.max(1,(Number(x.hours)/max)*100)+'%';track.appendChild(bar);const value=document.createElement('div');value.className='section-chart-value';value.textContent=fmt(x.hours,2)+' س';row.append(name,track,value);host.appendChild(row);});
 }
-function renderDashboard(data,savedAt,isOffline){$('mCount').textContent=Number(data.count||0).toLocaleString('en-US');$('mDowntime').textContent=fmt(data.totalDowntime,2);$('mMttr').textContent=data.mttr==null?'—':fmt(data.mttr,2);$('mMachines').textContent=Number(data.machineCount||0).toLocaleString('en-US');$('mResponse').textContent=data.avgResponse==null?'—':fmt(data.avgResponse,2);$('mElapsed').textContent=fmt(data.totalElapsed,2);renderSectionHoursChart(data.sectionHours||[]);
+function setDashboardRoleView(){
+ const limited=!!S&&S.role==='technician';
+ for(const id of ['mMttr','mMachines','mResponse','mElapsed','sectionHoursChart','topMachines','dailyTrend','qualityInfo','machineAnalysis','sectionAnalysis','recentReports']){
+  const el=$(id),card=el&&el.closest('.metric, .section-card');if(card)card.style.display=limited?'none':'';
+ }
+ for(const group of $('dashboard').querySelectorAll('.analytics-pair')){
+  const cards=[...group.children].filter(e=>e.classList.contains('section-card'));
+  group.style.display=limited&&cards.every(e=>e.style.display==='none')?'none':'';
+ }
+}
+function renderDashboard(data,savedAt,isOffline){setDashboardRoleView();$('mCount').textContent=Number(data.count||0).toLocaleString('en-US');
+ if(S&&S.role==='technician'){
+  $('mDowntime').textContent=fmt(data.totalDowntime,2);
+  makeTable('categoryAnalysis',['التصنيف','عدد الأعطال','ساعات الإصلاح'],(data.categoryTable||[]).map(r=>[r.name,String(r.count||0),fmt(r.hours,2)+' س']));
+  const dt=savedAt?new Date(savedAt):new Date();
+  $('dashUpdated').textContent=(isOffline?'عرض محفوظ دون اتصال • ':'آخر تحديث: ')+dt.toLocaleString('ar-EG');return;
+ }$('mDowntime').textContent=fmt(data.totalDowntime,2);$('mMttr').textContent=data.mttr==null?'—':fmt(data.mttr,2);$('mMachines').textContent=Number(data.machineCount||0).toLocaleString('en-US');$('mResponse').textContent=data.avgResponse==null?'—':fmt(data.avgResponse,2);$('mElapsed').textContent=fmt(data.totalElapsed,2);renderSectionHoursChart(data.sectionHours||[]);
 const top=$('topMachines');top.textContent='';if(!data.topMachines||!data.topMachines.length){top.className='empty';top.textContent='لا توجد بيانات لهذا الشهر.';}else{top.className='';data.topMachines.slice(0,5).forEach((m,i)=>{const row=document.createElement('div');row.className='rank-row';const name=document.createElement('div');name.className='rank-name';name.textContent=(i+1)+'. '+m.machine;const val=document.createElement('div');val.className='rank-value';val.textContent=fmt(m.hours,2)+' ساعة';row.append(name,val);top.appendChild(row);});}
 const recent=$('recentReports');recent.textContent='';if(!data.recent||!data.recent.length){recent.className='recent empty';recent.textContent='لا توجد بلاغات لهذا الشهر.';}else{recent.className='recent';const table=document.createElement('table'),thead=document.createElement('thead'),tr=document.createElement('tr');['رقم البلاغ','الماكينة','مدة التوقف','التاريخ'].forEach(t=>{const th=document.createElement('th');th.textContent=t;tr.appendChild(th);});thead.appendChild(tr);table.appendChild(thead);const tb=document.createElement('tbody');data.recent.forEach(r=>{const row=document.createElement('tr');[r.id,r.machine,r.hours==null?'غير مكتملة':fmt(r.hours,2)+' ساعة',r.date].forEach(v=>{const td=document.createElement('td');td.textContent=v==null?'—':String(v);row.appendChild(td);});tb.appendChild(row);});table.appendChild(tb);recent.appendChild(table);}
 renderDetailedAnalytics(data);const dt=savedAt?new Date(savedAt):new Date();$('dashUpdated').textContent=(isOffline?'عرض محفوظ دون اتصال • ':'آخر تحديث: ')+dt.toLocaleString('ar-EG');}
-async function showDashboard(refresh){show('dashboard');if(!S)return;const key=monthKey(selectedMonth);$('monthLabel').textContent=monthTitle(selectedMonth);$('nextMonth').disabled=key>=monthKey(new Date());if(dashBusy)return;const cache=cachedDashboard(key);if(cache&&!refresh){renderDashboard(cache.data,cache.savedAt,!navigator.onLine);setSync('بيانات محفوظة — آخر تحديث '+new Date(cache.savedAt).toLocaleTimeString('ar-EG'),'loading');}else if(!cache){$('topMachines').textContent='جارٍ تحميل البيانات…';$('recentReports').textContent='جارٍ تحميل البيانات…';}
+async function showDashboard(refresh){show('dashboard');if(!S)return;setDashboardRoleView();const key=monthKey(selectedMonth);$('monthLabel').textContent=monthTitle(selectedMonth);$('nextMonth').disabled=key>=monthKey(new Date());if(dashBusy)return;const cache=cachedDashboard(key);if(cache&&!refresh){renderDashboard(cache.data,cache.savedAt,!navigator.onLine);setSync('بيانات محفوظة — آخر تحديث '+new Date(cache.savedAt).toLocaleTimeString('ar-EG'),'loading');}else if(!cache){$('topMachines').textContent='جارٍ تحميل البيانات…';$('recentReports').textContent='جارٍ تحميل البيانات…';}
 if(!navigator.onLine){setSync('بدون اتصال — بيانات محفوظة','offline');if(cache)renderDashboard(cache.data,cache.savedAt,true);else{$('topMachines').textContent='لا توجد بيانات محفوظة لهذا الشهر. اتصل بالإنترنت للتحديث.';$('recentReports').textContent='لا توجد بيانات محفوظة لهذا الشهر.';}return;}
 if(!refresh&&cache&&Date.now()-cache.savedAt<5*60*1000)return;
 dashBusy=true;setSync('جارٍ تحديث البيانات…','loading');try{const requestMonth=new Date(selectedMonth.getFullYear(),selectedMonth.getMonth(),1);const data=await api('dashboard',{year:requestMonth.getFullYear(),month:requestMonth.getMonth()+1});if(data.error==='AUTH')return logout();if(data.error)throw new Error(data.error);cacheDashboard(key,data);setSync('تم تحديث البيانات','ok');if(key===monthKey(selectedMonth))renderDashboard(data,Date.now(),false);}catch(e){setSync('تعذر التحديث — تحقق من الاتصال','offline');if(key===monthKey(selectedMonth)){if(cache)renderDashboard(cache.data,cache.savedAt,true);else{$('topMachines').textContent='تعذر تحميل بيانات المؤشرات. تحقق من الاتصال ونشر كود Apps Script المحدّث.';$('recentReports').textContent='لا توجد بيانات متاحة.';note(netMsg(e),'err');}}}finally{dashBusy=false;if(key!==monthKey(selectedMonth))showDashboard(false);}}
@@ -366,18 +386,12 @@ function renderProfile(p){
   $('profileRole').textContent=p.jobTitle||'المسمى الوظيفي غير محدد';$('profileAccess').textContent=roles[p.role]||p.role; $('profileCode').textContent=p.code;
   $('profileDepartment').textContent=p.department||'غير محدد';$('profileJob').textContent=p.jobTitle||'غير محدد';
   $('profileLeave').textContent=p.leaveBalance===null?'غير محدد':fmt(p.leaveBalance,1)+' يوم';
-  $('profilePreferred').value=p.preferredName||'';$('profilePhone').value=p.phone||'';
+  
 }
 async function showProfile(){
   if(!S)return;show('profile');$('profileName').textContent='جارٍ تحميل ملفك...';
   try{const d=await api('profile');if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);renderProfile(d.profile);}catch(e){note('تعذر تحميل الملف الشخصي. تحقق من الاتصال.','err');}
 }
-$('saveProfile').onclick=async()=>{
-  const btn=$('saveProfile');btn.disabled=true;btn.textContent='جارٍ حفظ التعديلات…';
-  try{const d=await api('updateProfile',{preferredName:$('profilePreferred').value,phone:$('profilePhone').value});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);renderProfile(d.profile);note('تم حفظ بيانات ملفك الشخصي','ok');}
-  catch(e){note('تعذر حفظ الملف الشخصي: '+(e.message||'خطأ اتصال'),'err');}
-  finally{btn.disabled=false;btn.textContent='حفظ التعديلات';}
-};
 function renderAdminSelection(){
  const code=$('adminUser').value,u=adminItems.find(x=>x.code===code);if(!u)return;
  $('adminRole').value=u.role;$('adminActive').checked=!!u.active;$('adminLeave').value=u.leaveBalance==null?'':u.leaveBalance;$('adminDepartment').value=u.department||'';$('adminJob').value=u.jobTitle||'';
