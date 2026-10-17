@@ -2,6 +2,6 @@
   "name": "maintrack-stage14-real-ui-qa",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test --test-concurrency=1 local-work.browser.test.mjs"},
+  "scripts": {"test": "node --test --test-concurrency=1 local-work.browser.test.mjs web-update.browser.test.mjs"},
   "devDependencies": {"playwright": "1.62.1"}
 }
