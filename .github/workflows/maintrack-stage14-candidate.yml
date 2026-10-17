@@ -7,6 +7,9 @@ on:
       - 'android/maintrack-app/scripts/release-candidate.py'
       - 'android/maintrack-app/scripts/release-preflight.py'
       - 'android/maintrack-app/scripts/prepare-web-preview.py'
+      - 'android/maintrack-app/scripts/prepare-web-pilot.mjs'
+      - 'android/maintrack-app/scripts/prepare-pilot-ui.mjs'
+      - 'android/maintrack-app/tests/**'
       - 'android/maintrack-app/tests-release/**'
       - 'android/maintrack-app/scripts/snapshot.mjs'
       - 'android/maintrack-app/update-system/**'
@@ -63,6 +66,31 @@ jobs:
           python3 scripts/release-candidate.py verify
           python3 scripts/prepare-web-preview.py --expected-commit "$GITHUB_SHA"
           sha256sum web-preview/maintrack-web-preview.zip > web-preview/maintrack-web-preview.sha256
+      - name: Assemble both opt-in update frontends from the same commit — no publish
+        run: |
+          node scripts/check-pilot-build.mjs
+          node scripts/prepare-web-pilot.mjs
+          test -s web-pilot/.vercel/output/config.json
+          test -s web-pilot/.vercel/output/static/maintrack-release.json
+          test -s "web-pilot/.vercel/output/static/releases/$GITHUB_SHA/secure-assets/web-update.js"
+          python3 - <<'PY'
+          import json, hashlib, pathlib, zipfile
+          root=pathlib.Path('web-pilot')
+          sha=__import__('os').environ['GITHUB_SHA']
+          release=json.loads((root/'.vercel/output/static/maintrack-release.json').read_text())
+          assert release['commit']==sha and release['channel']=='web-pilot'
+          candidate=json.loads(pathlib.Path('release-candidate/candidate.json').read_text())
+          assert candidate['sourceCommit']==sha
+          target=root/'.vercel/output/static/releases'/sha
+          for filename,info in candidate['files'].items():
+            if filename=='index.html': continue
+            data=(target/filename).read_bytes()
+            assert len(data)==info['bytes'] and hashlib.sha256(data).hexdigest()==info['sha256'], filename
+          with zipfile.ZipFile('web-pilot-build-output.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for p in sorted(root.rglob('*')):
+              if p.is_file(): z.write(p,p.relative_to(root).as_posix())
+          print('PASS matching locked Web/OTA core on same commit; QA-only Build Output packaged')
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: MainTrack-Stage14-Review-Candidates
@@ -70,6 +98,7 @@ jobs:
             android/maintrack-app/release-candidate/
             android/maintrack-app/web-preview/maintrack-web-preview.zip
             android/maintrack-app/web-preview/maintrack-web-preview.sha256
+            android/maintrack-app/web-pilot-build-output.zip
           if-no-files-found: error
           retention-days: 14
   signed-release:
