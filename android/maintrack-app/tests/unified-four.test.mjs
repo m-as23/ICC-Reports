@@ -67,7 +67,7 @@ test('contact editor is removed only from UI',async()=>{
  for(const id of ['profilePhone','profilePreferred','saveProfile'])assert.ok(!html.includes('id="'+id+'"'));
  assert.ok(!js.includes("$('saveProfile').onclick"));
  assert.ok(html.includes('id="profileCode"'));
- assert.ok(html.includes('id="profileLeave"'));
+ for(const id of ['leaveBalance','annualTotal','annualUsed','substituteBalance','substituteEarned','substituteUsed','otFinancial'])assert.ok(html.includes('id="'+id+'"'));
 });
 
 test('staging backend TypeScript source retains valid JavaScript grammar',async()=>{
@@ -100,10 +100,12 @@ test('employee overtime entry and history use explicit Arabic 12h controls',asyn
   assert.ok(!html.includes('id="'+name+'"'));
  }
  assert.ok(html.includes('الإجازات والعمل الإضافي'));
- assert.ok(html.indexOf('id="overtimeCard"')>html.indexOf('id="leave"'));
+ assert.ok(html.indexOf('id="overtimeCard"')>html.indexOf('id="profile"'));
+ assert.ok(!html.includes('<section id="leave"'));
+ assert.ok(html.includes('id="accountOvertimeDetails"'));
  assert.ok(js.includes('showOvertimeClock(r.from)'));
  assert.ok(js.includes('readOvertimeClock'));
- assert.ok(html.includes('id="otMineFilter"'));
+ for(const id of ['historyFilterLeave','historyFilterFinancial','historyFilterSubstitute'])assert.ok(html.includes('id="'+id+'"'));
 });
 
 test('owner overtime KPIs require approval role and count unique employee-days',async()=>{
@@ -116,4 +118,35 @@ test('owner overtime KPIs require approval role and count unique employee-days',
  for(const f of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','otOwnerKind','otOwnerDistinctDays','otOwnerApprovedHours'])assert.ok(html.includes('id="'+f+'"'));
  assert.ok(js.includes("api('overtimeSummary',ownerOvertimeFilters())"));
  assert.ok(js.includes("api('overtimeInbox',ownerOvertimeFilters())"));
+});
+
+test('approved account layout: available leave dominates and financial overtime is equivalent DAYS',async()=>{
+ const html=await read(htmlFile),js=await read(scriptFile),api=await read(apiFile);
+ assert.ok(html.includes('id="accountLeaveDetails"'));
+ assert.ok(html.includes('id="accountOvertimeDetails"'));
+ assert.ok(html.includes('id="accountHistoryDetails"'));
+ assert.ok(html.includes('إجمالي أيام العمل الإضافي المعتمدة'));
+ assert.ok(!html.includes('<section id="leave"'));
+ assert.ok(js.includes("api('accountSummary')"));
+ assert.ok(js.includes("d.financialApprovedDays"));
+ assert.ok(api.includes("case 'accountSummary':return accountSummary(u)"));
+ assert.ok(api.includes("Number(financial.rows[0].n)/480"));
+ assert.ok(!js.includes("$('otFinancial').textContent=fmt(data.financialApprovedHours,2)"));
+});
+test('full-day substitute, legacy subtype compatibility and no future unworked overtime',async()=>{
+ const api=await read(apiFile),html=await read(htmlFile);
+ assert.ok(html.includes('value="AFTER_SHIFT"'));
+ assert.ok(html.includes('value="INDEPENDENT_DAY"'));
+ assert.ok(api.includes("const workKind=String(b.workKind||'UNSPECIFIED')"));
+ assert.ok(api.includes("workKind==='UNSPECIFIED'?{}:{workKind}"));
+ assert.ok(api.includes('FUTURE_OVERTIME_NOT_ALLOWED'));
+ assert.ok(api.includes("if(decision==='APPROVED')validateCompletedOvertime"));
+ assert.ok(api.includes('o.work_kind'));
+});
+test('three previous request filters and owner approval logic remain present',async()=>{
+ const js=await read(scriptFile);
+ assert.ok(js.includes("setAccountHistoryFilter(filter)"));
+ for(const v of ["'historyFilterLeave'","'historyFilterFinancial'","'historyFilterSubstitute'"])assert.ok(js.includes(v));
+ assert.ok(js.includes("api('overtimeDecision'"));
+ assert.ok(js.includes("api('leaveDecision'"));
 });
