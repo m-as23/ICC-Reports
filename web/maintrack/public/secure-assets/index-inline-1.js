@@ -99,7 +99,7 @@ function show(v) {
   ['Dash','Form','Profile','Leave','Approve','Admin','Cmms','Catalog'].forEach(tab=>$('tab'+tab).classList.toggle('active',v===({Dash:'dashboard',Form:'form',Profile:'profile',Leave:'leave',Approve:'approvals',Admin:'admin',Cmms:'cmms',Catalog:'catalog'}[tab])));
   $('tabAdmin').style.display=S&&S.role==='owner'?'block':'none';$('tabCmms').style.display=S&&S.role==='owner'?'block':'none';$('tabCatalog').style.display=S&&S.role==='owner'?'block':'none';$('tabApprove').style.display=S&&S.role==='owner'?'block':'none';$('tabLeave').style.display=S&&['owner','engineer','technician'].includes(S.role)?'block':'none';
   $('tabForm').style.display=canReport()?'block':'none';
-  $('headTitle').textContent = ({dashboard:'لوحة الأداء',form:'بلاغ عطل جديد',profile:'حسابي',leave:'إجازاتي',approvals:'اعتماد الإجازات',admin:'إدارة المستخدمين',cmms:'سجل أوامر الشغل',catalog:'إدارة بيانات الصيانة',change:'تغيير كلمة المرور'})[v]||'MainTrack';
+  $('headTitle').textContent = ({dashboard:'لوحة الأداء',form:'بلاغ عطل جديد',profile:'حسابي',leave:'إجازاتي',approvals:'اعتماد الإجازات والإضافي',admin:'إدارة المستخدمين',cmms:'سجل أوامر الشغل',catalog:'إدارة بيانات الصيانة',change:'تغيير كلمة المرور'})[v]||'MainTrack';
   if(v==='login'||v==='change'){noticeOpen=false;$('notifications').style.display='none';$('notifications').setAttribute('aria-hidden','true');$('bellBtn').setAttribute('aria-expanded','false');}
   $('who').textContent = S ? '◉  '+(S.displayName||S.name) : '';
   if (v === 'form' || v === 'dashboard') $('wo').style.display = v === 'form' ? 'inline-block' : 'none';
@@ -359,7 +359,7 @@ function drawLeaveList(hostId,items){
  makeTable(hostId,['رقم الطلب','النوع','الفترة','الأيام','الحالة'],items.map(r=>[r.id,leaveTypeNames[r.type]||r.type,r.start+' ← '+r.end,(r.durationKind==='HALF_DAY'?'نصف يوم (4 ساعات)':r.days),leaveStateNames[r.status]||r.status]));
 }
 async function showLeave(){
- if(!S||!canReport())return;show('leave');$('myLeaves').textContent='جارٍ التحميل…';void refreshOvertime();
+ if(!S||!canReport())return;show('leave');$('myLeaves').textContent='جارٍ التحميل…';void refreshSubstituteBalance();
  try{const d=await api('leaveMine');if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);$('leaveBalance').textContent=d.profile.leaveBalance==null?'غير محدد':fmt(d.profile.leaveBalance,1)+' يوم';$('leavePending').textContent=(d.items||[]).filter(x=>x.status==='PENDING').length;drawLeaveList('myLeaves',d.items||[]);}catch(e){$('myLeaves').textContent='تعذر تحميل الطلبات: '+(e.message||'');}
 }
 $('sendLeave').onclick=async()=>{
@@ -388,17 +388,23 @@ function renderProfile(p){
   if(S){S.displayName=p.preferredName||p.name;sessionStorage.setItem('s',JSON.stringify(S));$('who').textContent='◉  '+S.displayName;}
   $('profileRole').textContent=p.jobTitle||'المسمى الوظيفي غير محدد';$('profileAccess').textContent=roles[p.role]||p.role; $('profileCode').textContent=p.code;
   $('profileDepartment').textContent=p.department||'غير محدد';$('profileJob').textContent=p.jobTitle||'غير محدد';
-  $('profileLeave').textContent=p.leaveBalance===null?'غير محدد':fmt(p.leaveBalance,1)+' يوم';
+
   
 }
 async function showProfile(){
-  if(!S)return;show('profile');$('profileName').textContent='جارٍ تحميل ملفك...';
+  if(!S)return;show('profile');$('profileName').textContent='جارٍ تحميل ملفك...';void refreshOvertime();
   try{const d=await api('profile');if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);renderProfile(d.profile);}catch(e){note('تعذر تحميل الملف الشخصي. تحقق من الاتصال.','err');}
 }
 
 const overtimeKinds={FINANCIAL:'مالي',SUBSTITUTE:'بدل'};
 function overtimeRows(hostId,items){
  makeTable(hostId,['رقم الطلب','التاريخ','الفترة','الساعات','التعويض','الحالة'],(items||[]).map(r=>[r.id,r.date,r.from+'–'+r.to,fmt(r.hours,2),overtimeKinds[r.compensation]||r.compensation,leaveStateNames[r.status]||r.status]));
+}
+async function refreshSubstituteBalance(){
+ if(!S||!canReport())return;
+ try{const data=await api('overtimeMine');if(data.error)throw new Error(data.error);
+  $('substituteBalance').textContent=fmt(data.substituteAvailableHours,2)+' ساعة';
+ }catch(e){$('substituteBalance').textContent='تعذر تحميل رصيد البدلات';}
 }
 async function refreshOvertime(){
  if(!S||!canReport())return;
@@ -465,6 +471,7 @@ async function loadOvertimeApprovals(){
  }catch(e){host.textContent='تعذر تحميل طلبات الوقت الإضافي: '+localizedError(e.message||'');}
 }
 $('otRefreshApprovals').onclick=loadOvertimeApprovals;
+$('otRefreshMine').onclick=refreshOvertime;
 
 function renderAdminSelection(){
  const code=$('adminUser').value,u=adminItems.find(x=>x.code===code);if(!u)return;
