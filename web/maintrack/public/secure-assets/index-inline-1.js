@@ -376,7 +376,7 @@ $('sendLeave').onclick=async()=>{
  finally{btn.disabled=false;btn.textContent='إرسال طلب الإجازة';}
 };
 async function showApprovals(){
- if(!S||S.role!=='owner')return;show('approvals');void loadOvertimeApprovals();const host=$('approvalRows');host.textContent='جارٍ التحميل…';
+ if(!S||S.role!=='owner')return;show('approvals');void loadOvertimeSummary();void loadOvertimeApprovals();const host=$('approvalRows');host.textContent='جارٍ التحميل…';
  try{const d=await api('leaveInbox');if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);host.textContent='';const rows=d.items||[],pending=Number(d.pendingCount||0);$('pendingBadge').hidden=!pending;$('pendingBadge').textContent=pending;if(!rows.length){host.textContent='لا توجد طلبات.';return;}
  rows.forEach(r=>{const card=document.createElement('article');card.className='approval-card';const head=document.createElement('strong');head.textContent=r.name+' • '+r.code+' • '+r.id;const meta=document.createElement('p');meta.textContent=(leaveTypeNames[r.type]||r.type)+' | '+r.start+' إلى '+r.end+' | '+(r.durationKind==='HALF_DAY'?'نصف يوم (4 ساعات)':r.days+' يوم')+' | '+(leaveStateNames[r.status]||r.status);card.append(head,meta);if(r.reason){const why=document.createElement('p');why.textContent='ملاحظة: '+r.reason;card.append(why);}if(r.status==='PENDING'){const actions=document.createElement('div');actions.className='approval-actions';for(const [state,title] of [['APPROVED','اعتماد'],['REJECTED','رفض']]){const b=document.createElement('button');b.type='button';b.className=state==='APPROVED'?'btn':'refresh';b.textContent=title;b.onclick=async()=>{const reason=state==='REJECTED'?prompt('سبب الرفض (اختياري):')||'':'';if(!confirm(title+' طلب '+r.id+' ؟'))return;b.disabled=true;try{const d=await api('leaveDecision',{id:r.id,decision:state,reason});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);note('تم حفظ القرار '+r.id,'ok');await showApprovals();loadNotices(true);}catch(e){note('تعذر حفظ القرار: '+(e.message||''),'err');b.disabled=false;}};actions.append(b);}card.append(actions);}host.append(card);});
  }catch(e){host.textContent='تعذر تحميل الاعتمادات: '+(e.message||'');}
@@ -457,11 +457,43 @@ $('otSend').onclick=async()=>{
  }catch(e){$('otFeedback').textContent='تعذر إرسال الطلب: '+localizedError(e.message||'');}
  finally{btn.disabled=false;}
 };
+// Owner-only summary: distinct approved (employee, work_date) pairs differ from hours.
+const ownerYear=$('otOwnerYear'),ownerMonth=$('otOwnerMonth');
+for(let y=new Date().getFullYear()+1;y>=new Date().getFullYear()-7;y--)ownerYear.add(new Option(String(y),String(y)));
+for(let m=1;m<=12;m++)ownerMonth.add(new Option(new Intl.DateTimeFormat('ar-EG',{month:'long'}).format(new Date(2026,m-1,1)),String(m)));
+const ownerOvertimeFilters=()=>({
+ year:Number(ownerYear.value||0),month:Number(ownerMonth.value||0),
+ employeeCode:$('otOwnerEmployee').value,compensation:$('otOwnerKind').value
+});
+let ownerSummarySequence=0,ownerInboxSequence=0;
+async function loadOvertimeSummary(){
+ if(!S||S.role!=='owner')return;
+ const seq=++ownerSummarySequence;
+ $('otOwnerSummaryState').textContent='جارٍ تحديث مؤشرات العمل الإضافي…';
+ try{
+  const d=await api('overtimeSummary',ownerOvertimeFilters());
+  if(seq!==ownerSummarySequence)return;
+  if(d.error)throw new Error(d.error);
+  const select=$('otOwnerEmployee'),old=select.value;
+  select.length=1;
+  for(const u of d.employees||[])select.add(new Option(u.name+' — '+u.code,u.code));
+  select.value=old;
+  if(select.selectedIndex<0)select.value='';
+  $('otOwnerApprovedHours').textContent=fmt(d.approvedHours,2)+' ساعة';
+  $('otOwnerDistinctDays').textContent=String(d.distinctDays||0)+' يوم';
+  $('otOwnerFinancialHours').textContent=fmt(d.financialHours,2)+' ساعة';
+  $('otOwnerSubstituteHours').textContent=fmt(d.substituteHours,2)+' ساعة';
+  $('otOwnerPending').textContent=String(d.pendingCount||0);
+  $('otOwnerSummaryState').textContent='أيام الحضور الفريدة محسوبة لكل موظف وتاريخ بداية الإضافي، للطلبات المعتمدة فقط.';
+ }catch(e){if(seq===ownerSummarySequence)$('otOwnerSummaryState').textContent='تعذر تحميل الملخص: '+localizedError(e.message||'');}
+}
+for(const id of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','otOwnerKind'])
+ $(id).addEventListener('change',()=>{void loadOvertimeSummary();void loadOvertimeApprovals();});
 async function loadOvertimeApprovals(){
  if(!S||S.role!=='owner')return;
  const host=$('otApprovalRows');host.textContent='جارٍ تحميل الوقت الإضافي…';
  try{
-  const d=await api('overtimeInbox');if(d.error)throw new Error(d.error);
+  const seq=++ownerInboxSequence;const d=await api('overtimeInbox',ownerOvertimeFilters());if(seq!==ownerInboxSequence)return;if(d.error)throw new Error(d.error);
   host.replaceChildren();
   if(!(d.items||[]).length){host.textContent='لا توجد طلبات وقت إضافي.';return;}
   for(const r of d.items){
@@ -478,7 +510,7 @@ async function loadOvertimeApprovals(){
       const reason=decision==='REJECTED'?prompt('سبب الرفض (اختياري):')||'':'';
       if(!confirm(title+' وقت إضافي '+r.id+' ؟'))return;
       b.disabled=true;
-      try{const result=await api('overtimeDecision',{id:r.id,decision,reason});if(result.error)throw new Error(result.error);await loadOvertimeApprovals();loadNotices(true);}
+      try{const result=await api('overtimeDecision',{id:r.id,decision,reason});if(result.error)throw new Error(result.error);await Promise.all([loadOvertimeApprovals(),loadOvertimeSummary()]);loadNotices(true);}
       catch(e){note(localizedError(e.message),'err');b.disabled=false;}
      };
      actions.append(b);
@@ -487,7 +519,7 @@ async function loadOvertimeApprovals(){
   }
  }catch(e){host.textContent='تعذر تحميل طلبات الوقت الإضافي: '+localizedError(e.message||'');}
 }
-$('otRefreshApprovals').onclick=loadOvertimeApprovals;
+$('otRefreshApprovals').onclick=()=>{void loadOvertimeApprovals();void loadOvertimeSummary();};
 $('otRefreshMine').onclick=refreshOvertime;
 
 function renderAdminSelection(){
