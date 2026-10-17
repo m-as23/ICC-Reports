@@ -1,25 +1,48 @@
 // Metadata only: never downloads, activates, or waits on application startup.
-export const DISCOVERY_INTERVAL = 30 * 60 * 1000;
+// A bounded check runs on start and periodically only while foreground and online.
+export const DISCOVERY_INTERVAL = 5 * 60 * 1000;
 export function createDiscovery({check, document = globalThis.document, events = globalThis,
   navigator = globalThis.navigator, clock = Date.now, schedule = setTimeout,
   cancel = clearTimeout, interval = DISCOVERY_INTERVAL}) {
   let last = -Infinity, running = null, stopped = false, timer;
+  const active = () => !stopped && document.visibilityState === 'visible' && navigator.onLine !== false;
+  function scheduleNext(delay) {
+    if (timer !== undefined) cancel(timer);
+    timer = undefined;
+    if (active()) timer = schedule(() => {timer = undefined; void inspect();}, Math.max(0, Math.min(interval, delay)));
+  }
   function inspect({manual = false} = {}) {
-    if (stopped || document.visibilityState !== 'visible' || navigator.onLine === false) return Promise.resolve(null);
+    if (!active()) return Promise.resolve(null);
     if (running) return running;
-    if (!manual && clock() - last < interval) return Promise.resolve(null);
+    if (!manual && clock() - last < interval) {
+      scheduleNext(interval - (clock() - last));
+      return Promise.resolve(null);
+    }
     last = clock();
-    running = Promise.resolve().then(() => check({manual})).catch(() => null).finally(() => {running = null;});
+    running = Promise.resolve().then(() => check({manual})).catch(() => null).finally(() => {
+      running = null;
+      if (active()) scheduleNext(interval - (clock() - last));
+    });
     return running;
   }
-  const resume = () => {void inspect();};
+  const resume = () => {
+    if (!active()) {
+      if (timer !== undefined) cancel(timer);
+      timer = undefined;
+      return;
+    }
+    void inspect();
+  };
   document.addEventListener('visibilitychange', resume);
   events.addEventListener('online', resume);
   events.addEventListener('focus', resume);
-  timer = schedule(resume, 0);
+  timer = schedule(() => {timer = undefined; resume();}, 0);
   return Object.freeze({inspect, stop() {
-    stopped = true; cancel(timer);
+    stopped = true;
+    if (timer !== undefined) cancel(timer);
+    timer = undefined;
     document.removeEventListener('visibilitychange', resume);
-    events.removeEventListener('online', resume); events.removeEventListener('focus', resume);
+    events.removeEventListener('online', resume);
+    events.removeEventListener('focus', resume);
   }});
 }
