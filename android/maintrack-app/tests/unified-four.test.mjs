@@ -150,3 +150,42 @@ test('three previous request filters and owner approval logic remain present',as
  assert.ok(js.includes("api('overtimeDecision'"));
  assert.ok(js.includes("api('leaveDecision'"));
 });
+
+test('real Cairo overtime guard rejects future work and accepts completed overnight time',async()=>{
+ const api=await read(apiFile);
+ const start=api.indexOf('function cairoLocalMinute('),end=api.indexOf('async function overtimeRequest(',start);
+ assert.ok(start>=0&&end>start);
+ const methods=new Function('die','mins',api.slice(start,end)+'return {overtimeEndLocal,validateCompletedOvertime,cairoLocalMinute};')(
+  code=>{throw Error(code)},v=>Number(v.slice(0,2))*60+Number(v.slice(3,5))
+ );
+ assert.equal(methods.overtimeEndLocal('2026-10-15','23:00:00','03:00:00'),'2026-10-16T03:00');
+ assert.equal(methods.overtimeEndLocal('2026-10-15','15:00:00','19:00:00'),'2026-10-15T19:00');
+ assert.doesNotThrow(()=>methods.validateCompletedOvertime('2025-01-01','23:00:00','03:00:00'));
+ assert.throws(()=>methods.validateCompletedOvertime('2098-12-31','23:00:00','03:00:00'),/FUTURE_OVERTIME_NOT_ALLOWED/);
+ assert.equal(methods.cairoLocalMinute(new Date('2026-10-15T12:00:00Z')),'2026-10-15T15:00');
+});
+test('real owner balance summary displays remaining, earned and financial equivalent days',async()=>{
+ const api=await read(apiFile);
+ const start=api.indexOf('async function accountSummary(u){'),end=api.indexOf('function cairoLocalMinute(',start);
+ assert.ok(start>=0&&end>start);
+ let financialMinutes=2880;
+ const pool={query:async sql=>{
+  if(sql.includes('mt_leave_ledger'))return {rows:[{n:6}]};
+  if(sql.includes('mt_substitute_time_ledger'))return {rows:[{n:1920}]};
+  if(sql.includes('mt_overtime_requests'))return {rows:[{n:financialMinutes}]};
+  throw Error('Unexpected query');
+ }};
+ const fn=new Function('permit','profile','pool','readSubstituteMinutes','round',api.slice(start,end)+'return accountSummary;')(
+  ()=>{},async()=>({profile:{name:'QA',leaveBalance:22}}),pool,async()=>2160,n=>Math.round(n*100)/100
+ );
+ const d=await fn({id:'qa'});
+ assert.equal(d.annualTotalDays,28);
+ assert.equal(d.annualUsedDays,6);
+ assert.equal(d.annualAvailableDays,22);
+ assert.equal(d.substituteEarnedDays,8.5);
+ assert.equal(d.substituteUsedDays,4);
+ assert.equal(d.substituteAvailableDays,4.5);
+ assert.equal(d.financialApprovedDays,6);
+ financialMinutes=240;
+ assert.equal((await fn({id:'qa'})).financialApprovedDays,0.5);
+});
