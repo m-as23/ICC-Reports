@@ -83,7 +83,7 @@ jobs:
           assert candidate['sourceCommit']==sha
           target=root/'.vercel/output/static/releases'/sha
           for filename,info in candidate['files'].items():
-            if filename=='index.html': continue
+            if filename in ('index.html','manifest.webmanifest'): continue # Web has its own install scope and update controls
             data=(target/filename).read_bytes()
             assert len(data)==info['bytes'] and hashlib.sha256(data).hexdigest()==info['sha256'], filename
           with zipfile.ZipFile('web-pilot-build-output.zip','w',zipfile.ZIP_DEFLATED) as z:
