@@ -401,6 +401,7 @@ function renderProfile(p){
  $('profileJob').textContent=p.jobTitle||'غير محدد';
 }
 const displayDays=value=>value==null?'غير محدد':fmt(Number(value),2);
+const formatAccountPart=value=>value==null?'غير محدد':displayDays(value)+' يوم';
 async function refreshAccountSummary(){
  if(!S||!canReport())return;
  try{
@@ -408,11 +409,11 @@ async function refreshAccountSummary(){
   if(d.error)throw new Error(d.error);
   renderProfile(d.profile);
   $('leaveBalance').textContent=displayDays(d.annualAvailableDays);
-  $('annualTotal').textContent=displayDays(d.annualTotalDays)+' يوم';
-  $('annualUsed').textContent=displayDays(d.annualUsedDays)+' يوم';
+  $('annualTotal').textContent=formatAccountPart(d.annualTotalDays);
+  $('annualUsed').textContent=formatAccountPart(d.annualUsedDays);
   $('substituteBalance').textContent=displayDays(d.substituteAvailableDays);
-  $('substituteEarned').textContent=displayDays(d.substituteEarnedDays)+' يوم';
-  $('substituteUsed').textContent=displayDays(d.substituteUsedDays)+' يوم';
+  $('substituteEarned').textContent=formatAccountPart(d.substituteEarnedDays);
+  $('substituteUsed').textContent=formatAccountPart(d.substituteUsedDays);
   $('otFinancial').textContent=displayDays(d.financialApprovedDays);
  }catch(e){note('تعذر تحميل أرصدة الحساب: '+localizedError(e.message||''),'err');}
 }
