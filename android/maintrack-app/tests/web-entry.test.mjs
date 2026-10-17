@@ -12,7 +12,7 @@ test('protected web metadata uses same-origin session and distinguishes current 
     document:{visibilityState:'visible',getElementById(){return {append(){}};},createElement(){const n={setAttribute(){},append(){}};nodes.push(n);return n;},body:{append(){}},addEventListener(){}},
     navigator:{onLine:true},location:{origin:'https://qa.example',search:'',hash:''},
     setInterval(){throw Error('AUTOMATIC_CHECK_NOT_ALLOWED');},addEventListener(){},
-    setTimeout(fn,ms){if(ms===0) startCheck=fn; else {assert.equal(ms,5000);hideMessage=fn;}return 1;},clearTimeout(){},AbortSignal,TextDecoder,Uint8Array,URL,
+    setTimeout(fn,ms){if(ms===0) startCheck=fn; else if(ms===300000) { /* periodic metadata check; do not fire in this fixture */ } else {assert.equal(ms,5000);hideMessage=fn;}return 1;},clearTimeout(){},AbortSignal,TextDecoder,Uint8Array,URL,
     fetch:async (url,options) => {
       requests++;
       assert.equal(url,'/maintrack-release.json');
