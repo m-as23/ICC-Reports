@@ -1,0 +1,104 @@
+name: MainTrack Owner Key — Feature Candidate Sign-Only Preflight
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths: ['.github/workflows/maintrack-unified-four-owner-key-preflight.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  sign-proof-only:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: maintrack-android-release
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Trust exact signed-release branch commit
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          test "$GITHUB_REF" = "refs/heads/android/stage14-ota-native-lab"
+          npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Unified-Four-UNSIGNED-Review
+          repository: m-as23/ICC-Reports
+          run-id: 39066908032
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/owner-signing-review
+      - name: Sign verified *review attestation only*, not OTA/manifest
+        env:
+          MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: ${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          import {canonicalJson} from './update-system/policy.mjs';
+          const directory='owner-signing-review/';
+          const expectedSha='bfd8a5281ba7ea2193f414e1ec3cfce1eebf4494';
+          const runId=39066908032;
+          const candidate=JSON.parse(fs.readFileSync(directory+'candidate.json','utf8'));
+          assert.equal(candidate.gitCommit,expectedSha,'only exact previously reviewed feature commit');
+          assert.equal(candidate.branch,'feature/maintrack-unified-four-updates-20261017');
+          assert.equal(candidate.mode,'review-only');
+          assert.equal(candidate.signed,false);
+          assert.equal(candidate.deployable,false);
+          assert.equal(candidate.rolloutEnabled,false);
+          assert.equal(candidate.appId,'com.icc.maintrack');
+          assert.deepEqual(candidate.localData,{reportQueue:1,writesReportQueue:1,migration:'none'});
+          assert.equal(Object.keys(candidate.sharedAssetHashes).length,16);
+          const owner=JSON.parse(fs.readFileSync('release/owner-public.json','utf8'));
+          assert.equal(candidate.nativePilotUpdatePanel.pinnedPublicKey,owner.publicKeyBase64);
+          assert.equal(candidate.nativePilotUpdatePanel.trustedManifestUrl,owner.manifestUrl);
+          const bundleNames=['MainTrack-Android-OTA-UNSIGNED-REVIEW.zip','MainTrack-Web-REVIEW-ONLY.zip'];
+          for(const name of bundleNames){
+            const data=fs.readFileSync(directory+name);
+            const expected=candidate.archives[name];
+            assert.equal(data.length,expected.bytes,name+' size mismatch');
+            assert.equal(crypto.createHash('sha256').update(data).digest('hex'),expected.sha256,name+' digest mismatch');
+            assert.ok(data.length>=100&&data.length<=15000000);
+          }
+          const secret=process.env.MT_OTA_PRIVATE_KEY_PEM;
+          assert.ok(secret,'OWNER_SIGNING_SECRET_UNAVAILABLE');
+          const privateKey=crypto.createPrivateKey({key:secret,passphrase:process.env.MT_OTA_PRIVATE_KEY_PASSWORD||undefined});
+          const publicKey=crypto.createPublicKey(privateKey);
+          assert.equal(publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('base64url'),
+            owner.publicKeyBase64,'SIGNING_KEY_DOES_NOT_MATCH_INSTALLED_ANDROID_TRUST');
+          const payload={
+            schema:1,kind:'owner-reviewed-candidate-proof',appId:'com.icc.maintrack',
+            sourceCommit:expectedSha,sourceRunId:runId,
+            nativeUnsignedZip:candidate.archives[bundleNames[0]],
+            webReviewZip:candidate.archives[bundleNames[1]],
+            localData:candidate.localData,
+            status:'QA-REVIEW-ONLY-NOT-RELEASED',deployable:false,rolloutEnabled:false,
+            signedAt:new Date().toISOString()
+          };
+          const signature=crypto.sign(null,Buffer.from(canonicalJson(payload)),privateKey).toString('base64url');
+          const ok=crypto.verify(null,Buffer.from(canonicalJson(payload)),publicKey,Buffer.from(signature,'base64url'));
+          assert.equal(ok,true,'SIGNED_ATTESTATION_DID_NOT_VERIFY');
+          const result={payload,signature,publicKeyBase64:owner.publicKeyBase64};
+          fs.mkdirSync('owner-signing-proof',{recursive:true});
+          fs.writeFileSync('owner-signing-proof/owner-key-attestation.json',JSON.stringify(result,null,2)+'\n',{mode:0o600});
+          console.log('PASS owner key continuity, review artifact signatures and Ed25519 QA attestation. No OTA published.');
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Owner-Key-REVIEW-ONLY-Attestation
+          path: android/maintrack-app/owner-signing-proof/owner-key-attestation.json
+          if-no-files-found: error
+          retention-days: 14
