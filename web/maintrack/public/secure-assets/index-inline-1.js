@@ -359,7 +359,7 @@ function drawLeaveList(hostId,items){
  makeTable(hostId,['رقم الطلب','النوع','الفترة','الأيام','الحالة'],items.map(r=>[r.id,leaveTypeNames[r.type]||r.type,r.start+' ← '+r.end,(r.durationKind==='HALF_DAY'?'نصف يوم (4 ساعات)':r.days),leaveStateNames[r.status]||r.status]));
 }
 async function showLeave(){
- if(!S||!canReport())return;show('leave');$('myLeaves').textContent='جارٍ التحميل…';void refreshSubstituteBalance();
+ if(!S||!canReport())return;show('leave');$('myLeaves').textContent='جارٍ التحميل…';void refreshOvertime();
  try{const d=await api('leaveMine');if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);$('leaveBalance').textContent=d.profile.leaveBalance==null?'غير محدد':fmt(d.profile.leaveBalance,1)+' يوم';$('leavePending').textContent=(d.items||[]).filter(x=>x.status==='PENDING').length;drawLeaveList('myLeaves',d.items||[]);}catch(e){$('myLeaves').textContent='تعذر تحميل الطلبات: '+(e.message||'');}
 }
 $('sendLeave').onclick=async()=>{
@@ -392,13 +392,35 @@ function renderProfile(p){
   
 }
 async function showProfile(){
-  if(!S)return;show('profile');$('profileName').textContent='جارٍ تحميل ملفك...';void refreshOvertime();
+  if(!S)return;show('profile');$('profileName').textContent='جارٍ تحميل ملفك...';
   try{const d=await api('profile');if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);renderProfile(d.profile);}catch(e){note('تعذر تحميل الملف الشخصي. تحقق من الاتصال.','err');}
 }
 
 const overtimeKinds={FINANCIAL:'مالي',SUBSTITUTE:'بدل'};
+const showOvertimeClock=value=>{
+ const match=/^(\d{1,2}):([0-5]\d)/.exec(String(value||''));if(!match)return '—';
+ const hour=Number(match[1]);if(hour>23)return '—';
+ return String(hour%12||12)+':'+match[2]+' '+(hour<12?'صباحًا':'مساءً');
+};
+// Use explicit 12-hour controls: native time inputs can display 24h depending on device locale.
+for(const prefix of ['otFrom','otTo']){
+ const hours=$(prefix+'Hour'),minutes=$(prefix+'Minute');
+ for(let i=1;i<=12;i++)hours.add(new Option(String(i),String(i)));
+ for(let i=0;i<60;i++){const v=String(i).padStart(2,'0');minutes.add(new Option(v,v));}
+}
+const readOvertimeClock=prefix=>{
+ const hours=Number($(prefix+'Hour').value),minutes=$(prefix+'Minute').value,period=$(prefix+'Period').value;
+ if(!(hours>=1&&hours<=12)||!/^\d{2}$/.test(minutes)||!['AM','PM'].includes(period))return '';
+ return String((hours%12)+(period==='PM'?12:0)).padStart(2,'0')+':'+minutes;
+};
+let overtimeHistory=[];
+const showOvertimeHistory=()=>{
+ const filter=$('otMineFilter').value;
+ overtimeRows('otMine',overtimeHistory.filter(x=>filter==='ALL'||x.compensation===filter));
+};
+$('otMineFilter').onchange=showOvertimeHistory;
 function overtimeRows(hostId,items){
- makeTable(hostId,['رقم الطلب','التاريخ','الفترة','الساعات','التعويض','الحالة'],(items||[]).map(r=>[r.id,r.date,r.from+'–'+r.to,fmt(r.hours,2),overtimeKinds[r.compensation]||r.compensation,leaveStateNames[r.status]||r.status]));
+ makeTable(hostId,['رقم الطلب','التاريخ','الفترة','الساعات','التعويض','الحالة'],(items||[]).map(r=>[r.id,r.date,showOvertimeClock(r.from)+'–'+showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':''),fmt(r.hours,2),overtimeKinds[r.compensation]||r.compensation,leaveStateNames[r.status]||r.status]));
 }
 async function refreshSubstituteBalance(){
  if(!S||!canReport())return;
@@ -413,7 +435,7 @@ async function refreshOvertime(){
   $('substituteBalance').textContent=fmt(data.substituteAvailableHours,2)+' ساعة';
   $('otFinancial').textContent=fmt(data.financialApprovedHours,2);
   $('otSubstitute').textContent=fmt(data.substituteApprovedHours,2);
-  overtimeRows('otMine',data.items||[]);
+  overtimeHistory=data.items||[];showOvertimeHistory();
  }catch(e){$('otMine').textContent='تعذر تحميل سجل الوقت الإضافي: '+localizedError(e.message||'');}
 }
 $('leaveType').addEventListener('change',()=>{
@@ -423,7 +445,7 @@ $('leaveType').addEventListener('change',()=>{
 });
 $('otSend').onclick=async()=>{
  if(!S||!canReport())return;
- const workDate=$('otDate').value,from=$('otFrom').value,to=$('otTo').value,compensation=$('otKind').value,reason=$('otReason').value;
+ const workDate=$('otDate').value,from=readOvertimeClock('otFrom'),to=readOvertimeClock('otTo'),compensation=$('otKind').value,reason=$('otReason').value;
  if(!workDate||!from||!to||from===to){$('otFeedback').textContent='حدد تاريخ العمل ووقت البداية والنهاية بصورة صحيحة.';return;}
  if(!confirm('تأكيد إرسال ساعات الوقت الإضافي للـOwner؟'))return;
  const btn=$('otSend');btn.disabled=true;
@@ -450,7 +472,7 @@ async function loadOvertimeApprovals(){
   for(const r of d.items){
    const card=document.createElement('article');card.className='approval-card';
    const heading=document.createElement('strong');heading.textContent=r.name+' • '+r.code+' • '+r.id;
-   const info=document.createElement('p');info.textContent=r.date+' | '+r.from+'–'+r.to+' | '+fmt(r.hours,2)+' ساعة | '+(overtimeKinds[r.compensation]||r.compensation)+' | '+(leaveStateNames[r.status]||r.status);
+   const info=document.createElement('p');info.textContent=r.date+' | '+showOvertimeClock(r.from)+'–'+showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':'')+' | '+fmt(r.hours,2)+' ساعة | '+(overtimeKinds[r.compensation]||r.compensation)+' | '+(leaveStateNames[r.status]||r.status);
    card.append(heading,info);
    if(r.reason){const p=document.createElement('p');p.textContent=r.reason;card.append(p);}
    if(r.status==='PENDING'){
