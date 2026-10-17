@@ -95,8 +95,11 @@ async function leaveRequest(u,b){permit(u,'leave.request');const start=day(b.sta
  return transaction(async c=>{
   const old=await first(c,'SELECT public_id,days,status,request_digest FROM mt_leave_requests WHERE client_request_id=$1',[f.cid]);
   if(old){if(old.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:old.public_id,days:old.days,status:old.status,duplicate:true};}
+  // Serialize same-employee requests; reject overlapping PENDING/APPROVED dates.
+  await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[u.id]);
+  const overlap=await first(c,"SELECT public_id FROM mt_leave_requests WHERE requester_id=$1 AND status IN ('PENDING','APPROVED') AND start_date<=$3::date AND end_date>=$2::date LIMIT 1",[u.id,start,end]);
+  if(overlap)die('OVERLAPPING_LEAVE_REQUEST',409);
   if(type==='compensatory'){
-   await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[u.id]);
    const bank=await first(c,'SELECT COALESCE(SUM(delta_minutes),0)::integer AS minutes FROM mt_substitute_time_ledger WHERE user_id=$1',[u.id]);
    if(Number(bank.minutes)<240)die('INSUFFICIENT_SUBSTITUTE_BALANCE');
   }else{
@@ -386,6 +389,9 @@ async function overtimeRequest(u,b){permit(u,'leave.request');const workDate=day
  return transaction(async c=>{
   const old=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);
   if(old){if(old.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:old.public_id,status:old.status,duplicate:true};}
+  await c.query('SELECT id FROM mt_users WHERE id=$1 FOR UPDATE',[u.id]);
+  const overlap=await first(c,"SELECT public_id FROM mt_overtime_requests WHERE requester_id=$1 AND status IN ('PENDING','APPROVED') AND tsrange(work_date+start_time,work_date+end_time+CASE WHEN end_time<=start_time THEN interval '1 day' ELSE interval '0 day' END,'[)') && tsrange($2::date+$3::time,$2::date+$4::time+CASE WHEN $4::time<=$3::time THEN interval '1 day' ELSE interval '0 day' END,'[)') LIMIT 1",[u.id,workDate,from,to]);
+  if(overlap)die('OVERLAPPING_OVERTIME_REQUEST',409);
   const publicId='OT-'+randomUUID().slice(0,8).toUpperCase();
   const ins=await first(c,'INSERT INTO mt_overtime_requests(public_id,requester_id,client_request_id,request_digest,work_date,start_time,end_time,minutes,compensation_kind,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(client_request_id) DO NOTHING RETURNING public_id,status',[publicId,u.id,f.cid,digest,workDate,from,to,minutes,compensation,f.reason]);
   if(!ins){const existing=await first(c,'SELECT public_id,request_digest,status FROM mt_overtime_requests WHERE client_request_id=$1',[f.cid]);if(!existing||existing.request_digest!==digest)die('IDEMPOTENCY_CONFLICT',409);return {ok:true,id:existing.public_id,status:existing.status,duplicate:true};}
