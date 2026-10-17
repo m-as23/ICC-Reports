@@ -79,3 +79,28 @@ test('only GitHub raw hosting accepts plain-text JSON; signatures still gate a r
   await assert.rejects(fetchPilotEnvelope(config.manifestUrl, async () => plain()));
   const {session} = fixture(); await session.check(); assert.equal(session.read().installedVersion, '0.3.0');
 });
+
+test('background discovery cannot replace a ready signed OTA or discard its activation lease', async () => {
+  const {session,calls} = fixture();
+  assert.equal((await session.check()).phase, 'available');
+  assert.equal((await session.download()).phase, 'ready');
+  const fetches = calls.fetch;
+  assert.equal((await session.check()).phase, 'ready');
+  assert.equal((await session.check({manual:true})).phase, 'ready');
+  assert.equal(calls.fetch, fetches);
+  assert.equal((await session.activate()).phase, 'activating');
+  assert.equal(calls.set, 1);
+});
+
+test('blocked native reports are not cleared by background checks; manual retry remains possible', async () => {
+  const {session,calls,work} = fixture();
+  await session.check();
+  work.unsentReports = 1;
+  assert.equal((await session.download()).phase, 'blocked');
+  const fetches = calls.fetch;
+  assert.equal((await session.check()).phase, 'blocked');
+  assert.equal(calls.fetch,fetches);
+  work.unsentReports = 0;
+  assert.equal((await session.download()).phase, 'ready');
+  assert.equal(calls.download,1);
+});
