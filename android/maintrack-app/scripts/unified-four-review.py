@@ -163,18 +163,28 @@ def build():
           "UPDATE_PUBLIC_CONFIG_NOT_PINNED")
     (native / "index.html").write_text(native_html)
 
-    # Build the Web update UI from the *same* locked feature branch source.
+    # Browser activation needs the SAME trusted dirty-form and local queue reader
+    # as native. Missing MainTrackLocalWork would fail closed forever; bypassing
+    # it would risk losing an unsent report or overtime draft.
+    shutil.copyfile(native / "secure-assets/stage14-local-work.js",
+                    web / "secure-assets/stage14-local-work.js")
     bundle("update-system/web-entry.mjs", web / "secure-assets/web-update.js", {"commit": head})
     shutil.copyfile(ROOT / "update-system/web-panel.css", web / "secure-assets/web-update.css")
     web_html = (web / "index.html").read_text()
     web_html = web_html.replace("</head>",
         '<link rel="stylesheet" href="secure-assets/web-update.css"></head>', 1)
     web_html = web_html.replace("</body>",
+        '<script src="secure-assets/stage14-local-work.js"></script>'
         '<script src="secure-assets/web-update.js"></script></body>', 1)
+    check(web_html.index("stage14-local-work.js") < web_html.index("web-update.js"),
+          "WEB_UPDATE_LOCAL_WORK_GUARD_NOT_READY")
     (web / "index.html").write_text(web_html)
 
     # Shared resources must remain byte-identical except platform entrypoints.
     shared = sorted(set(original) - {"index.html", "manifest.webmanifest"})
+    check((native / "secure-assets/stage14-local-work.js").read_bytes() ==
+          (web / "secure-assets/stage14-local-work.js").read_bytes(),
+          "LOCAL_WORK_GUARD_DIFFERS_ACROSS_CHANNELS")
     for name in shared:
         check((native / name).read_bytes() == (web / name).read_bytes(),
               "CROSS_CHANNEL_ASSET_MISMATCH: " + name)
@@ -218,6 +228,7 @@ def build():
             for p in sorted(web.rglob("*")) if p.is_file()
         },
         "sharedAssetHashes": {p: entry(original[p]) for p in shared},
+        "sharedLocalWorkGuard": entry((native / "secure-assets/stage14-local-work.js").read_bytes()),
         "nativePilotUpdatePanel": {
             "script": entry((native / "secure-assets/stage15-pilot-update.js").read_bytes()),
             "styles": entry((native / "secure-assets/stage15-pilot-update.css").read_bytes()),
@@ -254,6 +265,12 @@ def verify():
                 check(entry(z.read(member))["bytes"] >= 0, "INVALID_MEMBER")
     check(set(manifest["changedFromApprovedBaseline"]) == MAY_CHANGE,
           "UNREVIEWED_SOURCE_DRIFT")
+    guard = manifest.get("sharedLocalWorkGuard")
+    check(guard is not None and guard ==
+          entry((REVIEW / "native/www/secure-assets/stage14-local-work.js").read_bytes()) ==
+          entry((REVIEW / "web/.vercel/output/static/releases" /
+                 manifest["gitCommit"] / "secure-assets/stage14-local-work.js").read_bytes()),
+          "SHARED_LOCAL_WORK_GUARD_INVALID")
     panel = manifest.get("nativePilotUpdatePanel")
     check(panel and len(panel["pinnedPublicKey"]) == 43 and
           panel["trustedManifestUrl"] ==
