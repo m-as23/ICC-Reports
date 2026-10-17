@@ -582,6 +582,7 @@ const MT_ALLOWED_ORIGINS=new Set([
 'https://maintrack-security-stage9-review.vercel.app',
 'https://maintrack-security-bundle-audit.vercel.app',
 'https://maintrack-final-security-qa.vercel.app',
+ 'https://maintrack-final-security-d5xrm08yy-mohamedashrefsrag-5918.vercel.app',
  'https://maintrack-final-security-9uy9bopwd-mohamedashrefsrag-5918.vercel.app',
  'https://maintrack-final-security-2352kdz3n-mohamedashrefsrag-5918.vercel.app', // protected QA hostname only
  'https://maintrack-final-security-3anyxd8ag-mohamedashrefsrag-5918.vercel.app',
