@@ -1,0 +1,128 @@
+name: MainTrack Stage22 0.4.4 — Owner Device LAB OTA
+on:
+  push:
+    branches: [release/maintrack-stage22-044-integration]
+    paths:
+      - '.github/workflows/maintrack-stage22-044-owner-lab-publish.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: stage22-owner-device-lab-044
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/release/maintrack-stage22-044-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enforce accepted immutable Stage22 UI and trust root
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/release/maintrack-stage22-044-integration'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git diff --exit-code 865229c4706e946377fba811d2f51dad1a815138 "$GITHUB_SHA" -- web/maintrack/public android/maintrack-app/update-system android/maintrack-app/release/owner-public.json
+          python3 -m py_compile scripts/qa/build-stage22-044-owner-lab.py
+          node --check scripts/qa/publish-stage22-044-owner-lab.mjs
+      - name: Verify native update policy and local queue guards
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node --test tests/ota-lab.test.mjs tests/update-policy.test.mjs tests/update-startup.test.mjs
+      - name: Download SHA-reviewed 0.4.4 Web/Android candidate
+        uses: actions/download-artifact@v4
+        with:
+          repository: m-as23/ICC-Reports
+          run-id: 39127423740
+          name: MainTrack-Stage22-044-Unpublished-Release-Candidate
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/reviewed-stage22
+      - name: Transform precisely one QA API endpoint (LAB device only)
+        run: python3 scripts/qa/build-stage22-044-owner-lab.py
+      - name: Validate QA backend read-only readiness
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 15 'https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/healthz'
+          curl --fail --silent --show-error --max-time 15 'https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/readyz'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.4-Owner-LAB-Preflight-Unsigned
+          path: |
+            android/maintrack-app/stage22-044-lab/maintrack-0.4.4.zip
+            android/maintrack-app/stage22-044-lab/lab-build.json
+          if-no-files-found: error
+          retention-days: 14
+
+  signed-owner-lab-publish:
+    needs: preflight
+    if: github.ref == 'refs/heads/release/maintrack-stage22-044-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: maintrack-android-release
+    permissions:
+      contents: write
+      actions: read
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reconfirm immutable accepted frontend and key metadata
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/release/maintrack-stage22-044-integration'
+          git diff --exit-code 865229c4706e946377fba811d2f51dad1a815138 "$GITHUB_SHA" -- web/maintrack/public android/maintrack-app/update-system android/maintrack-app/release/owner-public.json
+          npm ci --no-audit --no-fund
+      - name: Download unsigned archive from this same preflight run
+        uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-0.4.4-Owner-LAB-Preflight-Unsigned
+          path: android/maintrack-app/stage22-044-lab
+      - name: Retrieve existing owner-signed SHA-only release proof
+        uses: actions/download-artifact@v4
+        with:
+          repository: m-as23/ICC-Reports
+          run-id: 39128201274
+          name: MainTrack-Stage22-044-Owner-Signed-REVIEW-ONLY
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/owner-attestation
+      - name: Sign and publish ONLY trusted owner-device LAB 0.4.4
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: ${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          node scripts/qa/publish-stage22-044-owner-lab.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.4-Owner-LAB-Signed-Release-Record
+          path: android/maintrack-app/release-output/stage22-044-owner-lab.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: LAB only release summary
+        run: |
+          echo '## Owner LAB OTA 0.4.4 (signed)' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Only the existing Android Stage14 LAB manifest is advanced after verified 0.4.3 signature, SHA-locked candidate, QA endpoint readiness and new owner signature.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No Web Production deployment, stable API promotion, native APK replacement, or database write.' >> "$GITHUB_STEP_SUMMARY"
