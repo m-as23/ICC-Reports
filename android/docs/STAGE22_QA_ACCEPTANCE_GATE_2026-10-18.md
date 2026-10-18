@@ -29,3 +29,16 @@ Checked approval records and compensatory time ledger counts **without writing a
 6. Only **after** gates pass and owner authorizes release, stage a coordinated Web and signed Android update with rollback. Hidden update CTA while up-to-date; visible only when a verified compatible update is available.
 
 This is an acceptance record and release gate, **not** authorization or evidence of any published production release.
+
+
+## Stage22 native Android35 QA emulator acceptance — 2026-10-18
+
+- Exact QA commit: `f5c9d78c6e0b135549c9efc9608d1f0df02ecf8e`.
+- [Combined QA run 39118982667](https://github.com/m-as23/ICC-Reports/actions/runs/39118982667): **PASS** across three jobs (candidate, emulator, fail-closed combined gate).
+- Android35 Emulator ran the real `com.icc.maintrack.stage22qa` Debug APK built by the **same** run and verified its SHA-256 against the candidate delivery manifest before installation.
+- Actual native WebView rendered the Owner combined approvals inbox using **only synthetic local API responses**, accepted login with a format-valid synthetic token, securely retained the session in Android Keystore, and loaded leave/overtime pending records.
+- One synthetic unsent report remained byte-for-byte intact after foreground storage-flush, Android force-stop, cellular/Wi-Fi disable and cold relaunch. Encrypted native session was restored in the offline phase. No production or staging database writes were performed.
+- Evidence artifact: `MainTrack-Stage22-Android-Emulator-Evidence`, includes `online.json`, `offline.json`, `owner-qa-online.png`, and `offline-queue-preserved.png`; 14-day retention.
+- This is **not** a successful authenticated end-to-end business transaction or an in-place OTA upgrade of the installed `com.icc.maintrack`. Existing signed-release backward compatibility, owner phone validation, and rollout approval remain required.
+
+Earlier CI attempts failed due emulator runner shell-line semantics and a **synthetic** session token incompatible with the plugin's strict `[a-f0-9]{64}` validation. The final run fixed only QA scripts, kept native security unchanged, and passed all stages.
