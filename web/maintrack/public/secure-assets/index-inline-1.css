@@ -326,3 +326,25 @@ body.auth-screen #change{background:linear-gradient(135deg,#122d43,#091c31)!impo
  #approvals .approval-card--compact .request-card-identity{font-size:10px}
  #approvals .request-compact-facts{font-size:11px;gap:3px 9px}
 }
+
+/* Stage22: one Owner action queue, archive filters apply only to decided requests. */
+#approvals.owner-approval-hub{max-width:1100px}
+#approvals .owner-inbox-card{border:1px solid #b9dcd9;background:#fbfefd}
+#approvals .owner-history-card{margin-top:18px}
+#approvals .owner-pending-count{display:inline-flex;align-items:center;justify-content:center;min-width:25px;background:#fff2d1;color:#845f10;border:1px solid #f2d39d;border-radius:40px;padding:1px 8px;font-size:12px;margin-inline-start:5px}
+#approvals .owner-history-count{display:inline-flex;align-items:center;justify-content:center;min-width:25px;border-radius:40px;padding:1px 8px;background:#edf4f6;color:#3a6373;font-size:12px;margin-inline-start:5px}
+#approvals .owner-inbox-card .approval-card--detailed{border-color:#d6e5e8}
+#approvals .owner-history-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px 12px;align-items:end;margin-bottom:16px}
+#approvals .owner-history-filters label{font-size:12px;margin:6px 0 5px}
+#approvals .owner-history-filters select{font-size:13px;min-height:43px;padding:8px}
+#approvals .owner-summary-collapse{margin-top:16px}
+#approvals .owner-summary-collapse > summary{cursor:pointer;font-size:14px;font-weight:800;color:#17485a;padding:4px 0}
+#approvals .owner-summary-collapse > summary:focus-visible{outline:2px solid #087986;outline-offset:3px}
+#approvals #ownerPendingRows:empty:after,#approvals #ownerHistoryRows:empty:after{content:'لا توجد طلبات';color:#587083}
+@media(max-width:640px){
+ #approvals .owner-inbox-card,#approvals .owner-history-card{padding:14px 11px}
+ #approvals .owner-history-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 9px}
+ #approvals .owner-history-filters select{font-size:12px;min-width:0}
+ #approvals .owner-inbox-card .approve-head{gap:8px;align-items:flex-start}
+ #approvals .owner-inbox-card .approve-head button{white-space:normal}
+}
