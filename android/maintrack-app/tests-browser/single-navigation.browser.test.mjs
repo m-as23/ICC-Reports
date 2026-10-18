@@ -135,3 +135,30 @@ test('desktop 1280px: owner keeps visible sidebar, no mobile dock',async()=>{
   assert.equal(await page.evaluate(()=>window.__maintrackActiveView),'dashboard');
  });
 });
+
+test('Owner: all core read-only screens remain reachable from one menu without JavaScript crashes',async()=>{
+ await scenario('owner',382,async({page,actions})=>{
+  for(const [tab,view] of [['tabProfile','profile'],['tabApprove','approvals'],['tabCmms','cmms'],['tabCatalog','catalog'],['tabAdmin','admin'],['tabDash','dashboard']]){
+   await page.locator('#v6Toggle').click();
+   await page.locator('#'+tab).click();
+   assert.equal(await page.evaluate(()=>window.__maintrackActiveView),view,'Cannot open '+tab);
+   assert.equal(await page.locator('body.v6Drawer').count(),0,'Drawer stays open after '+tab);
+   await page.waitForFunction(()=>document.getElementById('tabs').getBoundingClientRect().left>=window.innerWidth-2,null,{timeout:2500});
+  }
+  assert.ok(actions.includes('accountSummary'),'Profile must fetch owner account summary');
+  assert.ok(actions.includes('leaveInbox')&&actions.includes('overtimeInbox'),'Unified Owner inbox must load leave + overtime');
+ });
+});
+for(const role of ['engineer','technician']){
+ test(role+': employee account reachable but owner-only menu/actions remain hidden',async()=>{
+  await scenario(role,382,async({page,actions})=>{
+   await page.locator('#v6Toggle').click();
+   for(const id of ['tabAdmin','tabApprove','tabCatalog','tabCmms']){
+     assert.equal(await page.locator('#'+id+':visible').count(),0,'Owner action leaked to '+role+': '+id);
+   }
+   await page.locator('#tabProfile').click();
+   assert.equal(await page.evaluate(()=>window.__maintrackActiveView),'profile');
+   assert.ok(actions.includes('accountSummary')||await page.locator('#profile').isVisible(),'Employee profile should open');
+  });
+ });
+}
