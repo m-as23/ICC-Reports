@@ -1,0 +1,65 @@
+name: MainTrack — Native APK Signing Continuity Preflight (No APK)
+on:
+  push:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-employee-signing-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-native-owner-signing-proof
+  cancel-in-progress: false
+jobs:
+  verify-existing-native-signing-key:
+    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: maintrack-android-release
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Validate immutable baseline and assert employee rollout stays blocked
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+      - name: Verify Android APK keystore certificate AND usable private key without building or publishing
+        env:
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+
+          policy=json.loads(Path('../../ops/maintrack/employee-release-gates.json').read_text())
+          expected=policy['currentBaseline']['installedAndroidCertificateSha256']
+          names=('MT_ANDROID_KEYSTORE_BASE64','MT_ANDROID_KEYSTORE_PASSWORD',
+                 'MT_ANDROID_KEY_ALIAS','MT_ANDROID_KEY_PASSWORD')
+          missing=[name for name in names if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('BLOCKED: native APK signing credentials not provisioned: '+','.join(missing))
+          spec=importlib.util.spec_from_file_location('release_preflight','scripts/release-preflight.py')
+          checker=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(checker)
+          try:
+              checker.verify_keystore(os.environ,expected)
+          except checker.PreflightError as error:
+              raise SystemExit('BLOCKED: '+str(error))
+          print('PASS: Existing native Android keystore matches installed app SHA-256; private key accessible.')
+          print('NO APK built; NO OTA published; NO Production or employee update performed.')
+          PY
