@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/maintrack-stage22-coordinated-preflight.yml
       - android/maintrack-app/scripts/stage22/**
+      - release/stage22/backend/**
       - android/maintrack-app/scripts/unified-four-review.py
       - android/maintrack-app/update-system/**
       - web/maintrack/public/**
@@ -40,6 +41,8 @@ jobs:
           python3 scripts/unified-four-review.py verify
       - name: Verify signed 0.4.3 manifest continuity and reserve new release number
         run: node scripts/stage22/release-preflight.mjs
+      - name: Confirm existing stable API routes and origin permissions are retained
+        run: node scripts/stage22/backend-parity.mjs
       - name: Check QA-approved Owner browser behavior using synthetic test backend
         run: |
           npm --prefix tests-browser ci --no-audit --no-fund
@@ -85,5 +88,6 @@ jobs:
             android/maintrack-app/unified-four-review/MainTrack-Web-REVIEW-ONLY.zip
             android/maintrack-app/release-preflight/release-readiness.json
             android/maintrack-app/release-preflight/SHA256SUMS
+            android/maintrack-app/release-preflight/backend-parity.json
           if-no-files-found: error
           retention-days: 14
