@@ -154,3 +154,110 @@ jobs:
           path: android/maintrack-app/qa-results/
           if-no-files-found: error
           retention-days: 14
+
+  emulator:
+    name: Stage22 isolated Android35 emulator — one synthetic device cycle
+    needs: candidate
+    if: ${{ needs.candidate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Android transport only
+        run: npm --prefix tests-browser ci --no-audit --no-fund
+      - name: Download APK from THIS passing QA build
+        uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Stage21-Coordinated-QA-Only
+          path: android/maintrack-app/stage22-device-input
+      - name: Verify downloaded candidate before installation
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const base='stage22-device-input/';
+          const metadata=JSON.parse(fs.readFileSync(base+'delivery.json','utf8'));
+          const bytes=fs.readFileSync(base+'MainTrack_Stage22_QA_0.4.6_Debug.apk');
+          assert.equal(metadata.sourceCommit,process.env.GITHUB_SHA);
+          assert.equal(metadata.channel,'qa-review-only');
+          assert.equal(metadata.production,false);
+          assert.equal(metadata.otaPublished,false);
+          assert.equal(metadata.apkId,'com.icc.maintrack.stage22qa');
+          assert.equal(metadata.upgradeCompatibleWithInstalledMainTrack,false);
+          assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),metadata.apkSha256);
+          console.log('STAGE22_EMULATOR_EXACT_QA_ARTIFACT_PASS');
+          NODE
+      - name: Enable KVM acceleration
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Boot once, verify Owner inbox and offline Android report preservation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            adb install stage22-device-input/MainTrack_Stage22_QA_0.4.6_Debug.apk
+            adb shell pm path com.icc.maintrack.stage22qa
+            if adb shell pm path com.icc.maintrack | grep -q '^package:'; then
+              echo 'FAIL: production app is unexpectedly installed in the isolated emulator'
+              exit 1
+            fi
+            adb shell monkey -p com.icc.maintrack.stage22qa -c android.intent.category.LAUNCHER 1
+            node scripts/qa/check-stage22-emulator.mjs online
+            adb shell am force-stop com.icc.maintrack.stage22qa
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell monkey -p com.icc.maintrack.stage22qa -c android.intent.category.LAUNCHER 1
+            node scripts/qa/check-stage22-emulator.mjs offline
+      - name: Export synthetic Android emulator evidence, even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage22-Android-Emulator-Evidence
+          path: android/maintrack-app/qa-results/stage22-emulator/
+          if-no-files-found: warn
+          retention-days: 14
+
+  qa-final:
+    name: Combined QA gate — unit, browser, API, APK and emulator
+    needs: [candidate, emulator]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed if any automated QA stage failed or was skipped
+        env:
+          UNIT_AND_PACKAGE: ${{ needs.candidate.result }}
+          ANDROID_EMULATOR: ${{ needs.emulator.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '## MainTrack Stage22 — combined QA decision'
+            echo ''
+            echo '| Gate | GitHub result |'
+            echo '| --- | --- |'
+            echo "| Unit, browser, live safe API, APK and package identity | $UNIT_AND_PACKAGE |"
+            echo "| Android35 actual WebView + offline synthetic queue | $ANDROID_EMULATOR |"
+            echo ''
+            echo '**Production:** not published. **Owner OTA:** not published.'
+            echo ''
+            echo 'A PASS in this CI run is not proof of compatibility with the existing signed APK or real employee data.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "$UNIT_AND_PACKAGE" = success
+          test "$ANDROID_EMULATOR" = success
+          echo 'MAINTRACK_STAGE22_COMBINED_QA_PASS'
