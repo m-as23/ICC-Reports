@@ -15,9 +15,9 @@ const read = async () => ({
  config: JSON.parse(await fs.readFile(configPath,'utf8'))
 });
 
-test('published 0.4.2 OTA signature verifies under exact key embedded in installed owner application',async()=>{
+test('published 0.4.3 OTA signature verifies under exact key embedded in installed owner application',async()=>{
  const {manifest,config}=await read();
- assert.equal(manifest.payload.bundleVersion,'0.4.2');
+ assert.equal(manifest.payload.bundleVersion,'0.4.3');
  assert.equal(config.channel,'lab');
  assert.equal(config.manifestUrl,
    'https://raw.githubusercontent.com/m-as23/ICC-Reports/android/stage14-ota-native-lab/updates/android/release.json');
@@ -33,7 +33,7 @@ test('published 0.4.2 OTA signature verifies under exact key embedded in install
  assert.ok(await verifyLabRelease(manifest,opts),'existing installed native 0.4.1 must trust owner manifest');
  assert.ok(acceptsLocalDataContract(manifest.payload.localData));
  assert.match(manifest.payload.bundleUrl,
-  /^https:\/\/raw\.githubusercontent\.com\/m-as23\/ICC-Reports\/[0-9a-f]{40}\/updates\/android\/maintrack-0\.4\.2\.zip$/);
+  /^https:\/\/raw\.githubusercontent\.com\/m-as23\/ICC-Reports\/[0-9a-f]{40}\/updates\/android\/maintrack-0\.4\.3\.zip$/);
  assert.match(manifest.payload.sourceCommit,/^[a-f0-9]{40}$/);
  assert.equal(manifest.payload.appId,'com.icc.maintrack');
  assert.equal(manifest.payload.nativeMinimum,'0.4.1');
@@ -44,7 +44,7 @@ test('signed owner release is invalid after tampering or on unsupported native v
  const {manifest,config}=await read();
  const opts={publicKeyBase64:config.publicKeyBase64,allowedOrigins:config.allowedOrigins,
   currentNative:'0.4.1',now:manifest.payload.issuedAt+10000};
- const forged={...manifest,payload:{...manifest.payload,bundleVersion:'0.4.3'}};
+ const forged={...manifest,payload:{...manifest.payload,bundleVersion:'0.4.4'}};
  assert.equal(await verifyLabRelease(forged,opts),null);
  assert.equal(validateLabRelease(manifest.payload,{...opts,currentNative:'0.5.0'}),false);
  assert.equal(validateLabRelease(manifest.payload,{...opts,currentNative:'0.4.0'}),false);
