@@ -1,0 +1,128 @@
+name: MainTrack Stage20 — Encrypted Session Device QA
+on:
+  push:
+    branches: [fix/maintrack-pilot-session-candidate-20261018]
+    paths:
+      - '.github/workflows/maintrack-stage20-device-session-qa.yml'
+      - 'android/maintrack-app/scripts/stage20/**'
+      - 'android/maintrack-app/update-system/**'
+      - 'android/maintrack-app/native/**'
+      - 'android/maintrack-app/scripts/unified-four-review.py'
+      - 'android/maintrack-app/scripts/harden-native.mjs'
+      - 'web/maintrack/public/secure-assets/index-inline-1.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  session-device-lab:
+    if: github.ref == 'refs/heads/fix/maintrack-pilot-session-candidate-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android SDK 36
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)
+          test -x "$MANAGER"
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Test source, build candidate, isolate QA APK
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          npm ci --no-audit --no-fund
+          npm --prefix tests-browser ci --no-audit --no-fund
+          node --test tests/secure-session.test.mjs tests/unified-four.test.mjs tests/ota-lab.test.mjs
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+          node scripts/stage20/prepare-session-device.mjs
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleDebug)
+      - name: Verify isolated package, QA backend, and debug certificate
+        run: |
+          set -euo pipefail
+          mkdir -p .device-session/apks
+          cp android/app/build/outputs/apk/debug/app-debug.apk .device-session/apks/MainTrack_SessionQA_0.4.4_Debug.apk
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          "$SDK_ROOT/apksigner" verify --verbose --print-certs .device-session/apks/MainTrack_SessionQA_0.4.4_Debug.apk > .device-session/apks/certificate.txt
+          "$SDK_ROOT/aapt" dump badging .device-session/apks/MainTrack_SessionQA_0.4.4_Debug.apk > .device-session/apks/identity.txt
+          python3 - <<'PY'
+          import hashlib, pathlib, re, json, zipfile
+          base=pathlib.Path('.device-session/apks')
+          apk=base/'MainTrack_SessionQA_0.4.4_Debug.apk'
+          identity=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",(base/'identity.txt').read_text(),re.M)
+          assert identity and identity.groups()==('com.icc.maintrack.sessionlab','404','0.4.4-sessionqa'), 'UNEXPECTED_APK_IDENTITY'
+          cert=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',(base/'certificate.txt').read_text())
+          assert cert, 'MISSING_CERT'
+          with zipfile.ZipFile(apk) as z:
+              js=z.read('assets/public/secure-assets/index-inline-1.js')
+              html=z.read('assets/public/index.html')
+              assert b'maintrack-unified-four-qa/api' in js
+              assert b'maintrack-stage9-security-api/api' not in js
+              assert '🧪 PILOT — بلاغات تجريبية فقط'.encode() not in html
+              assert b'stage20-native-session.js' in html
+              assert b'stage15-pilot-update.js' not in html
+          report={'sourceCommit':__import__('os').environ['GITHUB_SHA'],
+            'packageId':identity.group(1),'versionCode':int(identity.group(2)),
+            'versionName':identity.group(3),'certificateSha256':cert.group(1).lower(),
+            'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+            'debug':True,'upgradeCompatibleWithOriginalMainTrack':False,
+            'qaOnly':True,'productionApi':False,'signedRelease':False}
+          (base/'QA-DELIVERY.json').write_text(json.dumps(report,indent=2)+'\n')
+          print('PASS isolated synthetic-only Debug APK and no live production API')
+          PY
+      - name: Enable KVM
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Test native Keystore across force-stop, offline relaunch and explicit logout
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            adb install -r .device-session/apks/MainTrack_SessionQA_0.4.4_Debug.apk
+            adb shell monkey -p com.icc.maintrack.sessionlab -c android.intent.category.LAUNCHER 1
+            node scripts/stage20/check-session-device.mjs store
+            adb shell am force-stop com.icc.maintrack.sessionlab
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell monkey -p com.icc.maintrack.sessionlab -c android.intent.category.LAUNCHER 1
+            node scripts/stage20/check-session-device.mjs restore
+            node scripts/stage20/check-session-device.mjs logout
+            adb shell am force-stop com.icc.maintrack.sessionlab
+            adb shell monkey -p com.icc.maintrack.sessionlab -c android.intent.category.LAUNCHER 1
+            node scripts/stage20/check-session-device.mjs post-logout
+      - name: Export accepted isolated QA APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage20-SessionQA-Debug-Only
+          path: |
+            android/maintrack-app/.device-session/apks/MainTrack_SessionQA_0.4.4_Debug.apk
+            android/maintrack-app/.device-session/apks/QA-DELIVERY.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve synthetic-only device evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage20-Synthetic-Device-Evidence
+          path: android/maintrack-app/.device-session/evidence/
+          if-no-files-found: warn
+          retention-days: 14
