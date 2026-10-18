@@ -8,6 +8,7 @@ on:
       - 'web/maintrack/public/v6-core.css'
       - 'android/maintrack-app/scripts/qa/build-two-issues-044-candidate.py'
       - 'android/maintrack-app/tests-browser/two-issues-044.browser.test.mjs'
+      - 'android/maintrack-app/tests/shared-source.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
