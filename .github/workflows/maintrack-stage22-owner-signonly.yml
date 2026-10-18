@@ -1,0 +1,98 @@
+name: MainTrack Stage22 — Owner Key and 0.4.4 Sign-Only Proof
+on:
+  push:
+    branches: [android/stage14-ota-native-lab]
+    paths: ['.github/workflows/maintrack-stage22-owner-signonly.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  owner-signonly:
+    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: maintrack-android-release
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Stage22-Owner-Release-Preflight-UNSIGNED
+          repository: m-as23/ICC-Reports
+          run-id: 39127580731
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/stage22-owner-review
+      - name: Check current signed channel, QA source hashes and matching private key
+        env:
+          MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: ${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          import {canonicalJson,compareVersions} from './update-system/policy.mjs';
+          const base='stage22-owner-review/';
+          const candidate=JSON.parse(fs.readFileSync(base+'unified-four-review/candidate.json','utf8'));
+          const previous=JSON.parse(fs.readFileSync('../../updates/android/release.json','utf8'));
+          const config=JSON.parse(fs.readFileSync('release/owner-public.json','utf8'));
+          const ready=JSON.parse(fs.readFileSync(base+'release-readiness/stage22-readiness.json','utf8'));
+          assert.equal(candidate.gitCommit,'126dd010641ef8fc3ece849c043960df64e12c6c');
+          assert.equal(candidate.branch,'fix/maintrack-pilot-session-candidate-20261018');
+          assert.equal(candidate.mode,'review-only');
+          assert.equal(candidate.signed,false);
+          assert.equal(candidate.deployable,false);
+          assert.equal(candidate.rolloutEnabled,false);
+          assert.deepEqual(candidate.localData,{reportQueue:1,writesReportQueue:1,migration:'none'});
+          assert.equal(candidate.appId,'com.icc.maintrack');
+          assert.equal(candidate.nativePilotUpdatePanel.pinnedPublicKey,config.publicKeyBase64);
+          assert.equal(candidate.nativePilotUpdatePanel.trustedManifestUrl,config.manifestUrl);
+          assert.equal(ready.sourceCommit,candidate.gitCommit);
+          assert.equal(ready.currentSignedOtaVersion,'0.4.3');
+          assert.equal(ready.rolloutStatus,'BLOCKED_UNTIL_RELEASE_GATES_CLEAR');
+          assert.equal(previous.payload.bundleVersion,'0.4.3','live OTA changed: stop and re-review');
+          assert.equal(compareVersions('0.4.4',previous.payload.bundleVersion),1);
+          const fileNames=['MainTrack-Android-OTA-UNSIGNED-REVIEW.zip','MainTrack-Web-REVIEW-ONLY.zip'];
+          for(const name of fileNames){
+            const bytes=fs.readFileSync(base+'unified-four-review/'+name);
+            assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),candidate.archives[name].sha256);
+            assert.equal(bytes.length,candidate.archives[name].bytes);
+          }
+          const secret=process.env.MT_OTA_PRIVATE_KEY_PEM;
+          assert.ok(secret,'OWNER_SIGNING_SECRET_NOT_PROVISIONED');
+          const privateKey=crypto.createPrivateKey({key:secret,passphrase:process.env.MT_OTA_PRIVATE_KEY_PASSWORD||undefined});
+          const publicKey=crypto.createPublicKey(privateKey);
+          assert.equal(publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('base64url'),
+            config.publicKeyBase64,'OWNER_PRIVATE_KEY_NOT_COMPATIBLE_WITH_INSTALLED_MAINTRACK');
+          const payload={
+            schema:1,kind:'owner-stage22-sign-only-continuity-proof',
+            appId:'com.icc.maintrack',plannedVersion:'0.4.4',
+            reviewedCommit:candidate.gitCommit,reviewRun:39127580731,
+            archives:candidate.archives,localData:candidate.localData,
+            publishEnabled:false,deployable:false,rolloutStatus:'NO_PUBLISH',
+            ownerKeyContinuityVerifiedAt:new Date().toISOString()
+          };
+          const signature=crypto.sign(null,Buffer.from(canonicalJson(payload)),privateKey).toString('base64url');
+          assert.ok(crypto.verify(null,Buffer.from(canonicalJson(payload)),publicKey,
+            Buffer.from(signature,'base64url')));
+          fs.mkdirSync('stage22-owner-review/signonly',{recursive:true});
+          fs.writeFileSync('stage22-owner-review/signonly/owner-stage22-0.4.4-proof.json',
+            JSON.stringify({payload,signature,publicKeyBase64:config.publicKeyBase64},null,2)+'\n');
+          console.log('PASS: Stage22 source exact, owner signing key continuous, 0.4.4 > 0.4.3, no OTA published');
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage22-Owner-0.4.4-SIGNONLY-PROOF
+          path: android/maintrack-app/stage22-owner-review/signonly/owner-stage22-0.4.4-proof.json
+          if-no-files-found: error
+          retention-days: 14
