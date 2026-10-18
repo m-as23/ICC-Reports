@@ -17,7 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[1]
 PUBLIC = REPO / "web/maintrack/public"
 REVIEW = ROOT / "unified-four-review"
-EXPECTED_BRANCHES = {"feature/maintrack-unified-four-updates-20261017", "fix/maintrack-pilot-session-candidate-20261018"}
+EXPECTED_BRANCHES = {"feature/maintrack-unified-four-updates-20261017", "fix/maintrack-pilot-session-candidate-20261018", "release/maintrack-stage22-044-integration"}
 PILOT_BADGE = re.compile(r'<div role="note" aria-label="Pilot demo system"[^>]*>🧪 PILOT — بلاغات تجريبية فقط</div>')
 MAY_CHANGE = {
     "index.html",
