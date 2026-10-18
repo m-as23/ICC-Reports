@@ -1,0 +1,2642 @@
+{
+  "schema_version": 1,
+  "note": "Read-only schema CATALOG snapshot, NOT executable DDL and NOT a live database backup. No row data, password hashes, tokens or secrets included.",
+  "project": "MainTrack-Staging",
+  "project_ref": "tdnkeskczcsukcujwinu",
+  "verified_date": "2026-10-18",
+  "tables": [
+    {
+      "table": "public.mt_users",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "employee_code",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "employee_code ~ '^[A-Za-z0-9_-]{1,32}$'::text",
+          "enum": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "role",
+          "type": "USER-DEFINED",
+          "format": "mt_role",
+          "nullable": false,
+          "default": "'technician'::mt_role",
+          "check": null,
+          "enum": [
+            "owner",
+            "engineer",
+            "technician"
+          ]
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "password_hash",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "token_version",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": "0",
+          "check": "token_version >= 0",
+          "enum": null
+        },
+        {
+          "name": "must_change",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "department",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "job_title",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "preferred_name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_sessions_user_id_fkey",
+          "source_table": "public.mt_sessions",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_reports_creator_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "creator_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_balances_user_id_fkey",
+          "source_table": "public.mt_leave_balances",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_requests_requester_id_fkey",
+          "source_table": "public.mt_leave_requests",
+          "source_columns": [
+            "requester_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_requests_decided_by_fkey",
+          "source_table": "public.mt_leave_requests",
+          "source_columns": [
+            "decided_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_ledger_user_id_fkey",
+          "source_table": "public.mt_leave_ledger",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_ledger_approved_by_fkey",
+          "source_table": "public.mt_leave_ledger",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_notifications_recipient_id_fkey",
+          "source_table": "public.mt_notifications",
+          "source_columns": [
+            "recipient_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_audit_actor_id_fkey",
+          "source_table": "public.mt_audit",
+          "source_columns": [
+            "actor_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_reports_deleted_by_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "deleted_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_overtime_requests_requester_id_fkey",
+          "source_table": "public.mt_overtime_requests",
+          "source_columns": [
+            "requester_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_overtime_requests_decided_by_fkey",
+          "source_table": "public.mt_overtime_requests",
+          "source_columns": [
+            "decided_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_user_id_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_approved_by_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_balance_adjustments_user_id_fkey",
+          "source_table": "public.mt_leave_balance_adjustments",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_balance_adjustments_approved_by_fkey",
+          "source_table": "public.mt_leave_balance_adjustments",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_adjustments_user_id_fkey",
+          "source_table": "public.mt_substitute_time_adjustments",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_adjustments_approved_by_fkey",
+          "source_table": "public.mt_substitute_time_adjustments",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_login_attempts",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "employee_code",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "fail_count",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": "0",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "blocked_until",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "employee_code"
+      ],
+      "foreign_key_constraints": []
+    },
+    {
+      "table": "public.mt_sections",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_components_section_id_fkey",
+          "source_table": "public.mt_components",
+          "source_columns": [
+            "section_id"
+          ],
+          "target_table": "public.mt_sections",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_machines_section_id_fkey",
+          "source_table": "public.mt_machines",
+          "source_columns": [
+            "section_id"
+          ],
+          "target_table": "public.mt_sections",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_reports_section_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "section_id"
+          ],
+          "target_table": "public.mt_sections",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_machines",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "section_id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_machines_section_id_fkey",
+          "source_table": "public.mt_machines",
+          "source_columns": [
+            "section_id"
+          ],
+          "target_table": "public.mt_sections",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_reports_machine_id_section_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "machine_id",
+            "section_id"
+          ],
+          "target_table": "public.mt_machines",
+          "target_columns": [
+            "id",
+            "section_id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_components",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "section_id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_reports_component_id_section_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "component_id",
+            "section_id"
+          ],
+          "target_table": "public.mt_components",
+          "target_columns": [
+            "id",
+            "section_id"
+          ]
+        },
+        {
+          "name": "mt_components_section_id_fkey",
+          "source_table": "public.mt_components",
+          "source_columns": [
+            "section_id"
+          ],
+          "target_table": "public.mt_sections",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_statuses",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "name"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_reports_status_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "status"
+          ],
+          "target_table": "public.mt_statuses",
+          "target_columns": [
+            "name"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_categories",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "name"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_reports_category_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "category"
+          ],
+          "target_table": "public.mt_categories",
+          "target_columns": [
+            "name"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_reports",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "wo_number",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": "nextval('mt_wo_number_seq'::regclass)",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "client_request_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "request_digest",
+          "type": "text",
+          "format": "text",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "creator_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "section_id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "machine_id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "component_id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "length(description) >= 1 AND length(description) <= 2000",
+          "enum": null
+        },
+        {
+          "name": "solution",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "spare_parts",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "incident_date",
+          "type": "date",
+          "format": "date",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "report_time",
+          "type": "time without time zone",
+          "format": "time",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "work_start_time",
+          "type": "time without time zone",
+          "format": "time",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "work_end_time",
+          "type": "time without time zone",
+          "format": "time",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "legacy_wo",
+          "type": "text",
+          "format": "text",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "legacy_sheet_row",
+          "type": "integer",
+          "format": "int4",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "assigned_technician",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "facility",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "legacy_client_ref",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "is_test",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "false",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "workflow_state",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "'RECORDED'::text",
+          "check": "workflow_state = ANY (ARRAY['RECORDED'::text, 'OPEN'::text, 'CLOSED'::text])",
+          "enum": null
+        },
+        {
+          "name": "revision",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": "1",
+          "check": "revision >= 1",
+          "enum": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "deleted_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "delete_reason",
+          "type": "text",
+          "format": "text",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_reports_component_id_section_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "component_id",
+            "section_id"
+          ],
+          "target_table": "public.mt_components",
+          "target_columns": [
+            "id",
+            "section_id"
+          ]
+        },
+        {
+          "name": "mt_reports_status_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "status"
+          ],
+          "target_table": "public.mt_statuses",
+          "target_columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "mt_reports_machine_id_section_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "machine_id",
+            "section_id"
+          ],
+          "target_table": "public.mt_machines",
+          "target_columns": [
+            "id",
+            "section_id"
+          ]
+        },
+        {
+          "name": "mt_reports_category_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "category"
+          ],
+          "target_table": "public.mt_categories",
+          "target_columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "mt_reports_deleted_by_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "deleted_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_reports_creator_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "creator_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_reports_section_id_fkey",
+          "source_table": "public.mt_reports",
+          "source_columns": [
+            "section_id"
+          ],
+          "target_table": "public.mt_sections",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_leave_balances",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "days",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": false,
+          "default": null,
+          "check": "days >= 0::numeric",
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "user_id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_leave_balances_user_id_fkey",
+          "source_table": "public.mt_leave_balances",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_leave_requests",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "public_id",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "requester_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "client_request_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "request_digest",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "format": "date",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "format": "date",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "days",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": false,
+          "default": null,
+          "check": "days >= 0.5 AND days <= 60::numeric",
+          "enum": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "format": "mt_leave_status",
+          "nullable": false,
+          "default": "'PENDING'::mt_leave_status",
+          "check": null,
+          "enum": [
+            "PENDING",
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "decided_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "decision_reason",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "balance_before",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "balance_after",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "duration_kind",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "'FULL_DAY'::text",
+          "check": "duration_kind = ANY (ARRAY['FULL_DAY'::text, 'HALF_DAY'::text])",
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_leave_requests_decided_by_fkey",
+          "source_table": "public.mt_leave_requests",
+          "source_columns": [
+            "decided_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_leave_id_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "leave_id"
+          ],
+          "target_table": "public.mt_leave_requests",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_ledger_request_id_fkey",
+          "source_table": "public.mt_leave_ledger",
+          "source_columns": [
+            "request_id"
+          ],
+          "target_table": "public.mt_leave_requests",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_requests_requester_id_fkey",
+          "source_table": "public.mt_leave_requests",
+          "source_columns": [
+            "requester_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_leave_ledger",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "request_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "delta",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": false,
+          "default": null,
+          "check": "delta < 0::numeric",
+          "enum": null
+        },
+        {
+          "name": "balance_after",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": false,
+          "default": null,
+          "check": "balance_after >= 0::numeric",
+          "enum": null
+        },
+        {
+          "name": "approved_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_leave_ledger_user_id_fkey",
+          "source_table": "public.mt_leave_ledger",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_ledger_approved_by_fkey",
+          "source_table": "public.mt_leave_ledger",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_ledger_request_id_fkey",
+          "source_table": "public.mt_leave_ledger",
+          "source_columns": [
+            "request_id"
+          ],
+          "target_table": "public.mt_leave_requests",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_notifications",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "recipient_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "source_id",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "type = ANY (ARRAY['report'::text, 'leaveDecision'::text, 'leaveBalance'::text, 'overtimeDecision'::text])",
+          "enum": null
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "target",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "'report'::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_notifications_recipient_id_fkey",
+          "source_table": "public.mt_notifications",
+          "source_columns": [
+            "recipient_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_outbox",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "event_key",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "format": "jsonb",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "'PENDING'::text",
+          "check": "state = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'DONE'::text, 'FAILED'::text])",
+          "enum": null
+        },
+        {
+          "name": "attempts",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": "0",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "next_run_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "last_error",
+          "type": "text",
+          "format": "text",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "done_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "provider_message_id",
+          "type": "text",
+          "format": "text",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "last_http_status",
+          "type": "integer",
+          "format": "int4",
+          "nullable": true,
+          "default": null,
+          "check": "last_http_status IS NULL OR last_http_status >= 100 AND last_http_status <= 599",
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": []
+    },
+    {
+      "table": "public.mt_audit",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "entity",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "entity_id",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "details",
+          "type": "jsonb",
+          "format": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_audit_actor_id_fkey",
+          "source_table": "public.mt_audit",
+          "source_columns": [
+            "actor_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_migrations",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "version",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "applied_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "version"
+      ],
+      "foreign_key_constraints": []
+    },
+    {
+      "table": "public.mt_sessions",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "token_hash",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "length(token_hash) = 64",
+          "enum": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "token_version",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "(now() + '7 days'::interval)",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "token_hash"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_sessions_user_id_fkey",
+          "source_table": "public.mt_sessions",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_mail_config",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "singleton",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": "singleton",
+          "enum": null
+        },
+        {
+          "name": "recipient_email",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "recipient_email ~* '^[A-Z0-9._%+\\-]+@[A-Z0-9.\\-]+\\.[A-Z]{2,}$'::text",
+          "enum": null
+        },
+        {
+          "name": "sender_email",
+          "type": "text",
+          "format": "text",
+          "nullable": true,
+          "default": null,
+          "check": "sender_email IS NULL OR sender_email ~* '^[A-Z0-9._%+\\-]+@[A-Z0-9.\\-]+\\.[A-Z]{2,}$'::text",
+          "enum": null
+        },
+        {
+          "name": "provider",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "'resend'::text",
+          "check": "provider = 'resend'::text",
+          "enum": null
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "false",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "singleton"
+      ],
+      "foreign_key_constraints": []
+    },
+    {
+      "table": "public.mt_technicians",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "format": "int8",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "format": "bool",
+          "nullable": false,
+          "default": "true",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": []
+    },
+    {
+      "table": "public.mt_login_rate_guard",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "key_hash",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "window_start",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "attempts",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": "0",
+          "check": "attempts >= 0",
+          "enum": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "key_hash"
+      ],
+      "foreign_key_constraints": []
+    },
+    {
+      "table": "public.mt_overtime_requests",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "public_id",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "requester_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "client_request_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "request_digest",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "work_date",
+          "type": "date",
+          "format": "date",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "start_time",
+          "type": "time without time zone",
+          "format": "time",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "end_time",
+          "type": "time without time zone",
+          "format": "time",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "minutes",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": null,
+          "check": "minutes >= 1 AND minutes <= 1440",
+          "enum": null
+        },
+        {
+          "name": "compensation_kind",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "compensation_kind = ANY (ARRAY['FINANCIAL'::text, 'SUBSTITUTE'::text])",
+          "enum": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "format": "mt_leave_status",
+          "nullable": false,
+          "default": "'PENDING'::mt_leave_status",
+          "check": null,
+          "enum": [
+            "PENDING",
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "decided_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "decision_reason",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "''::text",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "work_kind",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": "'UNSPECIFIED'::text",
+          "check": "work_kind = ANY (ARRAY['AFTER_SHIFT'::text, 'INDEPENDENT_DAY'::text, 'UNSPECIFIED'::text])",
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_overtime_requests_decided_by_fkey",
+          "source_table": "public.mt_overtime_requests",
+          "source_columns": [
+            "decided_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_overtime_id_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "overtime_id"
+          ],
+          "target_table": "public.mt_overtime_requests",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_overtime_requests_requester_id_fkey",
+          "source_table": "public.mt_overtime_requests",
+          "source_columns": [
+            "requester_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_substitute_time_ledger",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "delta_minutes",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": null,
+          "check": "delta_minutes <> 0",
+          "enum": null
+        },
+        {
+          "name": "overtime_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "leave_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "approved_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_substitute_time_ledger_leave_id_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "leave_id"
+          ],
+          "target_table": "public.mt_leave_requests",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_user_id_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_overtime_id_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "overtime_id"
+          ],
+          "target_table": "public.mt_overtime_requests",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_ledger_approved_by_fkey",
+          "source_table": "public.mt_substitute_time_ledger",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_leave_balance_adjustments",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "delta_days",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": false,
+          "default": null,
+          "check": "delta_days <> 0::numeric",
+          "enum": null
+        },
+        {
+          "name": "balance_before",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": true,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "balance_after",
+          "type": "numeric",
+          "format": "numeric",
+          "nullable": true,
+          "default": null,
+          "check": "balance_after IS NULL OR balance_after >= 0::numeric",
+          "enum": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "length(btrim(reason)) >= 3 AND length(btrim(reason)) <= 250",
+          "enum": null
+        },
+        {
+          "name": "approved_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_leave_balance_adjustments_approved_by_fkey",
+          "source_table": "public.mt_leave_balance_adjustments",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_leave_balance_adjustments_user_id_fkey",
+          "source_table": "public.mt_leave_balance_adjustments",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "public.mt_substitute_time_adjustments",
+      "rls_enabled": true,
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "delta_minutes",
+          "type": "integer",
+          "format": "int4",
+          "nullable": false,
+          "default": null,
+          "check": "delta_minutes <> 0",
+          "enum": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "format": "text",
+          "nullable": false,
+          "default": null,
+          "check": "length(btrim(reason)) >= 3 AND length(btrim(reason)) <= 250",
+          "enum": null
+        },
+        {
+          "name": "approved_by",
+          "type": "uuid",
+          "format": "uuid",
+          "nullable": false,
+          "default": null,
+          "check": null,
+          "enum": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "format": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "check": null,
+          "enum": null
+        }
+      ],
+      "primary_keys": [
+        "id"
+      ],
+      "foreign_key_constraints": [
+        {
+          "name": "mt_substitute_time_adjustments_user_id_fkey",
+          "source_table": "public.mt_substitute_time_adjustments",
+          "source_columns": [
+            "user_id"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "mt_substitute_time_adjustments_approved_by_fkey",
+          "source_table": "public.mt_substitute_time_adjustments",
+          "source_columns": [
+            "approved_by"
+          ],
+          "target_table": "public.mt_users",
+          "target_columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    {
+      "version": "20261013203549",
+      "name": "maintrack_stage6_initial_schema_rls"
+    },
+    {
+      "version": "20261013204457",
+      "name": "maintrack_stage6_fk_indexes_calendar_check"
+    },
+    {
+      "version": "20261013210151",
+      "name": "maintrack_stage7_opaque_sessions"
+    },
+    {
+      "version": "20261013213554",
+      "name": "maintrack_stage7_durable_report_email_outbox"
+    },
+    {
+      "version": "20261014035125",
+      "name": "maintrack_pilot_email_recipient_config"
+    },
+    {
+      "version": "20261014035209",
+      "name": "maintrack_pilot_mail_dispatch_tracking"
+    },
+    {
+      "version": "20261014041701",
+      "name": "maintrack_pilot_dispatch_scheduler_auth"
+    },
+    {
+      "version": "20261014041805",
+      "name": "maintrack_pilot_schedule_dormant_mail_job"
+    },
+    {
+      "version": "20261014052405",
+      "name": "maintrack_pilot_notification_center_retention"
+    },
+    {
+      "version": "20261014082209",
+      "name": "pilot_add_technician_field"
+    },
+    {
+      "version": "20261014082215",
+      "name": "pilot_add_facility_field"
+    },
+    {
+      "version": "20261014082218",
+      "name": "pilot_add_client_reference_field"
+    },
+    {
+      "version": "20261014082220",
+      "name": "pilot_create_technicians_catalog"
+    },
+    {
+      "version": "20261014082237",
+      "name": "pilot_report_test_flag"
+    },
+    {
+      "version": "20261014102716",
+      "name": "pilot_catalog_stable_ids_for_categories_and_statuses"
+    },
+    {
+      "version": "20261014104814",
+      "name": "pilot_autofill_assigned_technician_from_authenticated_creator"
+    },
+    {
+      "version": "20261014104947",
+      "name": "pilot_google_sheets_readable_reports_view_owner_only"
+    },
+    {
+      "version": "20261014105023",
+      "name": "pilot_sheet_view_work_order_number_no_truncation"
+    },
+    {
+      "version": "20261014112534",
+      "name": "pilot_sheet_view_latest_work_orders_first"
+    },
+    {
+      "version": "20261014131950",
+      "name": "pilot_cmms_phase2_work_order_workflow_revision_and_audit_history"
+    },
+    {
+      "version": "20261014212730",
+      "name": "maintrack_soft_delete_owner_work_orders_v1"
+    },
+    {
+      "version": "20261015071839",
+      "name": "maintrack_sec_technicians_rls_deny_client_roles"
+    },
+    {
+      "version": "20261015073754",
+      "name": "maintrack_sec_revoke_direct_client_table_sequence_grants"
+    },
+    {
+      "version": "20261015073904",
+      "name": "maintrack_sec_revoke_all_mt_sequence_client_grants"
+    },
+    {
+      "version": "20261015074139",
+      "name": "maintrack_sec_postgres_future_object_least_privilege"
+    },
+    {
+      "version": "20261015074459",
+      "name": "maintrack_sec_close_direct_trigger_function_execution"
+    },
+    {
+      "version": "20261015092513",
+      "name": "maintrack_stage9_isolated_login_rate_limit_guard"
+    },
+    {
+      "version": "20261015114836",
+      "name": "maintrack_stage11_reports_deleted_by_index"
+    },
+    {
+      "version": "20261017160928",
+      "name": "maintrack_owner_balance_adjustment_audit_20261017"
+    },
+    {
+      "version": "20261017170619",
+      "name": "maintrack_compensatory_full_day_staging_20261017"
+    },
+    {
+      "version": "20261017182747",
+      "name": "maintrack_overtime_work_kind_staging_20261017"
+    },
+    {
+      "version": "20261017194814",
+      "name": "maintrack_overtime_notifications_staging_20261017"
+    }
+  ]
+}
