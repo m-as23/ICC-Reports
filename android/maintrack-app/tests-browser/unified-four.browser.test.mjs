@@ -167,7 +167,9 @@ test('Owner inbox renders detailed named overtime and leave cards with clear app
 test('mobile Owner inbox keeps pending cards detailed and completed cards compact with audit drill-down',async()=>{
  await withPage('owner',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.locator('#tabApprove').click();
+  // Trigger the existing navigation handler without synthetic Playwright scrolling;
+  // the bottom fixed nav can be outside the desktop emulation click rectangle.
+  await page.locator('#tabApprove').evaluate(button=>button.click());
   const pending=page.locator('#approvalRows .approval-card--detailed').first();
   const approved=page.locator('#approvalRows .approval-card--compact').first();
   const rejected=page.locator('#approvalRows .approval-card--compact').last();
@@ -213,7 +215,7 @@ test('owner approval changes a detailed pending request into a compact read-only
 test('My Account requires an explicit overtime compensation choice above work nature',async()=>{
  await withPage('engineer',async({page,actions})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.locator('#tabProfile').click();
+  await page.locator('#tabProfile').evaluate(button=>button.click());
   await page.locator('#accountOvertimeDetails summary').click();
   const compensation=page.locator('#otKind'),workKind=page.locator('#otWorkKind');
   assert.equal(await compensation.inputValue(),'');
