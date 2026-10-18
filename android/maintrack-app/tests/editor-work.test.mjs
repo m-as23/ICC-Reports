@@ -11,21 +11,21 @@ function setup() {
 }
 test('an edit with an unknown baseline cannot become clean just by refocusing', () => {
   const {tracker,fields,emit} = setup();
-  fields.profilePhone.value = 'unsaved'; emit('input','profilePhone');
-  emit('focusin','profilePhone');
-  fields.profilePhone.value = 'unsaved-more'; emit('input','profilePhone');
-  fields.profilePhone.value = 'unsaved'; emit('input','profilePhone');
+  fields.otReason.value = 'unsaved'; emit('input','otReason');
+  emit('focusin','otReason');
+  fields.otReason.value = 'unsaved-more'; emit('input','otReason');
+  fields.otReason.value = 'unsaved'; emit('input','otReason');
   assert.equal(tracker.read(),true);
-  tracker.begin('updateProfile')({ok:true});
+  tracker.begin('overtimeRequest')({ok:true});
   assert.equal(tracker.read(),false);
 });
 test('an old acknowledgement never marks newer edits clean; a changed focused value is also detected without input events', () => {
   const {tracker,fields,emit} = setup();
-  emit('focusin','profilePreferred');
-  fields.profilePreferred.value = 'first edit'; emit('input','profilePreferred');
-  const acknowledge = tracker.begin('updateProfile');
-  fields.profilePreferred.value = 'newer edit'; emit('input','profilePreferred');
+  emit('focusin','otReason');
+  fields.otReason.value = 'first edit'; emit('input','otReason');
+  const acknowledge = tracker.begin('overtimeRequest');
+  fields.otReason.value = 'newer edit'; emit('input','otReason');
   acknowledge({ok:true}); assert.equal(tracker.read(),true);
-  fields.profilePreferred.value = ''; emit('input','profilePreferred'); assert.equal(tracker.read(),false);
-  fields.profilePreferred.value = 'programmatic change'; assert.equal(tracker.read(),true);
+  fields.otReason.value = ''; emit('input','otReason'); assert.equal(tracker.read(),false);
+  fields.otReason.value = 'programmatic change'; assert.equal(tracker.read(),true);
 });
