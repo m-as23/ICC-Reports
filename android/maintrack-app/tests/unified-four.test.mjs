@@ -117,7 +117,8 @@ test('owner overtime KPIs require approval role and count unique employee-days',
  assert.ok(api.includes("case 'overtimeSummary':return overtimeSummary(u,b)"));
  for(const f of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','otOwnerKind','otOwnerDistinctDays','otOwnerApprovedHours'])assert.ok(html.includes('id="'+f+'"'));
  assert.ok(js.includes("api('overtimeSummary',ownerOvertimeFilters())"));
- assert.ok(js.includes("api('overtimeInbox',ownerOvertimeFilters())"));
+ assert.ok(js.includes("api('overtimeInbox')"),'one unfiltered pending inbox');
+ assert.ok(js.includes("api('leaveInbox')"),'leave and overtime are merged');
 });
 
 test('approved account layout: available leave dominates and financial overtime is equivalent DAYS',async()=>{
@@ -215,19 +216,36 @@ test('owner overtime approval notification matches staging DB type constraint',a
  assert.ok(sql.includes("CHECK (type IN ('report','leaveDecision','leaveBalance','overtimeDecision'))"));
  assert.ok(sql.includes("COMMIT;"));
 });
-test('owner approval cards present named details and inline decision feedback',async()=>{
+test('one Owner inbox, archive-only filters, persistent notification archive and decision routing',async()=>{
+ const js=await read(scriptFile),html=await read(htmlFile);
+ assert.ok(html.includes('id="ownerPendingRows"'));
+ assert.ok(html.includes('id="ownerHistoryRows"'));
+ assert.ok(html.indexOf('id="ownerPendingRows"')<html.indexOf('id="ownerHistoryRows"'));
+ assert.ok(html.indexOf('id="ownerHistoryRows"')>html.indexOf('id="ownerHistoryStatus"'));
+ for(const id of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','ownerHistoryType','ownerHistoryStatus']){
+  assert.ok(html.includes('id="'+id+'"'));
+ }
+ for(const name of ['ownerRequestSnapshot','ownerRequestCard','renderOwnerHistory','ownerHistoryMatches','refreshOwnerHub','ownerGoToRequest']){
+  assert.ok(js.includes('function '+name+'(')||js.includes('async function '+name+'('));
+ }
+ assert.ok(js.includes("r.status==='PENDING'"));
+ assert.ok(js.includes("ownerSnapshotCache.history.filter(ownerHistoryMatches)"));
+ assert.ok(js.includes("ownerFeed.pending.length"));
+ assert.ok(js.includes("ownerFeed?.history"));
+ assert.ok(js.includes('invalidateOwnerSnapshot()'));
+ assert.ok(js.includes("api(kind==='overtime'?'overtimeDecision':'leaveDecision'"));
+ assert.ok(!html.includes('id="otApprovalRows"'));
+ assert.ok(!html.includes('id="approvalRows"'));
+});
+
+test('Owner approval details remain explicit, text safe and decision feedback inline',async()=>{
  const js=await read(scriptFile);
- assert.ok(js.includes('function approvalCardBase('));
- assert.ok(js.includes('function approvalDetails('));
- assert.ok(js.includes("['تاريخ العمل',r.date]"));
- assert.ok(js.includes("['بداية الإضافي',showOvertimeClock(r.from)]"));
- assert.ok(js.includes("['نهاية الإضافي',endText]"));
- assert.ok(js.includes("['المدة',days+' · '+hours]"));
- assert.ok(js.includes("['طبيعة العمل',workKind]"));
- assert.ok(js.includes("['نوع الإجازة',leaveTypeNames[r.type]||r.type]"));
- assert.ok(js.includes("['تاريخ البداية',r.start]"));
- assert.ok(js.includes("['تاريخ النهاية',r.end]"));
+ for(const phrase of ["function approvalCardBase(","function approvalDetails(","function approvalCompleted(", "['تاريخ العمل',r.date]",
+ "['بداية الإضافي',showOvertimeClock(r.from)]","['تاريخ البداية',r.start]","['تاريخ النهاية',r.end]","['نوع التعويض',kind]"]){
+  assert.ok(js.includes(phrase),phrase);
+ }
  assert.ok(js.includes("role','status'"));
  assert.ok(js.includes('buttons.forEach(b=>b.disabled=true)'));
  assert.ok(js.includes('buttons.forEach(b=>b.disabled=false)'));
+ assert.ok(js.includes("textContent=String(value)"));
 });
