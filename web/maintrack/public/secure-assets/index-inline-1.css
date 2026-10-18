@@ -295,3 +295,34 @@ body.auth-screen #change{background:linear-gradient(135deg,#122d43,#091c31)!impo
  #approvals .request-actions button{max-width:none}
 }
 @media(max-width:370px){#approvals .request-details-grid{grid-template-columns:1fr}}
+
+
+/* Resolved owner requests: short rows by default, with opt-in audit details.
+   Pending requests intentionally keep the original detailed decision layout. */
+#approvals .approval-card--compact{background:#fff;border:1px solid #dce6ec;border-radius:12px;padding:11px 14px;margin:8px 0;box-shadow:none;color:#16354b;min-width:0}
+#approvals .approval-card--compact .request-card-top{align-items:center;gap:10px;border-bottom:0;padding:0}
+#approvals .approval-card--compact .request-card-heading{gap:1px}
+#approvals .approval-card--compact .request-card-type{font-size:13px;line-height:1.4}
+#approvals .approval-card--compact .request-card-name{font-size:14px;line-height:1.4}
+#approvals .approval-card--compact .request-card-identity{font-size:11px;line-height:1.35}
+#approvals .approval-card--compact .request-status{font-size:11px;padding:4px 8px}
+#approvals .request-compact-facts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 13px;margin:8px 0 4px;color:#39566a;font-size:12px;line-height:1.55;font-variant-numeric:tabular-nums}
+#approvals .request-compact-fact{min-width:0;overflow-wrap:anywhere}
+#approvals .request-compact-fact strong{color:#1d465b;font-weight:800}
+#approvals .request-compact-reason{font-size:12px;line-height:1.55;margin:5px 0;color:#914441;overflow-wrap:anywhere}
+#approvals .request-optional-details{border-top:1px solid #edf2f5;margin-top:7px;padding-top:4px}
+#approvals .request-optional-details > summary{cursor:pointer;list-style-position:inside;color:#087986;font-size:12px;font-weight:800;padding:3px 0;min-height:26px}
+#approvals .request-optional-details > summary:focus-visible{outline:2px solid #087986;outline-offset:3px;border-radius:4px}
+#approvals .request-optional-details .request-details-grid{margin:6px 0 8px;gap:6px 9px}
+#approvals .request-optional-details .request-detail-field{padding:7px 9px;gap:2px}
+#approvals .request-optional-details .request-detail-field dt{font-size:11px}
+#approvals .request-optional-details .request-detail-field dd{font-size:12px}
+#approvals .request-optional-details .request-notes{margin:7px 0;padding:7px 9px}
+@media(max-width:640px){
+ #approvals .approval-card--compact{padding:10px 11px;margin:7px 0}
+ #approvals .approval-card--compact .request-card-top{gap:6px}
+ #approvals .approval-card--compact .request-card-type{font-size:12px}
+ #approvals .approval-card--compact .request-card-name{font-size:13px}
+ #approvals .approval-card--compact .request-card-identity{font-size:10px}
+ #approvals .request-compact-facts{font-size:11px;gap:3px 9px}
+}
