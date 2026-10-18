@@ -56,24 +56,24 @@ jobs:
           const gradle='android/app/build.gradle';
           let s=fs.readFileSync(gradle,'utf8');
           if(!s.includes('applicationIdSuffix ".sessionlab"')||!s.includes('versionCode 404'))throw Error('UNEXPECTED_STAGE20_BASE');
-          s=s.replace('applicationIdSuffix ".sessionlab"','applicationIdSuffix ".stage21qa"');
-          s=s.replace('versionCode 404','versionCode 405');
-          s=s.replace('versionName "0.4.4-sessionqa"','versionName "0.4.5-stage21qa"');
+          s=s.replace('applicationIdSuffix ".sessionlab"','applicationIdSuffix ".stage22qa"');
+          s=s.replace('versionCode 404','versionCode 406');
+          s=s.replace('versionName "0.4.4-sessionqa"','versionName "0.4.6-stage22qa"');
           fs.writeFileSync(gradle,s);
           const label='android/app/src/main/res/values/strings.xml';
           let t=fs.readFileSync(label,'utf8');
           if(!t.includes('MainTrack Session QA'))throw Error('UNEXPECTED_LABEL_SOURCE');
-          fs.writeFileSync(label,t.replaceAll('MainTrack Session QA','MainTrack Stage21 QA'));
+          fs.writeFileSync(label,t.replaceAll('MainTrack Session QA','MainTrack Stage22 QA'));
           NODE
           (cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug)
       - name: Independently verify packaged assets and build fingerprints
         run: |
           set -euo pipefail
           mkdir -p stage21-delivery
-          cp android/app/build/outputs/apk/debug/app-debug.apk stage21-delivery/MainTrack_Stage21_QA_0.4.5_Debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
-          "$SDK_ROOT/apksigner" verify --verbose --print-certs stage21-delivery/MainTrack_Stage21_QA_0.4.5_Debug.apk > stage21-delivery/apk-signature.txt
-          "$SDK_ROOT/aapt" dump badging stage21-delivery/MainTrack_Stage21_QA_0.4.5_Debug.apk > stage21-delivery/apk-identity.txt
+          "$SDK_ROOT/apksigner" verify --verbose --print-certs stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk > stage21-delivery/apk-signature.txt
+          "$SDK_ROOT/aapt" dump badging stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk > stage21-delivery/apk-identity.txt
           python3 - <<'PY'
           import pathlib,re,hashlib,json,zipfile,os
           directory=pathlib.Path('stage21-web-qa')
@@ -81,10 +81,10 @@ jobs:
           with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
               for file in sorted(directory.rglob('*')):
                   if file.is_file():z.write(file,file.relative_to(directory).as_posix())
-          apk=pathlib.Path('stage21-delivery/MainTrack_Stage21_QA_0.4.5_Debug.apk')
+          apk=pathlib.Path('stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk')
           badging=pathlib.Path('stage21-delivery/apk-identity.txt').read_text()
           identity=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",badging,re.M)
-          assert identity and identity.groups()==('com.icc.maintrack.stage21qa','405','0.4.5-stage21qa')
+          assert identity and identity.groups()==('com.icc.maintrack.stage22qa','406','0.4.6-stage22qa')
           with zipfile.ZipFile(apk) as z:
               ui=z.read('assets/public/secure-assets/index-inline-1.js')
               html=z.read('assets/public/index.html')
@@ -117,7 +117,7 @@ jobs:
           name: MainTrack-Stage21-Coordinated-QA-Only
           path: |
             android/maintrack-app/stage21-delivery/MainTrack_Stage21_Web_QA.zip
-            android/maintrack-app/stage21-delivery/MainTrack_Stage21_QA_0.4.5_Debug.apk
+            android/maintrack-app/stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk
             android/maintrack-app/stage21-delivery/delivery.json
           if-no-files-found: error
           retention-days: 14
