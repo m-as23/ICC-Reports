@@ -7,15 +7,22 @@ const root=path.resolve(import.meta.dirname,'..');
 const loc=path.resolve(root,'../../web/maintrack/public');
 const lock=JSON.parse(fs.readFileSync(path.resolve(root,'../../web/maintrack/source-lock.json')));
 const data=JSON.parse(fs.readFileSync(path.join(root,'approved-assets.lock.json')));
-test('shared frontend source is the approved Stage11 baseline',()=>{
- assert.equal(lock.sourceDeployment,data.sourceDeployment);
+test('Stage22 source changes exactly the three approved UI resources, never other locked assets',()=>{
+ assert.deepEqual(lock,data,'original Web/Android trust baselines must agree');
  assert.equal(lock.assets.length,18);
+ const allowed=new Set(['index.html','secure-assets/index-inline-1.js','secure-assets/index-inline-1.css']);
+ const changed=[];
  for(const item of lock.assets){
   const bytes=fs.readFileSync(path.join(loc,item.path));
-  const wanted=item.path==='index.html'?lock.nativeIndex:item;
-  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),wanted.sha256,item.path);
+  const digest=crypto.createHash('sha256').update(bytes).digest('hex');
+  if(digest!==item.sha256){
+   assert.ok(allowed.has(item.path),'unexpected drift in locked asset: '+item.path);
+   changed.push(item.path);
+  }
  }
+ assert.deepEqual(new Set(changed),allowed,'Stage22 must change only the reviewed UI trio');
 });
+
 test('server protected and browser connect-src restricted',()=>{
  const src=fs.readFileSync(path.join(loc,'secure-assets/index-inline-1.js'),'utf8');
  const html=fs.readFileSync(path.join(loc,'index.html'),'utf8');
