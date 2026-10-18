@@ -213,10 +213,7 @@ jobs:
             set -eu
             adb install stage22-device-input/MainTrack_Stage22_QA_0.4.6_Debug.apk
             adb shell pm path com.icc.maintrack.stage22qa
-            if adb shell pm path com.icc.maintrack | grep -q '^package:'; then
-              echo 'FAIL: production app is unexpectedly installed in the isolated emulator'
-              exit 1
-            fi
+            test -z "$(adb shell pm path com.icc.maintrack)"
             adb shell monkey -p com.icc.maintrack.stage22qa -c android.intent.category.LAUNCHER 1
             node scripts/qa/check-stage22-emulator.mjs online
             adb shell am force-stop com.icc.maintrack.stage22qa
