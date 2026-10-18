@@ -36,6 +36,11 @@ jobs:
           python3 -m py_compile scripts/unified-four-review.py
           python3 scripts/unified-four-review.py build
           python3 scripts/unified-four-review.py verify
+      - name: Test actual mobile owner approvals and compensation selection (synthetic backend)
+        run: |
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          node --test --test-concurrency=1 tests-browser/unified-four.browser.test.mjs
       - name: Compile native Keystore plugin in disposable Debug APK
         run: |
           rm -rf www
