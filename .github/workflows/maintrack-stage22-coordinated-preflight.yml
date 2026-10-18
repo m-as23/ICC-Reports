@@ -1,0 +1,89 @@
+name: MainTrack Stage22 — Coordinated Release Preflight (Unsigned)
+on:
+  push:
+    branches: [release/maintrack-stage22-web-android-20261018]
+    paths:
+      - .github/workflows/maintrack-stage22-coordinated-preflight.yml
+      - android/maintrack-app/scripts/stage22/**
+      - android/maintrack-app/scripts/unified-four-review.py
+      - android/maintrack-app/update-system/**
+      - web/maintrack/public/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-stage22-release-preflight-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unsigned-reviewed-bundles:
+    if: github.ref == 'refs/heads/release/maintrack-stage22-web-android-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact source and run regression tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          npm ci --no-audit --no-fund
+          node --test tests/secure-session.test.mjs tests/unified-four.test.mjs tests/ota-lab.test.mjs tests/update-policy.test.mjs tests/update-editor-integrity.test.mjs
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+      - name: Verify signed 0.4.3 manifest continuity and reserve new release number
+        run: node scripts/stage22/release-preflight.mjs
+      - name: Check QA-approved Owner browser behavior using synthetic test backend
+        run: |
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          node --test --test-concurrency=1 tests-browser/unified-four.browser.test.mjs
+      - name: Refuse promotion to Production or owner signed channel
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const record=JSON.parse(fs.readFileSync('release-preflight/release-readiness.json','utf8'));
+          assert.equal(record.status,'PREPARED_NOT_PUBLISHED');
+          assert.equal(record.candidateUnsigned,true);
+          assert.equal(record.productionBackendUpdated,false);
+          assert.equal(record.stableWebOriginVerified,false);
+          assert.equal(record.otaPrivateSigningKeyHandled,false);
+          assert.equal(record.nextReservedVersion,'0.4.4');
+          assert.equal(record.otaManifestChanged,false);
+          assert.equal(record.productionFilesChanged,false);
+          console.log('PASS fail closed: no signed OTA, no stable backend or Web change');
+          NODE
+      - name: Summarize readiness and remaining release gates
+        if: always()
+        run: |
+          {
+            echo '## MainTrack Stage22 release preflight'
+            echo ''
+            echo 'Target: signed OTA **0.4.4** after approval gates; paired immutable Web release.'
+            echo ''
+            echo 'This workflow intentionally emits **unsigned review files only**.'
+            echo 'Do not deploy these archives or change the stable Android update manifest.'
+            echo ''
+            echo 'Blocking release gates: stable backend transaction/backward-compatibility tests,'
+            echo 'verified stable Web origin and rollback, protected owner signing and installed APK compatibility.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Save unsigned candidate and owner continuity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage22-0.4.4-UNSIGNED-Release-Preflight
+          path: |
+            android/maintrack-app/unified-four-review/candidate.json
+            android/maintrack-app/unified-four-review/MainTrack-Android-OTA-UNSIGNED-REVIEW.zip
+            android/maintrack-app/unified-four-review/MainTrack-Web-REVIEW-ONLY.zip
+            android/maintrack-app/release-preflight/release-readiness.json
+            android/maintrack-app/release-preflight/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
