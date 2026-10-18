@@ -1,0 +1,37 @@
+name: MainTrack Stage22 QA CORS connectivity smoke
+on:
+  push:
+    branches:
+      - fix/maintrack-pilot-session-candidate-20261018
+    paths:
+      - .github/workflows/maintrack-stage22-qa-cors-probe.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-qa-origin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check exact Stage22 allowed Origin and preflight
+        shell: bash
+        env:
+          API: https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa
+          ORIGIN: https://maintrack-final-security-ldgcbkqqw-mohamedashrefsrag-5918.vercel.app
+        run: |
+          set -euo pipefail
+          check_headers="$(mktemp)"
+          http="$(curl -sS --max-time 25 -o /dev/null -D "$check_headers" -w '%{http_code}' -X OPTIONS "$API/api" -H "Origin: $ORIGIN" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type,authorization")"
+          [[ "$http" == "200" ]] || { echo "FAIL: QA preflight http=$http"; exit 1; }
+          grep -Fiq "access-control-allow-origin: $ORIGIN" "$check_headers" || { echo "FAIL: no exact CORS origin"; exit 1; }
+          grep -Fiq 'access-control-allow-methods:' "$check_headers" || { echo "FAIL: CORS methods missing"; exit 1; }
+          echo "PASS: exact Vercel QA Origin has authorized preflight"
+          health="$(curl -fsS --max-time 25 -H "Origin: $ORIGIN" "$API/healthz")"
+          echo "$health" | grep -Fq '"status":"up"' || { echo "FAIL: QA healthz not up"; exit 1; }
+          echo "PASS: QA backend healthz responded"
+          readiness="$(curl -fsS --max-time 25 "$API/readyz")"
+          echo "$readiness" | grep -Fq '"status":"ready"' || { echo "FAIL: QA database readiness failed"; exit 1; }
+          echo "PASS: QA database reachable"
+          negative="$(curl -sS --max-time 25 -o /dev/null -w '%{http_code}' -X OPTIONS "$API/api" -H 'Origin: https://untrusted-test.invalid' -H 'Access-Control-Request-Method: POST')"
+          [[ "$negative" == "403" ]] || { echo "FAIL: unknown Origin permitted http=$negative"; exit 1; }
+          echo "PASS: unrelated Origin still blocked"
