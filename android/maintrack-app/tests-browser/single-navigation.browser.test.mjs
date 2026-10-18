@@ -99,6 +99,8 @@ for(const role of ['owner','engineer','technician']){
    await page.locator('#tabForm').click();
    assert.equal(await page.evaluate(()=>window.__maintrackActiveView),'form');
    assert.equal(await page.locator('body.v6Drawer').count(),0,'Drawer must close after navigation');
+   await page.waitForFunction(()=>document.getElementById('tabs').getBoundingClientRect().left>=window.innerWidth-2,null,{timeout:2500});
+   assert.ok(await page.evaluate(()=>getComputedStyle(document.getElementById('v6Shade')).pointerEvents==='none'),'Closed overlay must not intercept touches');
    await page.locator('#desc').fill('DEMO UNSENT ELECTRICAL FAULT -- no database write');
    await page.locator('#v6Toggle').click();
    await page.locator('#tabDash').click();
@@ -106,6 +108,7 @@ for(const role of ['owner','engineer','technician']){
    await page.locator('#v6Toggle').click();
    await page.locator('#tabForm').click();
    assert.equal(await page.locator('#desc').inputValue(),'DEMO UNSENT ELECTRICAL FAULT -- no database write','Unsubmitted report draft must not disappear when switching pages');
+   await page.waitForFunction(()=>document.getElementById('tabs').getBoundingClientRect().left>=window.innerWidth-2,null,{timeout:2500});
    const visibleView=await page.locator('body').evaluate(el=>el.scrollWidth);
    assert.ok(visibleView<=382+4,'No horizontal clipping due to navigation');
    assert.ok(actions.includes('login'),'Expected synthetic login');
