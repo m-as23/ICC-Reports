@@ -39,6 +39,8 @@ jobs:
           run-id: 39127423740
           github-token: ${{ github.token }}
           path: android/maintrack-app/reviewed-stage22
+      - name: Install pinned source dependencies for policy verification
+        run: npm ci --no-audit --no-fund
       - name: Prove owner signing key continuity and sign *attestation only*
         env:
           MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
