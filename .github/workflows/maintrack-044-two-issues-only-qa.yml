@@ -91,7 +91,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm --prefix tests-browser ci --no-audit --no-fund
           mkdir -p www
-          unzip -q two-fixes-qa/downloaded/maintrack-044-TWO-ISSUES-UNSIGNED-REVIEW-ONLY.zip -d www
+          unzip -q two-fixes-qa/downloaded/two-fixes-qa/maintrack-044-TWO-ISSUES-UNSIGNED-REVIEW-ONLY.zip -d www
           test -f www/secure-assets/stage20-native-session.js
           npx cap add android
           npx cap sync android
