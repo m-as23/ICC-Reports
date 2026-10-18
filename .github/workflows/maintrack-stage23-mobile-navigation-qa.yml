@@ -1,0 +1,49 @@
+name: MainTrack 0.4.4 — Mobile Navigation and Role UX Regression
+on:
+  push:
+    branches: [qa/maintrack-044-single-mobile-navigation-20261018]
+    paths:
+      - '.github/workflows/maintrack-stage23-mobile-navigation-qa.yml'
+      - 'web/maintrack/public/v6-core.js'
+      - 'web/maintrack/public/v6-core.css'
+      - 'android/maintrack-app/tests-browser/single-navigation.browser.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile-navigation:
+    if: github.ref == 'refs/heads/qa/maintrack-044-single-mobile-navigation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify delta is limited to UX and synthetic tests
+        run: |
+          set -euo pipefail
+          node --check web/maintrack/public/v6-core.js
+          node --check android/maintrack-app/tests-browser/single-navigation.browser.test.mjs
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if grep -q 'v6Dock' web/maintrack/public/v6-core.js web/maintrack/public/v6-core.css; then
+            echo 'Unlabelled mobile dock remains'; exit 1
+          fi
+      - name: Install exact browser QA dependencies
+        run: npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
+      - name: Install Chromium for synthetic UI tests
+        working-directory: android/maintrack-app/tests-browser
+        run: npx playwright install --with-deps chromium
+      - name: Run Owner/Engineer/Technician navigation regression without DB writes
+        run: node --test --test-concurrency=1 android/maintrack-app/tests-browser/single-navigation.browser.test.mjs
+      - name: Retain browser screenshots for independent review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-044-Stage23-Single-Menu-UX-Evidence
+          path: android/maintrack-app/qa-results/stage23-ux/
+          if-no-files-found: warn
+          retention-days: 10
