@@ -24,8 +24,7 @@ const avatar=document.createElement('div');avatar.className='v6User';avatar.setA
 avatar.addEventListener('click',()=>$id('tabProfile').click());avatar.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();avatar.click()}});tabs.append(avatar);
 const toggle=document.createElement('button');toggle.type='button';toggle.id='v6Toggle';toggle.textContent='☰';toggle.setAttribute('aria-label','فتح القائمة');toggle.setAttribute('aria-expanded','false');bar.prepend(toggle);
 const shade=document.createElement('div');shade.id='v6Shade';document.body.append(shade);
-const dock=document.createElement('nav');dock.id='v6Dock';dock.setAttribute('aria-label','الانتقال السريع');const shortcuts=[];
-[['tabDash','الرئيسية'],['tabForm','بلاغ جديد'],['tabCmms','أوامر الشغل'],['bellBtn','الإشعارات']].forEach(([id,label])=>{const src=$id(id);if(!src)return;const b=document.createElement('button');b.type='button';b.append(svg(id),document.createTextNode(label));b.onclick=()=>src.click();dock.append(b);shortcuts.push({id,b,src});});document.body.append(dock);
+
 const hide=()=>{document.body.classList.remove('v6Drawer');toggle.setAttribute('aria-expanded','false');};
 toggle.onclick=()=>{if(document.body.classList.contains('v6Drawer'))hide();else{document.body.classList.add('v6Drawer');toggle.setAttribute('aria-expanded','true');close.focus();}};
 close.onclick=()=>{hide();toggle.focus()};shade.onclick=hide;tabs.addEventListener('click',e=>{if(e.target.closest('button[id^="tab"]'))hide()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('v6Drawer')){hide();toggle.focus()}});
@@ -40,7 +39,7 @@ const role=S.role==='owner'?'Owner / المسؤول':S.role==='engineer'?'Engine
 if($id('v6Role').textContent!==role)$id('v6Role').textContent=role;
 const init=Array.from(name.trim())[0]||'◉';if($id('v6Initial').textContent!==init)$id('v6Initial').textContent=init;
 }
-for(const {id,b,src} of shortcuts){const hideItem=src.style.display==='none'||src.hidden||getComputedStyle(src).display==='none';if(b.hidden!==hideItem)b.hidden=hideItem;const selected=id!=='bellBtn'&&src.classList.contains('active');if(b.classList.contains('active')!==selected)b.classList.toggle('active',selected);}
+
 }
 let pending=false;const schedule=()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;sync();})};
 new MutationObserver(schedule).observe(tabs,{subtree:true,attributes:true,attributeFilter:['style','class','hidden']});
