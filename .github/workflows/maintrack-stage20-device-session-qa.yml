@@ -96,7 +96,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             adb install -r .device-session/apks/MainTrack_SessionQA_0.4.4_Debug.apk
             adb shell monkey -p com.icc.maintrack.sessionlab -c android.intent.category.LAUNCHER 1
             node scripts/stage20/check-session-device.mjs store
