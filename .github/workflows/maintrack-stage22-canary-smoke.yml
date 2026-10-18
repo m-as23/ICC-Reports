@@ -1,0 +1,30 @@
+name: MainTrack Stage22 Backend Canary — Read-Only
+on:
+  push:
+    branches: [release/maintrack-stage22-044-integration]
+    paths:
+      - '.github/workflows/maintrack-stage22-canary-smoke.yml'
+      - 'android/maintrack-app/scripts/qa/release-canary-live-smoke.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release-canary-readonly:
+    if: github.ref == 'refs/heads/release/maintrack-stage22-044-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe Supabase Canary read-only and enforce restricted Origins/RBAC
+        run: node android/maintrack-app/scripts/qa/release-canary-live-smoke.mjs
+      - name: Confirm no production promotion occurred
+        if: always()
+        run: |
+          echo '### Stage22 backend release canary only' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Only GET/OPTIONS and unauthenticated rejected POSTs. No data changes, production Edge replacement or Web/OTA publishing.' >> "$GITHUB_STEP_SUMMARY"
