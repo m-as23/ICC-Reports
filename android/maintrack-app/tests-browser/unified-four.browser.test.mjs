@@ -142,73 +142,89 @@ test('employee sees day-based My Account, 3 history filters, native-safe dirty o
  });
 });
 
-test('Owner inbox renders detailed named overtime and leave cards with clear approval states',async()=>{
+test('Owner sees a single mixed pending queue above archive and archive-only filters',async()=>{
  await withPage('owner',async({page,actions})=>{
-  await page.locator('#tabApprove').click();
-  await page.locator('#approvals').waitFor({state:'visible'});
-  const overtimeCard=page.locator('#otApprovalRows .approval-card--detailed').first();
-  await overtimeCard.waitFor({state:'visible'});
-  const text=await overtimeCard.innerText();
-  for(const detail of ['Pilot Engineer','PILOT02','OT-QA-BADAL',
-    '7:00 صباحًا','3:00 مساءً','يوم مستقل','قيد المراجعة','1 يوم مكافئ'])
-    assert.ok(text.includes(detail),'missing owner overtime detail: '+detail);
-  const leaveCard=page.locator('#approvalRows .approval-card--detailed').first();
-  await leaveCard.waitFor({state:'visible'});
-  const leaveText=await leaveCard.innerText();
-  for(const detail of ['LV-QA','سنوية','2026-10-16'])
-    assert.ok(leaveText.includes(detail),'missing leave detail: '+detail);
-  assert.ok(actions.includes('overtimeInbox'));
-  assert.ok(actions.includes('leaveInbox'));
-  // Never click approval: this is a read-only synthetic UI verification.
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#tabApprove').evaluate(button=>button.click());
+  const pending=page.locator('#ownerPendingRows .approval-card');
+  const archive=page.locator('#ownerHistoryRows .approval-card');
+  await page.waitForFunction(()=>document.querySelectorAll('#ownerPendingRows .approval-card').length===2);
+  assert.equal(await pending.count(),2);
+  assert.equal(await archive.count(),4);
+  assert.equal(await page.locator('#ownerPendingCount').innerText(),'2');
+  assert.equal(await page.locator('#ownerHistoryCount').innerText(),'4');
+  assert.equal(await page.locator('#ownerPendingRows .approval-card--compact').count(),0);
+  assert.equal(await page.locator('#ownerHistoryRows .approval-card--detailed').count(),0);
+  assert.ok((await pending.first().innerText()).includes('إضافي'));
+  assert.ok((await pending.last().innerText()).includes('إجازة'));
+  const pendingRequestIds=await pending.evaluateAll(xs=>xs.map(x=>x.dataset.requestId));
+  assert.deepEqual(new Set(pendingRequestIds),new Set(['LV-QA','OT-QA-BADAL']));
+  const historyIds=await archive.evaluateAll(xs=>xs.map(x=>x.dataset.requestId));
+  assert.ok(!historyIds.some(id=>pendingRequestIds.includes(id)), 'no request appears twice');
+  const historyStart=await page.locator('#ownerHistoryRows').boundingBox();
+  const pendingStart=await page.locator('#ownerPendingRows').boundingBox();
+  assert.ok(pendingStart.y<historyStart.y,'pending inbox is above history');
+  await page.locator('#ownerHistoryType').selectOption('leave');
+  assert.equal(await archive.count(),2);
+  assert.equal(await pending.count(),2,'archive type must not hide pending');
+  await page.locator('#ownerHistoryStatus').selectOption('REJECTED');
+  assert.equal(await archive.count(),1);
+  assert.equal(await pending.count(),2,'archive status must not hide pending');
+  await page.locator('#ownerHistoryType').selectOption('financial');
+  assert.equal(await archive.count(),1,'rejected financial overtime remains in archive');
+  assert.equal(await pending.count(),2);
+  assert.ok(actions.includes('overtimeInbox')&&actions.includes('leaveInbox'));
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
  });
 });
 
-
-test('mobile Owner inbox keeps pending cards detailed and completed cards compact with audit drill-down',async()=>{
+test('Owner cards remain detailed pending and compact decided, with expandable audit details',async()=>{
  await withPage('owner',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  // Trigger the existing navigation handler without synthetic Playwright scrolling;
-  // the bottom fixed nav can be outside the desktop emulation click rectangle.
   await page.locator('#tabApprove').evaluate(button=>button.click());
-  const pending=page.locator('#approvalRows .approval-card--detailed').first();
-  const approved=page.locator('#approvalRows .approval-card--compact').first();
-  const rejected=page.locator('#approvalRows .approval-card--compact').last();
+  const pending=page.locator('#ownerPendingRows .approval-card--detailed').first();
+  const approved=page.locator('#ownerHistoryRows .approval-card--compact').first();
   await approved.waitFor({state:'visible'});
   assert.ok((await pending.innerText()).includes('اعتماد الطلب'));
   assert.equal(await approved.locator('.request-actions').count(),0);
-  assert.equal(await rejected.locator('.request-actions').count(),0);
-  assert.ok((await approved.innerText()).includes('LV-QA-APPROVED'));
-  assert.ok((await rejected.innerText()).includes('سبب الرفض'));
   const pBox=await pending.boundingBox(),cBox=await approved.boundingBox();
-  assert.ok(cBox.height<pBox.height*0.72,'completed request must save substantial vertical space');
+  assert.ok(cBox.height<pBox.height*.78);
   assert.equal(await approved.locator('details').evaluate(el=>el.open),false);
   await approved.locator('summary').click();
-  assert.ok((await approved.innerText()).includes('تاريخ البداية'));
-  const otPending=page.locator('#otApprovalRows .approval-card--detailed').first();
-  const otCompact=page.locator('#otApprovalRows .approval-card--compact').first();
-  await otCompact.waitFor({state:'visible'});
-  assert.ok((await otPending.innerText()).includes('اعتماد الطلب'));
-  assert.ok((await otCompact.innerText()).includes('التعويض'));
-  assert.ok((await otCompact.innerText()).includes('المدة'));
-  assert.ok((await otCompact.innerText()).includes('OT-QA-MONEY'));
-  assert.ok((await otCompact.boundingBox()).height<(await otPending.boundingBox()).height*0.75);
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'no mobile horizontal overflow');
+  assert.ok((await approved.innerText()).includes('نوع'));
  });
 });
 
-test('owner approval changes a detailed pending request into a compact read-only card',async()=>{
+test('Both leave and overtime decisions move requests from pending to archive and update notification count',async()=>{
  await withPage('owner',async({page,actions})=>{
   page.on('dialog',dialog=>dialog.accept());
   await page.locator('#tabApprove').click();
-  const target=page.locator('#approvalRows .approval-card').first();
-  await target.locator('button', {hasText:'اعتماد الطلب'}).click();
-  await page.waitForFunction(()=>{
-   const first=document.querySelector('#approvalRows .approval-card');
-   return first?.classList.contains('approval-card--compact') &&
-          first?.querySelector('.request-status--approved');
-  });
-  assert.equal(await target.locator('.request-actions').count(),0);
-  assert.ok(actions.includes('leaveDecision'));
+  await page.waitForFunction(()=>document.querySelectorAll('#ownerPendingRows .approval-card').length===2);
+  const initialIds=await page.locator('#ownerPendingRows .approval-card').evaluateAll(xs=>xs.map(x=>x.dataset.requestId));
+  assert.ok(initialIds.includes('LV-QA')&&initialIds.includes('OT-QA-BADAL'));
+  await page.locator('#ownerPendingRows .approval-card[data-request-id="LV-QA"] button').filter({hasText:'اعتماد الطلب'}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('#ownerPendingRows .approval-card').length===1);
+  assert.equal(await page.locator('#ownerHistoryRows .approval-card[data-request-id="LV-QA"] .request-status--approved').count(),1);
+  await page.locator('#ownerPendingRows .approval-card[data-request-id="OT-QA-BADAL"] button').filter({hasText:'رفض الطلب'}).click();
+  await page.waitForFunction(()=>document.getElementById('ownerPendingCount')?.textContent==='0');
+  assert.equal(await page.locator('#ownerPendingRows .approval-card').count(),0);
+  assert.equal(await page.locator('#ownerHistoryRows .approval-card[data-request-id="OT-QA-BADAL"] .request-status--rejected').count(),1);
+  assert.equal(await page.locator('#pendingBadge').isHidden(),true);
+  assert.ok(actions.includes('leaveDecision')&&actions.includes('overtimeDecision'));
+  // Owner active alerts were removed; the durable request decisions remain discoverable as archives.
+  await page.waitForFunction(()=>document.getElementById('noticeV2PendingCount')?.textContent?.includes('0 قيد القرار'));
+  assert.ok((await page.locator('#noticeV2Summary').innerText()).includes('كل الإشعارات مقروءة'));
+ });
+});
+
+test('Owner notification panel shows live leave+overtime requests and archived decisions',async()=>{
+ await withPage('owner',async({page})=>{
+  await page.waitForFunction(()=>document.getElementById('bellCount')?.textContent==='2');
+  await page.locator('#bellBtn').click();
+  await page.locator('#noticePendingList .notice-leave-card').first().waitFor({state:'visible'});
+  assert.equal(await page.locator('#noticePendingList .notice-leave-card').count(),2);
+  assert.ok((await page.locator('#noticeList').innerText()).includes('تم اعتماد'));
+  assert.ok((await page.locator('#noticeList').innerText()).includes('تم رفض'));
  });
 });
 
