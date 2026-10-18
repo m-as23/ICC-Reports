@@ -85,13 +85,39 @@
  <div id="leavePending" class="account-pending" aria-live="polite"></div>
  </div></details>
 </section>
-<section id="approvals" class="workspace-page" style="display:none" aria-label="اعتماد الإجازات">
- <div class="page-hero"><div class="admin-symbol">✓</div><div><span class="eyebrow">OWNER APPROVALS</span><h2>اعتمادات الإجازات والإضافي</h2><p>لكل نوع طلبات واعتمادات مستقلة، وصلاحية الاعتماد للـOwner فقط.</p></div></div>
- <div class="section-card"><h3>ملخص العمل الإضافي — Owner</h3><p class="hint">المؤشرات من الطلبات المعتمدة فقط؛ يوم الحضور يُحسب مرة واحدة لكل موظف في تاريخ بداية الإضافي، حتى عند تعدد الفترات في اليوم.</p>
-  <div class="admin-grid"><div><label for="otOwnerYear">السنة</label><select id="otOwnerYear"><option value="0">كل السنوات</option></select></div><div><label for="otOwnerMonth">الشهر</label><select id="otOwnerMonth"><option value="0">كل الشهور</option></select></div><div><label for="otOwnerEmployee">الموظف</label><select id="otOwnerEmployee"><option value="">كل الموظفين</option></select></div><div><label for="otOwnerKind">نوع التعويض</label><select id="otOwnerKind"><option value="">الكل</option><option value="FINANCIAL">مالي</option><option value="SUBSTITUTE">بدل</option></select></div></div>
-  <div class="profile-grid"><div class="profile-card featured"><span class="profile-caption">إجمالي ساعات الإضافي المعتمدة</span><strong id="otOwnerApprovedHours">—</strong></div><div class="profile-card"><span class="profile-caption">أيام الحضور الفريدة</span><strong id="otOwnerDistinctDays">—</strong></div><div class="profile-card"><span class="profile-caption">الساعات المصنفة مالي</span><strong id="otOwnerFinancialHours">—</strong></div><div class="profile-card"><span class="profile-caption">الساعات المصنفة بدل</span><strong id="otOwnerSubstituteHours">—</strong></div><div class="profile-card"><span class="profile-caption">طلبات قيد الاعتماد</span><strong id="otOwnerPending">—</strong></div></div><p id="otOwnerSummaryState" class="hint" aria-live="polite">جارٍ تحميل الملخص…</p></div>
- <div class="section-card"><div class="approve-head"><h3>اعتماد الوقت الإضافي</h3><button type="button" class="refresh" id="otRefreshApprovals">تحديث</button></div><div id="otApprovalRows" class="approval-list">جارٍ التحميل…</div></div>
- <div class="section-card"><div class="approve-head"><h3>صندوق الطلبات</h3><button type="button" class="refresh" id="refreshApprovals">تحديث</button></div><div id="approvalRows" class="approval-list">جارٍ تحميل الطلبات…</div></div>
+<section id="approvals" class="workspace-page owner-approval-hub" style="display:none" aria-label="اعتمادات صاحب الحساب">
+ <div class="page-hero"><div class="admin-symbol">✓</div><div><span class="eyebrow">OWNER · REQUEST CENTER</span><h2>مركز اعتماد الطلبات</h2><p>كل طلبات الإجازات والعمل الإضافي التي تحتاج قرارك في مكان واحد، والسجل المعتمد أسفلها.</p></div></div>
+ <div class="section-card owner-inbox-card" aria-labelledby="ownerInboxTitle">
+  <div class="approve-head"><h3 id="ownerInboxTitle">صندوق الطلبات الجديدة <span class="owner-pending-count" id="ownerPendingCount" aria-live="polite">—</span></h3><button type="button" class="refresh" id="refreshApprovals">تحديث الطلبات</button></div>
+  <p class="hint">كل الطلبات المعلقة من الأحدث للأقدم؛ لا تؤثر فلاتر السجل أدناه على هذا الصندوق.</p>
+  <div id="ownerPendingRows" class="approval-list" aria-live="polite">جارٍ تحميل الطلبات الجديدة…</div>
+ </div>
+ <div class="section-card owner-history-card" aria-labelledby="ownerHistoryTitle">
+  <div class="approve-head"><h3 id="ownerHistoryTitle">سجل الاعتمادات <span class="owner-history-count" id="ownerHistoryCount">—</span></h3><button type="button" class="refresh" id="otRefreshApprovals">تحديث السجل</button></div>
+  <p class="hint">هنا الطلبات التي تم اعتمادها أو رفضها فقط. استخدم الفلاتر للبحث دون التأثير على الطلبات الجديدة.</p>
+  <div class="admin-grid owner-history-filters">
+   <div><label for="otOwnerYear">السنة</label><select id="otOwnerYear"><option value="0">كل السنوات</option></select></div>
+   <div><label for="otOwnerMonth">الشهر</label><select id="otOwnerMonth"><option value="0">كل الشهور</option></select></div>
+   <div><label for="otOwnerEmployee">الموظف</label><select id="otOwnerEmployee"><option value="">كل الموظفين</option></select></div>
+   <div><label for="ownerHistoryType">نوع الطلب</label><select id="ownerHistoryType"><option value="">كل الطلبات</option><option value="leave">إجازات</option><option value="financial">إضافي مالي</option><option value="substitute">إضافي بدل</option></select></div>
+   <div><label for="ownerHistoryStatus">القرار</label><select id="ownerHistoryStatus"><option value="">معتمد ومرفوض</option><option value="APPROVED">تم الاعتماد</option><option value="REJECTED">مرفوض</option></select></div>
+  </div>
+  <div id="ownerHistoryRows" class="approval-list" aria-live="polite">جارٍ تحميل سجل الاعتمادات…</div>
+  <p id="ownerHistoryState" class="hint" aria-live="polite"></p>
+ </div>
+ <details class="section-card owner-summary-collapse">
+  <summary>ملخص ساعات العمل الإضافي المعتمدة</summary>
+  <p class="hint">المؤشرات الخاصة بالإضافي المعتمد فقط، وتحتسب الأيام الفريدة لكل موظف وتاريخ.</p>
+  <div hidden><select id="otOwnerKind"><option value="">الكل</option><option value="FINANCIAL">مالي</option><option value="SUBSTITUTE">بدل</option></select></div>
+  <div class="profile-grid">
+   <div class="profile-card featured"><span class="profile-caption">الساعات المعتمدة</span><strong id="otOwnerApprovedHours">—</strong></div>
+   <div class="profile-card"><span class="profile-caption">أيام الحضور الفريدة</span><strong id="otOwnerDistinctDays">—</strong></div>
+   <div class="profile-card"><span class="profile-caption">ساعات مالي</span><strong id="otOwnerFinancialHours">—</strong></div>
+   <div class="profile-card"><span class="profile-caption">ساعات بدل</span><strong id="otOwnerSubstituteHours">—</strong></div>
+   <div class="profile-card"><span class="profile-caption">طلبات الإضافي المعلقة</span><strong id="otOwnerPending">—</strong></div>
+  </div>
+  <p id="otOwnerSummaryState" class="hint" aria-live="polite">جارٍ تحميل الملخص…</p>
+ </details>
 </section>
 <section id="admin" class="workspace-page" style="display:none" aria-label="إدارة المستخدمين">
   <div class="page-hero"><div class="admin-symbol">⚙</div><div><span class="eyebrow">OWNER CONTROL CENTER</span><h2>إدارة الفريق والصلاحيات</h2><p>أي تغيير يُنفّذ ويتحقق من صلاحيته داخل Supabase</p></div></div>
