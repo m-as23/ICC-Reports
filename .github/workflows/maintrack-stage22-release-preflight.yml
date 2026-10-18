@@ -1,0 +1,56 @@
+name: MainTrack Stage22 — Signed Release Preconditions (Review Only)
+on:
+  push:
+    branches: [fix/maintrack-pilot-session-candidate-20261018]
+    paths:
+      - '.github/workflows/maintrack-stage22-release-preflight.yml'
+      - 'android/maintrack-app/scripts/qa/stage22-release-preflight.mjs'
+      - 'android/maintrack-app/scripts/unified-four-review.py'
+      - 'android/maintrack-app/update-system/**'
+      - 'web/maintrack/public/**'
+      - 'supabase/functions/maintrack-stage9-security-api/index.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    if: github.ref == 'refs/heads/fix/maintrack-pilot-session-candidate-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Locked source and owner signed 0.4.2 trust verification
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          npm ci --no-audit --no-fund
+          node --test tests/owner-release-continuity.test.mjs tests/unified-four.test.mjs tests/update-policy.test.mjs tests/update-editor-integrity.test.mjs tests/discovery-periodic.test.mjs
+      - name: Generate and independently verify version-pinned review-only Web and Android OTA ZIP
+        run: |
+          set -euo pipefail
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+      - name: Refuse release without stable API regression, web target and same signing key
+        run: node scripts/qa/stage22-release-preflight.mjs
+      - name: Export unsigned immutable source candidates and BLOCKED release report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage22-Owner-Release-Preflight-UNSIGNED
+          path: |
+            android/maintrack-app/unified-four-review/candidate.json
+            android/maintrack-app/unified-four-review/MainTrack-Web-REVIEW-ONLY.zip
+            android/maintrack-app/unified-four-review/MainTrack-Android-OTA-UNSIGNED-REVIEW.zip
+            android/maintrack-app/release-readiness/stage22-readiness.json
+            android/maintrack-app/release-readiness/stage22-readiness.md
+          if-no-files-found: error
+          retention-days: 14
