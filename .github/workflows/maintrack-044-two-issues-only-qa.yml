@@ -1,0 +1,150 @@
+name: MainTrack 0.4.4 - Two Fixes Only - No Rollout
+on:
+  push:
+    branches: [fix/maintrack-044-session-and-bottom-bar-only-20261018]
+    paths:
+      - '.github/workflows/maintrack-044-two-issues-only-qa.yml'
+      - 'web/maintrack/public/v6-core.js'
+      - 'web/maintrack/public/v6-core.css'
+      - 'android/maintrack-app/scripts/qa/build-two-issues-044-candidate.py'
+      - 'android/maintrack-app/tests-browser/two-issues-044.browser.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  source-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ github.sha }}", persist-credentials: false, fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Ensure only two actual UI source files change
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 - <<'PY'
+          import subprocess
+          reviewed='865229c4706e946377fba811d2f51dad1a815138'
+          d=subprocess.check_output(['git','diff','--name-only',reviewed,'HEAD','--','web/maintrack/public','supabase/functions/maintrack-stage9-security-api','android/maintrack-app/update-system','android/maintrack-app/native'],text=True).splitlines()
+          assert sorted(d)==['web/maintrack/public/v6-core.css','web/maintrack/public/v6-core.js'],d
+          print('PASS APP CHANGES ARE JUST BOTTOM BAR REMOVAL')
+          PY
+          node --check web/maintrack/public/v6-core.js
+          if grep -q 'v6Dock' web/maintrack/public/v6-core.js web/maintrack/public/v6-core.css; then exit 1; fi
+      - name: Install and run source regressions
+        run: |
+          npm --prefix android/maintrack-app ci --no-audit --no-fund
+          npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
+          npm --prefix android/maintrack-app test
+      - name: Derive exact OTA candidate from owner-signed 0.4.4
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin android/stage14-ota-native-lab
+          mkdir -p android/maintrack-app/two-fixes-qa
+          git show FETCH_HEAD:updates/android/maintrack-0.4.4.zip > android/maintrack-app/two-fixes-qa/owner-signed-044.zip
+          git show FETCH_HEAD:updates/android/release.json > android/maintrack-app/two-fixes-qa/owner-signed-044-manifest.json
+          python3 android/maintrack-app/scripts/qa/build-two-issues-044-candidate.py
+      - name: Install real Chromium browser
+        working-directory: android/maintrack-app/tests-browser
+        run: npx playwright install --with-deps chromium
+      - name: Test original sidebar and all roles on mobile/desktop; no real API writes
+        run: node --test --test-concurrency=1 android/maintrack-app/tests-browser/two-issues-044.browser.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Two-Issues-044-Unsigned-QA-Archive
+          path: |
+            android/maintrack-app/two-fixes-qa/maintrack-044-TWO-ISSUES-UNSIGNED-REVIEW-ONLY.zip
+            android/maintrack-app/two-fixes-qa/delivery.json
+            android/maintrack-app/qa-results/two-issues-044/
+          if-no-files-found: error
+          retention-days: 14
+  android-session:
+    needs: source-and-browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - name: Android SDK 36
+        run: |
+          M=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools" -type f -name sdkmanager -print -quit)
+          test -x "$M"
+          "$M" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Two-Issues-044-Unsigned-QA-Archive
+          path: android/maintrack-app/two-fixes-qa/downloaded
+      - name: Compile existing encrypted native session bridge into an isolated QA APK
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm --prefix tests-browser ci --no-audit --no-fund
+          mkdir -p www
+          unzip -q two-fixes-qa/downloaded/maintrack-044-TWO-ISSUES-UNSIGNED-REVIEW-ONLY.zip -d www
+          test -f www/secure-assets/stage20-native-session.js
+          npx cap add android
+          npx cap sync android
+          node scripts/harden-native.mjs
+          grep -F 'registerPlugin(MainTrackSecureSessionPlugin.class)' android/app/src/main/java/com/icc/maintrack/MainActivity.java
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const p='android/app/build.gradle';let s=fs.readFileSync(p,'utf8');
+          if(!s.includes('applicationId "com.icc.maintrack"')||!s.includes('buildTypes {'))throw Error('NATIVE_ID_UNEXPECTED');
+          s=s.replace('buildTypes {','buildTypes {\n        debug { applicationIdSuffix ".twopointsqa" }');
+          s=s.replace(/versionCode\s+\d+/,'versionCode 405').replace(/versionName\s+"[^"]+"/,'versionName "0.4.5-twofixqa"');
+          fs.writeFileSync(p,s);
+          NODE
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleDebug)
+          mkdir -p .two-fixes-qa
+          cp android/app/build/outputs/apk/debug/app-debug.apk .two-fixes-qa/MainTrack_TwoFixes_DebugQA_NOT_FOR_UPGRADE.apk
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          "$SDK/apksigner" verify --verbose --print-certs .two-fixes-qa/MainTrack_TwoFixes_DebugQA_NOT_FOR_UPGRADE.apk > .two-fixes-qa/certificate.txt
+          "$SDK/aapt" dump badging .two-fixes-qa/MainTrack_TwoFixes_DebugQA_NOT_FOR_UPGRADE.apk > .two-fixes-qa/identity.txt
+          grep -F "package: name='com.icc.maintrack.twopointsqa' versionCode='405'" .two-fixes-qa/identity.txt
+          sed 's/com\.icc\.maintrack\.sessionlab/com.icc.maintrack.twopointsqa/g' scripts/stage20/check-session-device.mjs > scripts/stage20/check-twofixes-ephemeral-device.mjs
+      - name: Permit Android Emulator KVM
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Verify Keystore persistence across force-stop, offline relaunch and explicit logout
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -eu
+            adb install -r .two-fixes-qa/MainTrack_TwoFixes_DebugQA_NOT_FOR_UPGRADE.apk
+            adb shell monkey -p com.icc.maintrack.twopointsqa -c android.intent.category.LAUNCHER 1
+            node scripts/stage20/check-twofixes-ephemeral-device.mjs store
+            adb shell am force-stop com.icc.maintrack.twopointsqa
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell monkey -p com.icc.maintrack.twopointsqa -c android.intent.category.LAUNCHER 1
+            node scripts/stage20/check-twofixes-ephemeral-device.mjs restore
+            node scripts/stage20/check-twofixes-ephemeral-device.mjs logout
+            adb shell am force-stop com.icc.maintrack.twopointsqa
+            adb shell monkey -p com.icc.maintrack.twopointsqa -c android.intent.category.LAUNCHER 1
+            node scripts/stage20/check-twofixes-ephemeral-device.mjs post-logout
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MainTrack-Two-Issues-Native-Session-QA-Proof
+          path: |
+            android/maintrack-app/.two-fixes-qa/identity.txt
+            android/maintrack-app/.two-fixes-qa/certificate.txt
+            android/maintrack-app/.device-session/evidence/
+          if-no-files-found: warn
+          retention-days: 14
