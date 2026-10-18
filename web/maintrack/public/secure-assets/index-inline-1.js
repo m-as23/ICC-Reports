@@ -420,6 +420,141 @@ $('sendLeave').onclick=async()=>{
  finally{btn.disabled=false;btn.textContent='إرسال طلب الإجازة';}
 };
 
+
+// A shared, unfiltered snapshot powers the Owner inbox, archived decisions,
+// and active notification counts. History controls must never affect pending.
+let ownerSnapshotCache=null,ownerSnapshotAt=0,ownerSnapshotFlight=null;
+function invalidateOwnerSnapshot(){ownerSnapshotCache=null;ownerSnapshotAt=0;}
+async function ownerRequestSnapshot(force=false){
+ if(!S||S.role!=='owner')return {items:[],pending:[],history:[],partial:false};
+ if(!force&&ownerSnapshotCache&&Date.now()-ownerSnapshotAt<8000)return ownerSnapshotCache;
+ if(ownerSnapshotFlight)return ownerSnapshotFlight;
+ ownerSnapshotFlight=(async()=>{
+  const [leaveResult,otResult]=await Promise.all([api('leaveInbox'),api('overtimeInbox')]);
+  if(leaveResult.error)throw Error('LEAVE_INBOX: '+leaveResult.error);
+  if(otResult.error)throw Error('OVERTIME_INBOX: '+otResult.error);
+  const leaves=(leaveResult.items||[]).map(r=>({...r,requestKind:'leave'}));
+  const overtime=(otResult.items||[]).map(r=>({...r,requestKind:'overtime'}));
+  // The legacy leave endpoint paginates at 100. Continue until complete, bounded
+  // to protect the device; when truncated we display a clear warning.
+  let offset=leaves.length,hasMore=!!leaveResult.hasMore,pages=0;
+  while(hasMore&&pages<5){
+   const page=await api('leaveInbox',{offset});
+   if(page.error)throw Error('LEAVE_PAGE: '+page.error);
+   const extra=(page.items||[]).map(r=>({...r,requestKind:'leave'}));
+   if(!extra.length)break;
+   leaves.push(...extra);offset+=extra.length;hasMore=!!page.hasMore;pages++;
+  }
+  const items=[...leaves,...overtime],known=new Set();
+  const unique=items.filter(r=>{
+   const key=r.requestKind+':'+r.id;
+   if(!r.id||known.has(key))return false;
+   known.add(key);return true;
+  });
+  const order=(r,status)=>Date.parse(status==='history'?(r.decidedAt||r.createdAt||r.date||r.start):(r.createdAt||r.date||r.start))||0;
+  const pending=unique.filter(r=>r.status==='PENDING').sort((a,b)=>order(b,'pending')-order(a,'pending'));
+  const history=unique.filter(r=>r.status==='APPROVED'||r.status==='REJECTED')
+   .sort((a,b)=>order(b,'history')-order(a,'history'));
+  const snapshot={items:unique,pending,history,partial:hasMore||overtime.length===150};
+  ownerSnapshotCache=snapshot;ownerSnapshotAt=Date.now();
+  return snapshot;
+ })();
+ try{return await ownerSnapshotFlight;}finally{ownerSnapshotFlight=null;}
+}
+function ownerRequestTitle(r){
+ if(r.requestKind==='leave')return 'طلب إجازة • '+(leaveTypeNames[r.type]||r.type);
+ return r.compensation==='SUBSTITUTE'?'وقت إضافي • مقابل بدل':'وقت إضافي • مقابل مالي';
+}
+function ownerRequestCard(r,refresh){
+ const isLeave=r.requestKind==='leave';
+ const card=approvalCardBase(r,ownerRequestTitle(r),r.requestKind);
+ card.dataset.requestId=r.id;
+ if(isLeave){
+  const duration=r.durationKind==='HALF_DAY'?'نصف يوم (4 ساعات)':fmt(r.days,2)+' يوم';
+  const details=[['نوع الإجازة',leaveTypeNames[r.type]||r.type],['تاريخ البداية',r.start],
+   ['تاريخ النهاية',r.end],['المدة المطلوبة',duration]];
+  if(r.status==='PENDING'){
+   approvalDetails(card,details);approvalRemarks(card,'ملاحظة مقدم الطلب',r.reason);
+   approvalActions(card,r,'leave',refresh);
+  }else{
+   const dates=r.start===r.end?r.start:r.start+' — '+r.end;
+   approvalCompleted(card,r,[['الفترة',dates],['المدة',duration]],details);
+  }
+ }else{
+  const kind=overtimeKinds[r.compensation]||r.compensation;
+  const nature=({AFTER_SHIFT:'بعد الوردية',INDEPENDENT_DAY:'يوم مستقل',UNSPECIFIED:'غير محدد'})[r.workKind]||'غير محدد';
+  const minutes=Number(r.minutes??Math.round(Number(r.hours)*60));
+  const hours=fmt(minutes/60,2)+' ساعة';
+  const end=showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':'');
+  const details=[['تاريخ العمل',r.date],['بداية الإضافي',showOvertimeClock(r.from)],
+   ['نهاية الإضافي',end],['المدة',compactDays(minutes/480)+' يوم مكافئ · '+hours],
+   ['طبيعة العمل',nature],['نوع التعويض',kind]];
+  if(r.status==='PENDING'){
+   approvalDetails(card,details);approvalRemarks(card,'ملاحظة مقدم الطلب',r.reason);
+   approvalActions(card,r,'overtime',refresh);
+  }else{
+   approvalCompleted(card,r,[['التاريخ',r.date],['الوقت',showOvertimeClock(r.from)+'–'+end],
+    ['المدة',hours],['التعويض',kind]],details);
+  }
+ }
+ return card;
+}
+function ownerHistoryMatches(r){
+ const year=Number($('otOwnerYear').value||0),month=Number($('otOwnerMonth').value||0);
+ const employee=$('otOwnerEmployee').value,type=$('ownerHistoryType').value,status=$('ownerHistoryStatus').value;
+ const when=String(r.decidedAt||r.createdAt||r.date||r.start||'').slice(0,10);
+ const date=/^\d{4}-\d{2}-\d{2}$/.test(when)?when:'';
+ if(year && Number(date.slice(0,4))!==year)return false;
+ if(month && Number(date.slice(5,7))!==month)return false;
+ if(employee&&r.code!==employee)return false;
+ if(status&&r.status!==status)return false;
+ if(type==='leave'&&r.requestKind!=='leave')return false;
+ if(type==='financial'&&(r.requestKind!=='overtime'||r.compensation!=='FINANCIAL'))return false;
+ if(type==='substitute'&&(r.requestKind!=='overtime'||r.compensation!=='SUBSTITUTE'))return false;
+ return true;
+}
+function renderOwnerHistory(){
+ if(!ownerSnapshotCache)return;
+ const host=$('ownerHistoryRows'),results=ownerSnapshotCache.history.filter(ownerHistoryMatches);
+ host.replaceChildren();
+ $('ownerHistoryCount').textContent=String(results.length);
+ if(!results.length)host.textContent='لا توجد طلبات معتمدة أو مرفوضة مطابقة للفلاتر.';
+ for(const r of results)host.append(ownerRequestCard(r,showApprovals));
+ $('ownerHistoryState').textContent=ownerSnapshotCache.partial
+  ?'تنبيه: السجل كبير وقد لا يتضمن جميع الطلبات القديمة؛ يمكن تضييق الفلاتر أو مراجعة سجل السيرفر.':'';
+}
+function syncOwnerHistoryEmployees(snapshot){
+ const select=$('otOwnerEmployee'),old=select.value;
+ const values=[...new Map(snapshot.items.map(r=>[r.code,{code:r.code,name:r.name}])
+  .filter(([code])=>!!code)).values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),'ar'));
+ select.length=1;
+ for(const user of values)select.add(new Option(user.name+' — '+user.code,user.code));
+ select.value=old;if(select.selectedIndex<0)select.value='';
+}
+async function refreshOwnerHub(force=true){
+ if(!S||S.role!=='owner')return;
+ const host=$('ownerPendingRows');
+ host.textContent='جارٍ تحميل صندوق الطلبات…';
+ try{
+  const snapshot=await ownerRequestSnapshot(force);
+  if(!S||S.role!=='owner')return;
+  host.replaceChildren();
+  $('ownerPendingCount').textContent=String(snapshot.pending.length);
+  $('pendingBadge').hidden=!snapshot.pending.length;
+  $('pendingBadge').textContent=String(snapshot.pending.length);
+  if(!snapshot.pending.length)host.textContent='لا توجد طلبات جديدة تحتاج اعتمادك حاليًا.';
+  for(const r of snapshot.pending)host.append(ownerRequestCard(r,async()=>{
+   await refreshOwnerHub(true);void loadOvertimeSummary();
+  }));
+  syncOwnerHistoryEmployees(snapshot);
+  renderOwnerHistory();
+ }catch(e){
+  host.textContent='تعذّر تحميل صندوق الطلبات: '+localizedError(e.message||'');
+  $('ownerHistoryRows').textContent='تعذّر التحقق من سجل الاعتمادات.';
+  $('ownerPendingCount').textContent='—';
+ }
+}
+
 const approvalNode=(tag,className,value)=>{
  const el=document.createElement(tag);
  if(className)el.className=className;
@@ -494,6 +629,7 @@ function approvalActions(card,request,kind,refresh){
     const result=await api(kind==='overtime'?'overtimeDecision':'leaveDecision',{id:request.id,decision,reason:reason||''});
     if(result.error)throw new Error(result.error);
     feedback.textContent='تم حفظ القرار بنجاح.';feedback.dataset.state='success';
+    invalidateOwnerSnapshot();noticeLast=0;
     await refresh();void loadNotices(true);
    }catch(e){
     feedback.textContent='تعذّر الاعتماد: '+localizedError(e.message||'');
@@ -506,37 +642,12 @@ function approvalActions(card,request,kind,refresh){
 }
 async function showApprovals(){
  if(!S||S.role!=='owner')return;
- show('approvals');void loadOvertimeSummary();void loadOvertimeApprovals();
- const host=$('approvalRows');host.textContent='جارٍ تحميل طلبات الإجازات…';
- try{
-  const d=await api('leaveInbox');
-  if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);
-  const rows=d.items||[],pending=Number(d.pendingCount||0);
-  $('pendingBadge').hidden=!pending;$('pendingBadge').textContent=pending;
-  host.replaceChildren();
-  if(!rows.length){host.textContent='لا توجد طلبات إجازة.';return;}
-  for(const r of rows){
-   const card=approvalCardBase(r,'طلب إجازة • '+(leaveTypeNames[r.type]||r.type),'leave');
-   const duration=r.durationKind==='HALF_DAY'?'نصف يوم (4 ساعات)':fmt(r.days,2)+' يوم';
-   const details=[
-    ['نوع الإجازة',leaveTypeNames[r.type]||r.type],
-    ['تاريخ البداية',r.start],
-    ['تاريخ النهاية',r.end],
-    ['المدة المطلوبة',duration]
-   ];
-   if(r.status==='PENDING'){
-    approvalDetails(card,details);
-    approvalRemarks(card,'ملاحظة مقدم الطلب',r.reason);
-    approvalActions(card,r,'leave',showApprovals);
-   }else{
-    const dates=r.start===r.end?r.start:r.start+' — '+r.end;
-    approvalCompleted(card,r,[['الفترة',dates],['المدة',duration]],details);
-   }
-   host.append(card);
-  }
- }catch(e){host.textContent='تعذّر تحميل صندوق طلبات الإجازات: '+localizedError(e.message||'');}
+ show('approvals');
+ await refreshOwnerHub(true);
+ void loadOvertimeSummary();
 }
-$('refreshApprovals').onclick=showApprovals;
+$('refreshApprovals').onclick=()=>{void refreshOwnerHub(true);void loadNotices(true);};
+$('otRefreshApprovals').onclick=()=>{void refreshOwnerHub(true);void loadOvertimeSummary();};
 
 function renderProfile(p){
  $('profileAvatar').textContent=(p.preferredName||p.name||'M').trim().charAt(0);
@@ -674,7 +785,7 @@ for(let y=new Date().getFullYear()+1;y>=new Date().getFullYear()-7;y--)ownerYear
 for(let m=1;m<=12;m++)ownerMonth.add(new Option(new Intl.DateTimeFormat('ar-EG',{month:'long'}).format(new Date(2026,m-1,1)),String(m)));
 const ownerOvertimeFilters=()=>({
  year:Number(ownerYear.value||0),month:Number(ownerMonth.value||0),
- employeeCode:$('otOwnerEmployee').value,compensation:$('otOwnerKind').value
+ employeeCode:$('otOwnerEmployee').value,compensation:$('ownerHistoryType').value==='financial'?'FINANCIAL':$('ownerHistoryType').value==='substitute'?'SUBSTITUTE':''
 });
 let ownerSummarySequence=0,ownerInboxSequence=0;
 async function loadOvertimeSummary(){
@@ -685,11 +796,6 @@ async function loadOvertimeSummary(){
   const d=await api('overtimeSummary',ownerOvertimeFilters());
   if(seq!==ownerSummarySequence)return;
   if(d.error)throw new Error(d.error);
-  const select=$('otOwnerEmployee'),old=select.value;
-  select.length=1;
-  for(const u of d.employees||[])select.add(new Option(u.name+' — '+u.code,u.code));
-  select.value=old;
-  if(select.selectedIndex<0)select.value='';
   $('otOwnerApprovedHours').textContent=fmt(d.approvedHours,2)+' ساعة';
   $('otOwnerDistinctDays').textContent=String(d.distinctDays||0)+' يوم';
   $('otOwnerFinancialHours').textContent=fmt(d.financialHours,2)+' ساعة';
@@ -698,49 +804,13 @@ async function loadOvertimeSummary(){
   $('otOwnerSummaryState').textContent='أيام الحضور الفريدة محسوبة لكل موظف وتاريخ بداية الإضافي، للطلبات المعتمدة فقط.';
  }catch(e){if(seq===ownerSummarySequence)$('otOwnerSummaryState').textContent='تعذر تحميل الملخص: '+localizedError(e.message||'');}
 }
-for(const id of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','otOwnerKind'])
- $(id).addEventListener('change',()=>{void loadOvertimeSummary();void loadOvertimeApprovals();});
-
-async function loadOvertimeApprovals(){
- if(!S||S.role!=='owner')return;
- const seq=++ownerInboxSequence,host=$('otApprovalRows');
- host.textContent='جارٍ تحميل طلبات العمل الإضافي…';
- try{
-  const d=await api('overtimeInbox',ownerOvertimeFilters());
-  if(seq!==ownerInboxSequence)return;
-  if(d.error)throw new Error(d.error);
-  host.replaceChildren();
-  if(!(d.items||[]).length){host.textContent='لا توجد طلبات عمل إضافي مطابقة للفلاتر.';return;}
-  for(const r of d.items){
-   const kind=overtimeKinds[r.compensation]||r.compensation;
-   const type=r.compensation==='SUBSTITUTE'?'إضافي مقابل بدل':'إضافي بمقابل مادي';
-   const workKind=({AFTER_SHIFT:'بعد الوردية',INDEPENDENT_DAY:'يوم مستقل',UNSPECIFIED:'غير محدد'})[r.workKind]||'غير محدد';
-   const duration=Number(r.minutes??Math.round(Number(r.hours)*60));
-   const days=compactDays(duration/480)+' يوم مكافئ';
-   const hours=fmt(duration/60,2)+' ساعة';
-   const endText=showOvertimeClock(r.to)+(r.to<=r.from?' (اليوم التالي)':'');
-   const card=approvalCardBase(r,type,'overtime');
-   const details=[
-    ['تاريخ العمل',r.date],
-    ['بداية الإضافي',showOvertimeClock(r.from)],
-    ['نهاية الإضافي',endText],
-    ['المدة',days+' · '+hours],
-    ['طبيعة العمل',workKind],
-    ['نوع التعويض',kind]
-   ];
-   if(r.status==='PENDING'){
-    approvalDetails(card,details);
-    approvalRemarks(card,'ملاحظة مقدم الطلب',r.reason);
-    approvalActions(card,r,'overtime',async()=>{await Promise.all([loadOvertimeApprovals(),loadOvertimeSummary()]);});
-   }else{
-    approvalCompleted(card,r,[['التاريخ',r.date],['الوقت',showOvertimeClock(r.from)+'–'+endText],
-     ['المدة',hours],['التعويض',kind]],details);
-   }
-   host.append(card);
-  }
- }catch(e){if(seq===ownerInboxSequence)host.textContent='تعذّر تحميل طلبات الوقت الإضافي: '+localizedError(e.message||'');}
+for(const id of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','ownerHistoryType','ownerHistoryStatus']){
+ $(id).addEventListener('change',()=>{
+  renderOwnerHistory();
+  void loadOvertimeSummary();
+ });
 }
-$('otRefreshApprovals').onclick=()=>{void loadOvertimeApprovals();void loadOvertimeSummary();};
+
 $('otRefreshMine').onclick=refreshOvertime;
 
 function renderAdminSelection(){
