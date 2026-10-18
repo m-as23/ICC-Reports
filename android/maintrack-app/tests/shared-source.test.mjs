@@ -7,10 +7,10 @@ const root=path.resolve(import.meta.dirname,'..');
 const loc=path.resolve(root,'../../web/maintrack/public');
 const lock=JSON.parse(fs.readFileSync(path.resolve(root,'../../web/maintrack/source-lock.json')));
 const data=JSON.parse(fs.readFileSync(path.join(root,'approved-assets.lock.json')));
-test('Stage22 source changes exactly the three approved UI resources, never other locked assets',()=>{
+test('Stage22 original three reviewed resources and two explicitly approved bottom-bar assets, no other locked drift',()=>{
  assert.deepEqual(lock,data,'original Web/Android trust baselines must agree');
  assert.equal(lock.assets.length,18);
- const allowed=new Set(['index.html','secure-assets/index-inline-1.js','secure-assets/index-inline-1.css']);
+ const allowed=new Set(['index.html','secure-assets/index-inline-1.js','secure-assets/index-inline-1.css','v6-core.js','v6-core.css']);
  const changed=[];
  for(const item of lock.assets){
   const bytes=fs.readFileSync(path.join(loc,item.path));
@@ -20,7 +20,7 @@ test('Stage22 source changes exactly the three approved UI resources, never othe
    changed.push(item.path);
   }
  }
- assert.deepEqual(new Set(changed),allowed,'Stage22 must change only the reviewed UI trio');
+ assert.deepEqual(new Set(changed),allowed,'Only Stage22 reviewed trio plus the two owner-approved bottom-bar removals may change');
 });
 
 test('server protected and browser connect-src restricted',()=>{
