@@ -49,7 +49,7 @@ jobs:
           const config=JSON.parse(fs.readFileSync('release/owner-public.json','utf8'));
           const ready=JSON.parse(fs.readFileSync(base+'release-readiness/stage22-readiness.json','utf8'));
           assert.equal(candidate.gitCommit,'126dd010641ef8fc3ece849c043960df64e12c6c');
-          assert.equal(candidate.branch,'fix/maintrack-pilot-session-candidate-20261018');
+          assert.ok(['','fix/maintrack-pilot-session-candidate-20261018'].includes(candidate.branch),'unexpected detached QA CI checkout');
           assert.equal(candidate.mode,'review-only');
           assert.equal(candidate.signed,false);
           assert.equal(candidate.deployable,false);
