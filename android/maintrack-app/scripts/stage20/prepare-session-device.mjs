@@ -24,7 +24,8 @@ fs.writeFileSync(indexPath,html);
 const configPath=path.join(root,'capacitor.config.json');
 const config=JSON.parse(fs.readFileSync(configPath,'utf8'));
 if(config.appId!=='com.icc.maintrack')throw Error('SOURCE_APP_ID_CHANGED');
-config.appId='com.icc.maintrack.sessionlab';
+// Keep the source package/Java namespace so native plugin registration remains valid.
+// Only the Debug APK's installed Android identity gets a suffix.
 config.appName='MainTrack Session QA';
 fs.writeFileSync(configPath,JSON.stringify(config,null,2)+'\n');
 execFileSync('npx',['cap','add','android'],{cwd:root,stdio:'inherit'});
@@ -32,7 +33,9 @@ execFileSync('npx',['cap','sync','android'],{cwd:root,stdio:'inherit'});
 execFileSync(process.execPath,['scripts/harden-native.mjs'],{cwd:root,stdio:'inherit'});
 const gradlePath=path.join(root,'android/app/build.gradle');
 let gradle=fs.readFileSync(gradlePath,'utf8');
-if(!/applicationId "com\.icc\.maintrack\.sessionlab"/.test(gradle))throw Error('GENERATED_APP_ID_MISMATCH');
+if(!/applicationId "com\.icc\.maintrack"/.test(gradle))throw Error('GENERATED_APP_ID_MISMATCH');
+if(!/buildTypes\s*\{/.test(gradle))throw Error('ANDROID_BUILD_TYPES_MISSING');
+gradle=gradle.replace(/buildTypes\s*\{/,'buildTypes {\n        debug { applicationIdSuffix ".sessionlab" }');
 gradle=gradle.replace(/versionCode\s+\d+/,'versionCode 404')
  .replace(/versionName\s+"[^"]+"/,'versionName "0.4.4-sessionqa"');
 fs.writeFileSync(gradlePath,gradle);
