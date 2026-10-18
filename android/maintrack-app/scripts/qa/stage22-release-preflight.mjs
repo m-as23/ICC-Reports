@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {canonicalJson,compareVersions} from '../update-system/policy.mjs';
+import {canonicalJson,compareVersions} from '../../update-system/policy.mjs';
 
 const candidate=JSON.parse(fs.readFileSync('unified-four-review/candidate.json','utf8'));
 const historicalManifest=JSON.parse(fs.readFileSync('../../updates/android/release.json','utf8'));
