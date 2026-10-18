@@ -3,15 +3,17 @@
 export const EDITOR_GROUPS = Object.freeze({
   login: ['lcode','lpw'],
   password: ['op','np','np2'],
-  profile: ['profilePreferred','profilePhone'],
-  leave: ['leaveType','leaveStart','leaveEnd','leaveReason'],
+  // Profile is read-only in the unified account experience.
+  leave: ['leaveType','leaveStart','leaveEnd','leaveDuration','leaveReason'],
+  overtime: ['otDate','otFromHour','otFromMinute','otFromPeriod',
+    'otToHour','otToMinute','otToPeriod','otWorkKind','otKind','otReason'],
   admin: ['adminDepartment','adminJob','adminRole','adminActive','adminLeave'],
   employee: ['v6EmpCode','v6EmpName','v6EmpRole'],
   catalog: ['v6CatName','v6Parent'],
   workOrder: ['v6Desc','v6Solution','v6Spare','v6Status','v6Category','v6Reason']
 });
 const actionGroup = {login:'login', changePassword:'password', change:'password',
-  updateProfile:'profile', leaveRequest:'leave', adminSaveUser:'admin',
+  updateProfile:'', leaveRequest:'leave', overtimeRequest:'overtime', adminSaveUser:'admin',
   adminCreateEmployee:'employee', adminResetEmployeePassword:'employee',
   adminCatalogSave:'catalog', cmmsWrite:'workOrder'};
 const valueOf = field => field.type === 'checkbox' ? field.checked : field.value;

@@ -1,0 +1,68 @@
+name: MainTrack Pilot Badge and Secure Session — QA Only
+on:
+  push:
+    branches: [fix/maintrack-pilot-session-candidate-20261018]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    if: github.ref == 'refs/heads/fix/maintrack-pilot-session-candidate-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Validate changes without publishing
+        run: |
+          npm ci --no-audit --no-fund
+          node --check scripts/harden-native.mjs
+          node --check scripts/prepare-pilot-ui.mjs
+          node --check update-system/native-session-entry.mjs
+          node --check ../../web/maintrack/public/secure-assets/index-inline-1.js
+          node --test tests/secure-session.test.mjs tests/unified-four.test.mjs tests/ota-lab.test.mjs tests/update-policy.test.mjs
+          python3 -m py_compile scripts/unified-four-review.py
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+      - name: Test actual mobile owner approvals and compensation selection (synthetic backend)
+        run: |
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          node --test --test-concurrency=1 tests-browser/unified-four.browser.test.mjs
+      - name: Compile native Keystore plugin in disposable Debug APK
+        run: |
+          rm -rf www
+          cp -a unified-four-review/native/www www
+          npx cap add android
+          npx cap sync android
+          node scripts/harden-native.mjs
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+      - name: Verify candidate stays unpublishable
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,zipfile
+          root=pathlib.Path('unified-four-review')
+          metadata=json.loads((root/'candidate.json').read_text())
+          assert metadata['mode']=='review-only'
+          assert metadata['signed'] is False and metadata['deployable'] is False and metadata['rolloutEnabled'] is False
+          for name in ('MainTrack-Android-OTA-UNSIGNED-REVIEW.zip','MainTrack-Web-REVIEW-ONLY.zip'):
+              with zipfile.ZipFile(root/name) as z:
+                  html=[p for p in z.namelist() if p.endswith('/index.html') or p=='index.html']
+                  assert len(html)==1
+                  assert '🧪 PILOT — بلاغات تجريبية فقط' not in z.read(html[0]).decode('utf8')
+          print('PASS unsigned preview; no production or OTA pointer changed')
+          PY

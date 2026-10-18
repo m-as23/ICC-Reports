@@ -1,0 +1,91 @@
+name: MainTrack Stage22 QA CORS Smoke
+on:
+  push:
+    branches:
+      - fix/maintrack-pilot-session-candidate-20261018
+    paths:
+      - .github/workflows/maintrack-stage22-qa-cors-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-origin-qa-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      QA_API: https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/api
+      QA_ORIGIN: https://maintrack-final-security-ldgcbkqqw-mohamedashrefsrag-5918.vercel.app
+    steps:
+      - name: Validate exact Stage22 QA origin preflight and fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          trap 'rm -rf "$dir"' EXIT
+          status="$(curl --fail-with-body --silent --show-error --max-time 20 --retry 2 -D "$dir/allow.h" -o "$dir/allow.body" -w '%{http_code}' -X OPTIONS "$QA_API" \
+            -H "Origin: $QA_ORIGIN" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type,x-request-id")"
+          test "$status" = 200
+          tr -d '\r' < "$dir/allow.h" > "$dir/allow.normalized.h"
+          grep -iFx "access-control-allow-origin: $QA_ORIGIN" "$dir/allow.normalized.h" >/dev/null || {
+            echo "Diagnostics: status=$status"
+            grep -iE '^(access-control-|vary:|content-type:)' "$dir/allow.normalized.h" || true
+            echo "FAIL: Missing exact Origin permission in QA preflight"; exit 1;
+          }
+          grep -i '^access-control-allow-headers:' "$dir/allow.normalized.h" | grep -qi 'content-type' || {
+            echo "FAIL: content-type header not permitted"; exit 1;
+          }
+          echo "PASS: preflight allowed for exact Stage22 preview"
+          deny_status="$(curl --silent --show-error --max-time 20 -D "$dir/deny.h" -o "$dir/deny.body" -w '%{http_code}' -X OPTIONS "$QA_API" \
+            -H 'Origin: https://untrusted-origin.example' \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type")"
+          test "$deny_status" = 403
+          ! tr -d '\r' < "$dir/deny.h" | grep -qi '^access-control-allow-origin:'
+          echo "PASS: untrusted origin rejected without CORS allow"
+      - name: Reject missing session while preserving CORS
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          trap 'rm -rf "$dir"' EXIT
+          status="$(curl --silent --show-error --max-time 20 -D "$dir/reject.h" -o "$dir/reject.body" -w '%{http_code}' -X POST "$QA_API" \
+            -H "Origin: $QA_ORIGIN" -H 'Content-Type: application/json' \
+            --data '{"action":"session"}')"
+          case "$status" in 401|403) ;; *) echo "FAIL: unauthenticated session was not rejected ($status)"; exit 1;; esac
+          tr -d '\r' < "$dir/reject.h" | grep -iFx "access-control-allow-origin: $QA_ORIGIN" >/dev/null
+          echo "PASS: API reachable from Stage22 and auth still denies missing session"
+      - name: Verify isolated Android WebView Origin and session security
+        shell: bash
+        run: |
+          set -euo pipefail
+          android_origin='https://localhost'
+          dir="$(mktemp -d)"
+          trap 'rm -rf "$dir"' EXIT
+          preflight_status="$(curl --silent --show-error --max-time 20 -o "$dir/preflight.json" -D "$dir/preflight.headers" -w '%{http_code}' -X OPTIONS "$QA_API" \
+            -H "Origin: $android_origin" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type,x-request-id')"
+          test "$preflight_status" = 200 || { echo "FAIL: Android WebView preflight $preflight_status"; exit 1; }
+          tr -d '\r' < "$dir/preflight.headers" | grep -iFx "access-control-allow-origin: $android_origin" > /dev/null || {
+            echo 'FAIL: Android WebView exact Origin missing'; exit 1;
+          }
+          echo 'PASS: Android WebView QA CORS preflight'
+          health_status="$(curl --silent --show-error --max-time 20 -o "$dir/health.json" -D "$dir/health.headers" -w '%{http_code}' "$QA_API/../healthz" \
+            -H "Origin: $android_origin")"
+          # Only the preflight and session path are release gates; health is diagnostic.
+          if [ "$health_status" = 200 ]; then
+            echo 'PASS: Android WebView QA HTTP reachability'
+          else
+            echo "QA health diagnostic: HTTP $health_status"
+          fi
+          session_status="$(curl --silent --show-error --max-time 20 -o "$dir/session.json" -D "$dir/session.headers" -w '%{http_code}' -X POST "$QA_API" \
+            -H "Origin: $android_origin" -H 'Content-Type: application/json' --data '{"action":"session"}')"
+          case "$session_status" in 401|403) ;; *) echo "FAIL: Android session unauthenticated status $session_status"; exit 1 ;; esac
+          tr -d '\r' < "$dir/session.headers" | grep -iFx "access-control-allow-origin: $android_origin" > /dev/null || {
+            echo 'FAIL: Android session response missing exact QA CORS Origin'; exit 1;
+          }
+          echo 'PASS: Android WebView QA session requires authentication'
