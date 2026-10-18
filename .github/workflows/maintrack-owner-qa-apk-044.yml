@@ -1,0 +1,136 @@
+name: MainTrack — Signed 0.4.4 Owner QA Upgrade APK (Review Only)
+on:
+  push:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-owner-qa-apk-044.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-qa-044-signed-upgrade
+  cancel-in-progress: false
+jobs:
+  qa-upgrade-apk:
+    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: maintrack-android-release
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Gate employee releases and lock the exact signed QA bundle
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+          git fetch --no-tags --depth=1 origin android/stage14-ota-native-lab
+          node ../../ops/maintrack/scripts/verify-registry.mjs
+          git show FETCH_HEAD:updates/android/maintrack-0.4.4.zip > /tmp/maintrack-reviewed-owner-044.zip
+          python3 - <<'PY'
+          import hashlib,json,zipfile,pathlib
+          registry=json.loads(pathlib.Path('../../ops/maintrack/runtime-registry-0.4.4.json').read_text())
+          zpath=pathlib.Path('/tmp/maintrack-reviewed-owner-044.zip')
+          assert hashlib.sha256(zpath.read_bytes()).hexdigest()==registry['android']['bundleSha256'], 'UNREVIEWED_LAB_OTA_ARCHIVE'
+          with zipfile.ZipFile(zpath) as z:
+              names=z.namelist()
+              assert len(names)==len(set(names)), 'DUPLICATE_ARCHIVE_FILES'
+              for info in z.infolist():
+                  parts=pathlib.PurePosixPath(info.filename).parts
+                  assert parts and not any(part in ('..','.') for part in parts) and not info.filename.startswith('/'), 'UNSAFE_ARCHIVE_PATH'
+                  assert not (info.external_attr >> 16) & 0o170000 == 0o120000, 'SYMLINK_NOT_ALLOWED'
+                  assert info.file_size<=8_000_000, 'OVERSIZED_ASSET'
+              required=('index.html','secure-assets/index-inline-1.js','secure-assets/stage20-native-session.js')
+              assert all(name in names for name in required), 'NATIVE_SECURE_SESSION_BRIDGE_MISSING'
+              assert len(names)<=500, 'TOO_MANY_FILES'
+              z.extractall('www')
+          html=pathlib.Path('www/index.html').read_text()
+          assert 'stage20-native-session.js' in html, 'SESSION_BRIDGE_NOT_LOADED'
+          print('PASS: exact signed QA 0.4.4 content, no unsigned or historical source fallback')
+          PY
+      - name: Test existing source and native session contract without production access
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          python3 -m unittest discover -s tests-release -v
+      - name: Install Android SDK 36 and produce native signed upgrade candidate
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -x "$MANAGER"
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          node scripts/harden-native.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android/app/build.gradle')
+          text=p.read_text()
+          assert re.search(r'versionCode\s+\d+',text) and re.search(r'versionName\s+"[^"]+"',text), 'GRADLE_VERSION_FORMAT'
+          text=re.sub(r'versionCode\s+\d+','versionCode 404',text,count=1)
+          text=re.sub(r'versionName\s+"[^"]+"','versionName "0.4.4"',text,count=1)
+          p.write_text(text)
+          PY
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleRelease)
+      - name: Sign APK with ONLY the previously approved native Android key
+        env:
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYFILE="$(mktemp)"
+          trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s' "$MT_ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYFILE"
+          mkdir -p release-output
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          "$SDK_ROOT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk release-output/aligned.apk
+          "$SDK_ROOT/apksigner" sign --ks "$KEYFILE" --ks-key-alias "$MT_ANDROID_KEY_ALIAS" --ks-pass env:MT_ANDROID_KEYSTORE_PASSWORD --key-pass env:MT_ANDROID_KEY_PASSWORD --out release-output/MainTrack-0.4.4-Owner-QA-ONLY.apk release-output/aligned.apk
+          "$SDK_ROOT/apksigner" verify --verbose --print-certs release-output/MainTrack-0.4.4-Owner-QA-ONLY.apk > release-output/cert.txt
+          "$SDK_ROOT/aapt" dump badging release-output/MainTrack-0.4.4-Owner-QA-ONLY.apk > release-output/identity.txt
+          python3 - <<'PY'
+          import json,re,hashlib,pathlib,os
+          p=pathlib.Path('release-output')
+          cert=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',(p/'cert.txt').read_text())
+          expected=json.loads(pathlib.Path('../../ops/maintrack/employee-release-gates.json').read_text())['currentBaseline']
+          assert cert and cert[1].lower()==expected['installedAndroidCertificateSha256'], 'SIGNATURE_NOT_COMPATIBLE_WITH_EXISTING_OWNER_PHONE'
+          match=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",(p/'identity.txt').read_text(),re.M)
+          assert match and match.groups()==('com.icc.maintrack','404','0.4.4'), 'APK_UPGRADE_IDENTITY_MISMATCH'
+          apk=p/'MainTrack-0.4.4-Owner-QA-ONLY.apk'
+          result={'schema':1,'appId':'com.icc.maintrack','versionCode':404,'versionName':'0.4.4',
+            'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,
+            'certificateSha256':cert[1].lower(),'channel':'OWNER_QA_ONLY',
+            'qaApiOnly':True,'ownerInstallAccepted':False,'employeeRelease':False,'rolloutEnabled':False,
+            'sourceCommit':os.environ['GITHUB_SHA'],'sessionUpgradeDeviceTest':'NOT_RUN'}
+          (p/'owner-qa-provenance.json').write_text(json.dumps(result,indent=2)+'\n')
+          print('PASS signed Android upgrade APK matches installed package, certificate, and versionCode > 401.')
+          print('BLOCKED: QA artifact has not passed owner-device session/data upgrade acceptance.')
+          PY
+          rm -f release-output/aligned.apk release-output/cert.txt release-output/identity.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.4-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES
+          path: |
+            android/maintrack-app/release-output/MainTrack-0.4.4-Owner-QA-ONLY.apk
+            android/maintrack-app/release-output/owner-qa-provenance.json
+          if-no-files-found: error
+          retention-days: 7
