@@ -1,15 +1,22 @@
-name: MainTrack Stage21 — Coordinated Web and Android QA Candidates
+name: MainTrack Unified QA Gate — Web, API and Android
 on:
   push:
     branches: [fix/maintrack-pilot-session-candidate-20261018]
     paths:
       - '.github/workflows/maintrack-stage21-web-android-qa.yml'
       - 'android/maintrack-app/scripts/stage21/**'
+      - 'android/maintrack-app/scripts/qa/**'
+      - 'android/maintrack-app/update-system/**'
+      - 'android/maintrack-app/tests/**'
+      - 'db/applied/maintrack-unified-four-*.sql'
       - 'android/maintrack-app/tests-browser/**'
       - 'web/maintrack/public/**'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: maintrack-stage22-qa-gate-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   candidate:
     if: github.ref == 'refs/heads/fix/maintrack-pilot-session-candidate-20261018'
@@ -31,20 +38,27 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: QA and source tests
+        id: unit
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           npm ci --no-audit --no-fund
-          node --test tests/secure-session.test.mjs tests/unified-four.test.mjs tests/ota-lab.test.mjs
+          mkdir -p qa-results
+          node --test --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=qa-results/unit.junit.xml tests/secure-session.test.mjs tests/unified-four.test.mjs tests/ota-lab.test.mjs tests/update-policy.test.mjs
           node scripts/stage21/prepare-web-qa.mjs
           python3 scripts/unified-four-review.py build
           python3 scripts/unified-four-review.py verify
       - name: Browser acceptance using test accounts only
+        id: browser
         run: |
           npm --prefix tests-browser ci --no-audit --no-fund
           npx --prefix tests-browser playwright install --with-deps chromium
-          node --test --test-concurrency=1 tests-browser/unified-four.browser.test.mjs
+          node --test --test-concurrency=1 --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=qa-results/browser.junit.xml tests-browser/unified-four.browser.test.mjs
+      - name: Read-only live QA API and CORS smoke
+        id: api
+        run: node scripts/qa/live-api-smoke.mjs
       - name: Prepare and compile distinct Android QA APK
+        id: android
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
@@ -67,6 +81,7 @@ jobs:
           NODE
           (cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug)
       - name: Independently verify packaged assets and build fingerprints
+        id: package
         run: |
           set -euo pipefail
           mkdir -p stage21-delivery
@@ -119,5 +134,23 @@ jobs:
             android/maintrack-app/stage21-delivery/MainTrack_Stage21_Web_QA.zip
             android/maintrack-app/stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk
             android/maintrack-app/stage21-delivery/delivery.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Write consolidated QA gate summary
+        if: always()
+        env:
+          QA_UNIT_OUTCOME: ${{ steps.unit.outcome }}
+          QA_BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+          QA_API_OUTCOME: ${{ steps.api.outcome }}
+          QA_ANDROID_OUTCOME: ${{ steps.android.outcome }}
+          QA_PACKAGE_OUTCOME: ${{ steps.package.outcome }}
+        run: node scripts/qa/write-qa-report.mjs
+      - name: Retain QA gate JUnit and JSON diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage22-QA-Gate-Report
+          path: android/maintrack-app/qa-results/
           if-no-files-found: error
           retention-days: 14
