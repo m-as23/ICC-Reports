@@ -1,0 +1,72 @@
+name: MainTrack Stage22 0.4.4 Release Integration — Review Only
+on:
+  push:
+    branches: [release/maintrack-stage22-044-integration]
+    paths:
+      - '.github/workflows/maintrack-stage22-release-integration.yml'
+      - 'android/maintrack-app/**'
+      - 'web/maintrack/**'
+      - 'supabase/functions/maintrack-stage9-security-api/**'
+      - 'updates/android/release.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage22-release-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integration:
+    if: github.ref == 'refs/heads/release/maintrack-stage22-044-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Ensure exact integration commit and no publish keys
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/release/maintrack-stage22-044-integration"
+      - name: Source and security test suite
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          python3 -m unittest discover -s tests-release -v
+          npm test
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+      - name: Actual Playwright Web Owner approvals on synthetic backend
+        run: |
+          set -euo pipefail
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          node --test --test-concurrency=1 tests-browser/unified-four.browser.test.mjs
+      - name: Live QA API GET and authorization checks without business writes
+        run: node scripts/qa/live-api-smoke.mjs
+      - name: Verify existing owner-signed OTA and exact shared unsigned 0.4.4 candidate
+        run: node scripts/qa/release-stage22-audit.mjs
+      - name: Retain reviewed unsigned Web and Android OTA candidate, no publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage22-044-Unpublished-Release-Candidate
+          path: |
+            android/maintrack-app/unified-four-review/MainTrack-Android-OTA-UNSIGNED-REVIEW.zip
+            android/maintrack-app/unified-four-review/MainTrack-Web-REVIEW-ONLY.zip
+            android/maintrack-app/unified-four-review/candidate.json
+            android/maintrack-app/release-preflight/release-readiness.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Explicit review-only status
+        if: always()
+        run: |
+          echo '## Stage22 0.4.4 integration — PREPARATION ONLY' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This job has read-only GitHub permissions. No backend, production Web, or OTA manifests were changed.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Approval to publish is separate from this source/build gate. Native APK must not be replaced by the QA Debug app.' >> "$GITHUB_STEP_SUMMARY"
