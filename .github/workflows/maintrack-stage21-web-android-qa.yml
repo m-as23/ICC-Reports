@@ -1,0 +1,123 @@
+name: MainTrack Stage21 — Coordinated Web and Android QA Candidates
+on:
+  push:
+    branches: [fix/maintrack-pilot-session-candidate-20261018]
+    paths:
+      - '.github/workflows/maintrack-stage21-web-android-qa.yml'
+      - 'android/maintrack-app/scripts/stage21/**'
+      - 'android/maintrack-app/tests-browser/**'
+      - 'web/maintrack/public/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/fix/maintrack-pilot-session-candidate-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: QA and source tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          npm ci --no-audit --no-fund
+          node --test tests/secure-session.test.mjs tests/unified-four.test.mjs tests/ota-lab.test.mjs
+          node scripts/stage21/prepare-web-qa.mjs
+          python3 scripts/unified-four-review.py build
+          python3 scripts/unified-four-review.py verify
+      - name: Browser acceptance using test accounts only
+        run: |
+          npm --prefix tests-browser ci --no-audit --no-fund
+          npx --prefix tests-browser playwright install --with-deps chromium
+          node --test --test-concurrency=1 tests-browser/unified-four.browser.test.mjs
+      - name: Prepare and compile distinct Android QA APK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+          node scripts/stage20/prepare-session-device.mjs
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const gradle='android/app/build.gradle';
+          let s=fs.readFileSync(gradle,'utf8');
+          if(!s.includes('applicationIdSuffix ".sessionlab"')||!s.includes('versionCode 404'))throw Error('UNEXPECTED_STAGE20_BASE');
+          s=s.replace('applicationIdSuffix ".sessionlab"','applicationIdSuffix ".stage22qa"');
+          s=s.replace('versionCode 404','versionCode 406');
+          s=s.replace('versionName "0.4.4-sessionqa"','versionName "0.4.6-stage22qa"');
+          fs.writeFileSync(gradle,s);
+          const label='android/app/src/main/res/values/strings.xml';
+          let t=fs.readFileSync(label,'utf8');
+          if(!t.includes('MainTrack Session QA'))throw Error('UNEXPECTED_LABEL_SOURCE');
+          fs.writeFileSync(label,t.replaceAll('MainTrack Session QA','MainTrack Stage22 QA'));
+          NODE
+          (cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug)
+      - name: Independently verify packaged assets and build fingerprints
+        run: |
+          set -euo pipefail
+          mkdir -p stage21-delivery
+          cp android/app/build/outputs/apk/debug/app-debug.apk stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          "$SDK_ROOT/apksigner" verify --verbose --print-certs stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk > stage21-delivery/apk-signature.txt
+          "$SDK_ROOT/aapt" dump badging stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk > stage21-delivery/apk-identity.txt
+          python3 - <<'PY'
+          import pathlib,re,hashlib,json,zipfile,os
+          directory=pathlib.Path('stage21-web-qa')
+          archive=pathlib.Path('stage21-delivery/MainTrack_Stage21_Web_QA.zip')
+          with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
+              for file in sorted(directory.rglob('*')):
+                  if file.is_file():z.write(file,file.relative_to(directory).as_posix())
+          apk=pathlib.Path('stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk')
+          badging=pathlib.Path('stage21-delivery/apk-identity.txt').read_text()
+          identity=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",badging,re.M)
+          assert identity and identity.groups()==('com.icc.maintrack.stage22qa','406','0.4.6-stage22qa')
+          with zipfile.ZipFile(apk) as z:
+              ui=z.read('assets/public/secure-assets/index-inline-1.js')
+              html=z.read('assets/public/index.html')
+              assert b'maintrack-unified-four-qa/api' in ui
+              assert b'maintrack-stage9-security-api/api' not in ui
+              assert '🧪 PILOT — بلاغات تجريبية فقط'.encode() not in html
+          with zipfile.ZipFile(archive) as z:
+              ui=z.read('secure-assets/index-inline-1.js')
+              html=z.read('index.html')
+              assert b'maintrack-unified-four-qa/api' in ui
+              assert b'maintrack-stage9-security-api/api' not in ui
+              assert '🧪 PILOT — بلاغات تجريبية فقط'.encode() not in html
+              with zipfile.ZipFile(apk) as ap:
+                  assert ui==ap.read('assets/public/secure-assets/index-inline-1.js'), 'CROSS_CHANNEL_JS_DIFFERENCE'
+          certificate=re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)',pathlib.Path('stage21-delivery/apk-signature.txt').read_text())
+          assert certificate
+          out={'sourceCommit':os.environ['GITHUB_SHA'],'channel':'qa-review-only',
+            'production':False,'otaPublished':False,'sameUiJs':True,
+            'apkId':identity.group(1),'apkVersion':identity.group(3),
+            'upgradeCompatibleWithInstalledMainTrack':False,
+            'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+            'webZipSha256':hashlib.sha256(archive.read_bytes()).hexdigest(),
+            'debugCertificateSha256':certificate.group(1).lower()}
+          pathlib.Path('stage21-delivery/delivery.json').write_text(json.dumps(out,indent=2)+'\n')
+          print('STAGE21_CROSS_CHANNEL_QA_PASS',out['sourceCommit'])
+          PY
+      - name: Retain matching Web and Android QA candidates
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Stage21-Coordinated-QA-Only
+          path: |
+            android/maintrack-app/stage21-delivery/MainTrack_Stage21_Web_QA.zip
+            android/maintrack-app/stage21-delivery/MainTrack_Stage22_QA_0.4.6_Debug.apk
+            android/maintrack-app/stage21-delivery/delivery.json
+          if-no-files-found: error
+          retention-days: 14
