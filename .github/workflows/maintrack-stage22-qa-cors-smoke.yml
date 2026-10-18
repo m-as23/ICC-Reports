@@ -29,10 +29,13 @@ jobs:
             -H "Access-Control-Request-Method: POST" \
             -H "Access-Control-Request-Headers: content-type,x-request-id")"
           test "$status" = 200
-          grep -iFx "access-control-allow-origin: $QA_ORIGIN" "$dir/allow.h" >/dev/null || {
+          tr -d '\r' < "$dir/allow.h" > "$dir/allow.normalized.h"
+          grep -iFx "access-control-allow-origin: $QA_ORIGIN" "$dir/allow.normalized.h" >/dev/null || {
+            echo "Diagnostics: status=$status"
+            grep -iE '^(access-control-|vary:|content-type:)' "$dir/allow.normalized.h" || true
             echo "FAIL: Missing exact Origin permission in QA preflight"; exit 1;
           }
-          grep -i '^access-control-allow-headers:' "$dir/allow.h" | grep -qi 'content-type' || {
+          grep -i '^access-control-allow-headers:' "$dir/allow.normalized.h" | grep -qi 'content-type' || {
             echo "FAIL: content-type header not permitted"; exit 1;
           }
           echo "PASS: preflight allowed for exact Stage22 preview"
@@ -41,7 +44,7 @@ jobs:
             -H "Access-Control-Request-Method: POST" \
             -H "Access-Control-Request-Headers: content-type")"
           test "$deny_status" = 403
-          ! grep -qi '^access-control-allow-origin:' "$dir/deny.h"
+          ! tr -d '\r' < "$dir/deny.h" | grep -qi '^access-control-allow-origin:'
           echo "PASS: untrusted origin rejected without CORS allow"
       - name: Reject missing session while preserving CORS
         shell: bash
@@ -53,5 +56,5 @@ jobs:
             -H "Origin: $QA_ORIGIN" -H 'Content-Type: application/json' \
             --data '{"action":"session"}')"
           case "$status" in 401|403) ;; *) echo "FAIL: unauthenticated session was not rejected ($status)"; exit 1;; esac
-          grep -iFx "access-control-allow-origin: $QA_ORIGIN" "$dir/reject.h" >/dev/null
+          tr -d '\r' < "$dir/reject.h" | grep -iFx "access-control-allow-origin: $QA_ORIGIN" >/dev/null
           echo "PASS: API reachable from Stage22 and auth still denies missing session"
