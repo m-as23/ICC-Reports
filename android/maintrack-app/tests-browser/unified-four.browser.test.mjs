@@ -251,3 +251,39 @@ test('My Account requires an explicit overtime compensation choice above work na
   assert.equal(await workKind.inputValue(),'');
  });
 });
+
+
+test('Two QA Owner browser tabs reconcile pending approval and archive after server refresh',async()=>{
+ await withPage('owner',async({page,ctx,actions})=>{
+  page.on('dialog',dialog=>dialog.accept());
+  await page.locator('#tabApprove').click();
+  await page.waitForFunction(()=>document.querySelectorAll('#ownerPendingRows .approval-card').length===2);
+
+  // Second independent tab has its own sessionStorage, but the same synthetic backend.
+  // This models the web/mobile reconnection contract without writing real employee data.
+  const other=await ctx.newPage();
+  await other.goto(origin+'/releases/'+commit+'/',{waitUntil:'domcontentloaded'});
+  if(await other.locator('#lgo').isVisible()){
+   await other.locator('#lcode').fill('QA-OWNER');
+   await other.locator('#lpw').fill('synthetic-password');
+   await other.locator('#lgo').click();
+  }
+  await other.locator('#tabProfile').waitFor({state:'visible',timeout:12000});
+  await other.locator('#tabApprove').click();
+  await other.waitForFunction(()=>document.querySelectorAll('#ownerPendingRows .approval-card').length===2);
+
+  await page.locator('#ownerPendingRows .approval-card[data-request-id="LV-QA"] button')
+   .filter({hasText:'اعتماد الطلب'}).click();
+  await page.waitForFunction(()=>document.getElementById('ownerPendingCount')?.textContent==='1');
+  assert.equal(await page.locator('#ownerHistoryRows .approval-card[data-request-id="LV-QA"] .request-status--approved').count(),1);
+
+  // A refresh must read server state, not the old cached copy from the second tab.
+  await other.locator('#refreshApprovals').click();
+  await other.waitForFunction(()=>document.getElementById('ownerPendingCount')?.textContent==='1');
+  assert.equal(await other.locator('#ownerPendingRows .approval-card[data-request-id="LV-QA"]').count(),0);
+  assert.equal(await other.locator('#ownerHistoryRows .approval-card[data-request-id="LV-QA"] .request-status--approved').count(),1);
+  await other.waitForFunction(()=>document.getElementById('bellCount')?.textContent==='1');
+  assert.equal(await other.locator('#ownerPendingRows .approval-card').count(),1);
+  assert.ok(actions.filter(a=>a==='leaveInbox').length>=2,'must reload authoritative approvals from server');
+ });
+});
