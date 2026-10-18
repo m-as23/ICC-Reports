@@ -210,7 +210,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             adb install stage22-device-input/MainTrack_Stage22_QA_0.4.6_Debug.apk
             adb shell pm path com.icc.maintrack.stage22qa
             if adb shell pm path com.icc.maintrack | grep -q '^package:'; then
