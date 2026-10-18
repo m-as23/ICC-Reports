@@ -177,7 +177,20 @@ async function loadNotices(force){
   try{
     const d=await api('notifications');
     if(d.error==='AUTH')return logout(); if(d.error)throw new Error(d.error);
-    noticeLast=Date.now();const pendingCount=S.role==='owner'?Number(d.pendingCount||0):0, unreadSaved=Number(d.savedUnreadCount||0),unread=unreadSaved+pendingCount;
+    // Owner active alerts come from BOTH authoritative approval inboxes;
+    // archived requests are derived from persisted server decisions.
+    let ownerFeed=null;
+    if(S.role==='owner'){try{ownerFeed=await ownerRequestSnapshot(true);}catch(e){/* Keep existing saved notices if requests cannot be loaded. */}}
+    const resolved=new Set((ownerFeed?.history||[]).map(r=>String(r.id)));
+    const storedItems=Array.isArray(d.storedItems)?d.storedItems:d.items||[];
+    const requestNotice=n=>S.role==='owner'&&['leaveApprovals','overtimeApprovals'].includes(n.target);
+    const normalizedSaved=storedItems.map(n=>{
+      const decided=requestNotice(n)&&resolved.has(String(n.sourceId||n.requestId||''));
+      return decided?{...n,read:true,target:'ownerArchive',requestId:n.sourceId||n.requestId}:n;
+    });
+    noticeLast=Date.now();
+    const pendingCount=ownerFeed?ownerFeed.pending.length:(S.role==='owner'?Number(d.pendingCount||0):0);
+    const unreadSaved=normalizedSaved.filter(n=>!n.read).length,unread=unreadSaved+pendingCount;
 $('pendingBadge').hidden=!pendingCount;$('pendingBadge').textContent=pendingCount;
 $('bellCount').textContent=unread>99?'99+':String(unread);$('bellCount').style.display=unread?'block':'none';
 $('bellBtn').classList.toggle('has-unread',unread>0);$('bellBtn').setAttribute('aria-label',unread?'الإشعارات: '+unread+' جديد':'الإشعارات: لا يوجد جديد');
@@ -189,11 +202,32 @@ $('noticePendingList').textContent='';
 $('noticeV2Sync').textContent='آخر تحديث '+new Date().toLocaleTimeString('ar-EG',{hour:'numeric',minute:'2-digit'});
 $('noticeV2All').setAttribute('aria-pressed',noticeModeV2==='all'?'true':'false');$('noticeV2Unread').setAttribute('aria-pressed',noticeModeV2==='unread'?'true':'false');
 list.textContent='';
-const saved=(Array.isArray(d.storedItems)?d.storedItems:d.items||[]).filter(n=>noticeModeV2==='all'||!n.read).slice(0,5);
-const pending=(d.pendingItems||[]).slice(0,3);
+const archived=(ownerFeed?.history||[]).slice(0,8).map(r=>({
+ id:'ARCH-'+r.requestKind+'-'+r.id,requestId:r.id,read:true,target:'ownerArchive',
+ title:(r.status==='APPROVED'?'تم اعتماد: ':'تم رفض: ')+ownerRequestTitle(r),
+ description:(r.name||'الموظف')+' • '+r.id,
+ createdAt:r.decidedAt||r.createdAt
+}));
+const saved=normalizedSaved.concat(archived)
+ .filter((n,i,a)=>!n.requestId || a.findIndex(m=>m.requestId===n.requestId&&m.target==='ownerArchive')===i || n.target!=='ownerArchive')
+ .filter(n=>noticeModeV2==='all'||!n.read)
+ .sort((a,b)=>(Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0)).slice(0,5);
+const pending=ownerFeed?ownerFeed.pending.slice(0,5).map(r=>({
+ id:'REQ-'+r.id,title:(r.name||'الموظف')+' طلب اعتماد',
+ description:ownerRequestTitle(r)+' • '+r.id,createdAt:r.createdAt,
+ read:false,target:'ownerRequest',request:r
+})):(d.pendingItems||[]).slice(0,5);
 const items=pending.concat(saved);
-    if(!saved.length){list.className='notice-v2-list';const empty=document.createElement('p');empty.className='notice-v2-empty';empty.textContent=noticeModeV2==='unread'?'لا توجد إشعارات غير مقروءة.':'لا توجد إشعارات محفوظة حتى الآن.';list.append(empty);}
-    list.className='notice-v2-list'; items.forEach(n=>{const host=n.target==='leaveDecision'&&n.leave?$('noticePendingList'):list;
+    if(!saved.length&&!pending.length){list.className='notice-v2-list';const empty=document.createElement('p');empty.className='notice-v2-empty';empty.textContent=noticeModeV2==='unread'?'لا توجد إشعارات غير مقروءة.':'لا توجد إشعارات محفوظة حتى الآن.';list.append(empty);}
+    list.className='notice-v2-list'; items.forEach(n=>{
+      const host=['ownerRequest','leaveDecision'].includes(n.target)?$('noticePendingList'):list;
+      if(n.target==='ownerRequest'&&S.role==='owner'&&n.request){
+        const card=document.createElement('article');card.className='notice-leave-card';
+        card.append(approvalNode('strong','',n.title),approvalNode('div','notice-detail',n.description));
+        const btn=approvalNode('button','refresh','فتح الطلب واتخاذ القرار');btn.type='button';
+        btn.onclick=async()=>{closeNoticesV2();await ownerGoToRequest(n.request.id);};
+        card.append(btn);host.append(card);return;
+      }
       if(n.target==='leaveDecision'&&S.role==='owner'&&n.leave){
         const r=n.leave,card=document.createElement('article');card.className='notice-leave-card';
         const head=document.createElement('strong');head.textContent=r.name+' طلب إجازة';
@@ -217,7 +251,12 @@ const items=pending.concat(saved);
       const titleLine=document.createElement('div'); titleLine.className='notice-title-line'; const dot=document.createElement('span'); dot.className='notice-dot'; const title=document.createElement('span'); title.textContent=n.title||'تم تسجيل البلاغ '+n.id; titleLine.append(dot,title);
       const detail=document.createElement('div'); detail.className='notice-detail'; detail.textContent=n.description||(n.section||'')+' • '+(n.machine||'');
       const date=document.createElement('div'); date.className='notice-date'; date.textContent=n.createdAt?new Date(n.createdAt).toLocaleString('ar-EG',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'';
-      card.append(titleLine,detail,date); card.onclick=async()=>{await markNoticeRead(n.id,card);if(n.target==='leaveApprovals'&&S&&S.role==='owner')showApprovals();else if(n.target==='leave')showLeave();}; host.appendChild(card);
+      card.append(titleLine,detail,date); card.onclick=async()=>{
+        if(n.target==='ownerArchive'&&S?.role==='owner'){closeNoticesV2();await ownerGoToRequest(n.requestId);return;}
+        await markNoticeRead(n.id,card);
+        if(n.target==='leaveApprovals'&&S&&S.role==='owner')showApprovals();
+        else if(n.target==='leave')showLeave();
+      }; host.appendChild(card);
     });
   }catch(e){$('noticeV2Sync').textContent='تعذر المزامنة — اضغط ↻';if(!list.textContent.trim())list.textContent='تعذر التحديث مؤقتًا.';}
   finally{noticeBusy=false;}
@@ -425,6 +464,18 @@ $('sendLeave').onclick=async()=>{
 // and active notification counts. History controls must never affect pending.
 let ownerSnapshotCache=null,ownerSnapshotAt=0,ownerSnapshotFlight=null;
 function invalidateOwnerSnapshot(){ownerSnapshotCache=null;ownerSnapshotAt=0;}
+async function ownerGoToRequest(id){
+ if(!S||S.role!=='owner')return;
+ // Filters never hide a pending request; reset archive-only filters when following
+ // an archived notification to its resolved card.
+ $('otOwnerYear').value='0';$('otOwnerMonth').value='0';
+ $('otOwnerEmployee').value='';$('ownerHistoryType').value='';
+ $('ownerHistoryStatus').value='';
+ await showApprovals();
+ const card=[...document.querySelectorAll('#ownerPendingRows .approval-card,#ownerHistoryRows .approval-card')]
+  .find(el=>el.dataset.requestId===String(id));
+ if(card)card.scrollIntoView({block:'center',behavior:'smooth'});
+}
 async function ownerRequestSnapshot(force=false){
  if(!S||S.role!=='owner')return {items:[],pending:[],history:[],partial:false};
  if(!force&&ownerSnapshotCache&&Date.now()-ownerSnapshotAt<8000)return ownerSnapshotCache;
