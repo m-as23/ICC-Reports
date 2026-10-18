@@ -1,0 +1,39 @@
+name: MainTrack — Canonical 0.4.4 Baseline Guard
+on:
+  push:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-canonical-044-baseline-guard.yml'
+      - 'ops/maintrack/**'
+      - 'web/maintrack/public/**'
+      - 'supabase/functions/maintrack-stage9-security-api/**'
+      - 'android/maintrack-app/update-system/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-frozen-source:
+    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch signed LAB release metadata only from pinned channel branch
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags --depth=1 origin android/stage14-ota-native-lab
+      - name: Verify canonical source and OTA signature/checksum without secrets
+        run: node ops/maintrack/scripts/verify-registry.mjs
+      - name: Show non-production gate
+        run: |
+          echo "## 0.4.4 BASELINE verified; PRODUCTION NOT RELEASED" >> "$GITHUB_STEP_SUMMARY"
+          echo "Static 32-action source and owner-signed LAB OTA SHA-256 are verified." >> "$GITHUB_STEP_SUMMARY"
+          echo "Production requires isolated DB, 32-action deployed API, permanent Web origin, signed employee installable APK, and role-based acceptance." >> "$GITHUB_STEP_SUMMARY"
