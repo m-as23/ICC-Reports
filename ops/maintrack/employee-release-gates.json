@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "name": "MainTrack Employee Release Safety Gate",
+  "state": "PRELAUNCH_BLOCKED",
+  "currentBaseline": {
+    "branch": "baseline/maintrack-v0.4.4-owner-verified-20261018",
+    "commit": "11a910e42c4c5ed6d34bac2102f567bdaa3db927",
+    "appId": "com.icc.maintrack",
+    "installedNativeVersion": "0.4.1",
+    "installedNativeVersionCode": 401,
+    "installedAndroidCertificateSha256": "07a35f17c9a7a17b24b1867e839fab2043d83f998bb604701776f3f64c807d5b",
+    "ownerVerifiedOtaVersion": "0.4.4",
+    "ownerOtaChannel": "lab"
+  },
+  "approvedArchitecture": {
+    "canonicalSource": "web/maintrack/public/",
+    "androidSource": "android/maintrack-app/",
+    "apiSource": "supabase/functions/maintrack-stage9-security-api/index.ts",
+    "productionWebProject": "maintrack-production",
+    "labAndroidManifest": "android/stage14-ota-native-lab/updates/android/release.json",
+    "productionWebDeploymentAllowed": false,
+    "employeeAndroidApkReleaseAllowed": false,
+    "stagingDatabaseDestructiveChangesAllowed": false
+  },
+  "updateRouting": {
+    "webAssets": "Web production deployment and compatible signed Android OTA from the same reviewed source; staged rollout with rollback",
+    "nativeAndroidChanges": "Full signed installable Android APK; same appId and installed signing certificate; versionCode > 401; native session upgrade test required",
+    "databaseOrApi": "Versioned reversible migration, API compatibility/RBAC checks and verified backup restore before clients update",
+    "expiryAndKeys": "Renew signed manifest before expiry; OTA Ed25519 key does not substitute for native Android APK signing keystore"
+  },
+  "mandatoryGates": [
+    {
+      "id": "isolated-production-database",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "restorable-database-backup",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "production-api-32-actions-rbac",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "stable-web-domain-and-versioned-deploy",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "signed-installable-apk-cert-version",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "existing-app-upgrade-keeps-login",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "offline-reports-and-local-data-preserved",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "owner-engineer-technician-regression",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "verified-web-ota-native-rollback",
+      "status": "pending",
+      "evidence": null
+    },
+    {
+      "id": "owner-acceptance-and-canary",
+      "status": "pending",
+      "evidence": null
+    }
+  ],
+  "employeeRollout": "DENY_UNTIL_ALL_GATES_INDEPENDENTLY_VERIFIED"
+}
