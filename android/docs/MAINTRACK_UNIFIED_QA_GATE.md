@@ -24,12 +24,15 @@ This is a **QA-only** automated test and build workflow, not a production releas
 | Android build | Gradle/Android SDK 36 | isolated `com.icc.maintrack.stage22qa` Debug APK build | No |
 | Package integrity | apksigner/aapt and Python ZIP verification | version, package ID, debug certificate, shared frontend JS equality, no stable API URLs in QA files | No |
 | QA summary | Node 22 | fail-closed `qa-summary.json`, `qa-summary.md`, GitHub Job Summary | No |
+| Android35 actual WebView | Playwright Android + Emulator | isolated QA APK, synthetic Owner Inbox, encrypted synthetic session, unsent `q` survives force-stop and offline relaunch; screenshots/JSON | No (all outbound requests blocked or mocked) |
+| Combined result | GitHub Actions dependency gate | Fails if the candidate **or** emulator stage is not successful | No |
 
 The artifacts retained for 14 days are:
 - `MainTrack-Stage21-Coordinated-QA-Only` (historical artifact name): QA Web ZIP,
   separate Debug APK, identity/hash manifest. Available only if build and checks complete.
 - `MainTrack-Stage22-QA-Gate-Report`: JUnit XML plus machine-readable and human-readable
-  gate result, uploaded even if an earlier test fails.
+  candidate result, uploaded even if an earlier test fails.
+- `MainTrack-Stage22-Android-Emulator-Evidence`: synthetic screenshots, phase reports, and failure diagnostics. The final `qa-final` job requires the emulator **and** candidate jobs to pass.
 
 ## Exact scope and limits
 
@@ -39,7 +42,7 @@ The artifacts retained for 14 days are:
   QA Origin; it does not exercise a successful authenticated login or modify Supabase.
 - The QA Edge function and stable Edge function share one Supabase project/database.
   Avoid writing disposable QA records to the shared database.
-- The QA APK is a **different package**, signed with an ephemeral Debug key. It is **not**
+- The QA APK is a **different package**, signed with an ephemeral Debug key. Emulator login is fully mocked and its offline sentinel contains no employee data. It is **not**
   an upgrade of the currently installed MainTrack Android app and does not validate OTA
   key continuity, native rollback, session preservation or offline report-queue durability.
 - The existing Stage14/15 physical-device compatibility and owner-signed OTA release gates
@@ -59,6 +62,4 @@ The artifacts retained for 14 days are:
    a signed compatible OTA using the installed trust key, unsent-local-work safety, and
    rollback on the same immutable bytes. Obtain explicit Owner approval.
 
-This test system intentionally minimizes repeated full Android emulator runs. A full native
-emulator + in-place update test is a separate, opt-in release-acceptance check, not performed by
-this lightweight daily QA gate.
+The combined QA workflow runs **one Android35 emulator** per successful candidate to check native WebView startup and durable offline storage. This is not an OTA or installed-app-in-place upgrade test. The existing Stage14/15 signed-upgrade compatibility and physical Owner-device tests remain separate release gates.
