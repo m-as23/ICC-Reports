@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/maintrack-stage21-web-android-qa.yml'
       - 'android/maintrack-app/scripts/stage21/**'
+      - 'android/maintrack-app/tests-browser/**'
       - 'web/maintrack/public/**'
   workflow_dispatch:
 permissions:
