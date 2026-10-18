@@ -32,6 +32,13 @@ jobs:
           if grep -q 'v6Dock' web/maintrack/public/v6-core.js web/maintrack/public/v6-core.css; then
             echo 'Unlabelled mobile dock remains'; exit 1
           fi
+      - name: Install Android update and local-data test dependencies
+        run: npm --prefix android/maintrack-app ci --no-audit --no-fund
+      - name: Regression — encrypted session, offline queue, update policy and protected activation
+        working-directory: android/maintrack-app
+        run: |
+          set -euo pipefail
+          node --test tests/secure-session.test.mjs tests/local-work.test.mjs tests/web-session.test.mjs tests/update-policy.test.mjs tests/activation.test.mjs tests/pilot-session.test.mjs tests/unified-four.test.mjs
       - name: Install exact browser QA dependencies
         run: npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
       - name: Install Chromium for synthetic UI tests
