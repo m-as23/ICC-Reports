@@ -1,0 +1,31 @@
+name: MainTrack 0.4.4 — Installed Certificate Metadata (Read Only)
+on:
+  push:
+    branches: [fix/maintrack-044-session-and-bottom-bar-only-20261018]
+    paths:
+      - '.github/workflows/maintrack-044-public-signature-metadata-readonly.yml'
+      - 'qa/two-fixes-044/verify-public-android-cert.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-certificate-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare public repository fingerprint; no keystore or secrets
+        env:
+          MT_ANDROID_EXPECTED_CERT_SHA256: ${{ vars.MT_ANDROID_EXPECTED_CERT_SHA256 }}
+          MT_STAGE14_SIGNING_READY: ${{ vars.MT_STAGE14_SIGNING_READY }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --check qa/two-fixes-044/verify-public-android-cert.mjs
+          node qa/two-fixes-044/verify-public-android-cert.mjs
