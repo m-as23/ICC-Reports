@@ -8,7 +8,7 @@ const srcBranch='release/maintrack-stage22-web-android-20261018';
 const expectedSource='f5c9d78c6e0b135549c9efc9608d1f0df02ecf8e';
 const currentSha=process.env.GITHUB_SHA||'';
 const version='0.4.4';
-if(process.env.GITHUB_REF!==\`refs/heads/\${srcBranch}\`||!/^[a-f0-9]{40}$/.test(currentSha))
+if(process.env.GITHUB_REF!==`refs/heads/${srcBranch}`||!/^[a-f0-9]{40}$/.test(currentSha))
   throw Error('ISOLATED_RELEASE_BRANCH_REQUIRED');
 const p=JSON.parse(fs.readFileSync('unified-four-review/candidate.json','utf8'));
 assert.equal(p.gitCommit,currentSha);
