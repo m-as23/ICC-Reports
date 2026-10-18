@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "project": "MainTrack",
+  "reviewedAt": "2026-10-18",
+  "phase": "PRODUCTION_FOUNDATION_NOT_LIVE",
+  "purpose": "Source-of-truth registry; each future deployment must be checked against this file before publishing.",
+  "repository": {
+    "fullName": "m-as23/ICC-Reports",
+    "currentDefaultBranch": "main",
+    "defaultBranchRole": "legacy_unsafe_to_deploy",
+    "frozenBaselineBranch": "baseline/maintrack-v0.4.4-owner-verified-20261018",
+    "frozenBaselineCommit": "11a910e42c4c5ed6d34bac2102f567bdaa3db927",
+    "reviewedFeatureCommit": "865229c4706e946377fba811d2f51dad1a815138",
+    "operationsBranch": "ops/maintrack-044-production-foundation-20261018"
+  },
+  "web": {
+    "production": {
+      "provider": "Vercel",
+      "name": "maintrack-production",
+      "projectId": "prj_9IQgcJzKvkSPXxHmzDvy5DrQ0qet",
+      "deployment": null,
+      "stableDomain": null,
+      "status": "CREATED_NOT_DEPLOYED",
+      "gitConnected": false
+    },
+    "lastOwnerReviewedPreview": {
+      "provider": "Vercel",
+      "project": "maintrack-final-security-qa",
+      "projectId": "prj_7l6q0Qx7vV7K5LP52MUNXjBOD3ZQ",
+      "deploymentId": "dpl_DA1z9Bt8ZcyCQHtTaUk9fvTTvQDf",
+      "url": "https://maintrack-final-security-ldgcbkqqw-mohamedashrefsrag-5918.vercel.app",
+      "sourceMarker": "QA ONLY | stage22 | b8aaffb4e13269bccd18c0b6736a5fd17192e57b",
+      "status": "QA_ONLY"
+    }
+  },
+  "android": {
+    "appId": "com.icc.maintrack",
+    "distribution": "EXISTING_DEVICE_SIGNED_WEB_OTA_ONLY",
+    "version": "0.4.4",
+    "channel": "lab",
+    "signedManifest": "https://raw.githubusercontent.com/m-as23/ICC-Reports/android/stage14-ota-native-lab/updates/android/release.json",
+    "bundleSha256": "86c514750b2a30950c1882f2d8a350cff62c41bcb241d43085ef2c5085456843",
+    "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/d17f92175b9ecb2163598fc3ee7a6e10caaf17c1/updates/android/maintrack-0.4.4.zip",
+    "manifestExpiresAt": "2026-10-24T14:34:47.301Z",
+    "localData": {
+      "reportQueue": 1,
+      "writesReportQueue": 1,
+      "migration": "none"
+    },
+    "status": "USER_TESTED_LAB_ONLY; NO_SIGNED_INSTALLABLE_EMPLOYEE_APK_PROVEN"
+  },
+  "backend": {
+    "provider": "Supabase",
+    "staging": {
+      "project": "MainTrack-Staging",
+      "projectId": "tdnkeskczcsukcujwinu",
+      "sharedDatabase": true,
+      "qaApi": {
+        "name": "maintrack-unified-four-qa",
+        "version": 15,
+        "actions": 32
+      },
+      "stableLegacyApi": {
+        "name": "maintrack-stage9-security-api",
+        "version": 10,
+        "actions": 26
+      }
+    },
+    "production": {
+      "projectId": null,
+      "apiName": null,
+      "status": "NOT_CREATED"
+    },
+    "criticalDifference": "Source UI JS retains stage9 API URL. Tested Android 0.4.4 OTA was modified at packaging to call maintrack-unified-four-qa; Stage9 legacy does not support accountSummary / overtime API."
+  },
+  "database": {
+    "production": {
+      "projectId": null,
+      "status": "NOT_CREATED"
+    },
+    "staging": {
+      "projectId": "tdnkeskczcsukcujwinu",
+      "schemaTables": 23,
+      "migrationsApplied": 32,
+      "asOfRead": "2026-10-18",
+      "containsRealOrTestRows": "UNCLASSIFIED; DO_NOT_PURGE",
+      "sampleTableRowCounts": {
+        "mt_users": 11,
+        "mt_reports": 119,
+        "mt_leave_requests": 12,
+        "mt_overtime_requests": 3
+      }
+    },
+    "backupStatus": "ONLY_SCHEMA_CATALOG_AND_SOME_SOURCE_SQL; NO_RESTORABLE_FULL_DATABASE_BACKUP"
+  },
+  "blockers": [
+    "Create isolated Production database and reconstruct verified full schema from all 32 migrations and any non-migration SQL changes",
+    "Ensure stable Prod API supports all 32 dispatch actions and has proper per-role auth and CORS for one official stable Web host plus https://localhost for native",
+    "Build and deploy exact reviewed Web candidate with correct Production API, immutable release directories, verified rollout metadata and rollback",
+    "Obtain signed installable native APK matching employee package/signing identity (OTA ZIP is not an APK)",
+    "End-to-end run owner/engineer/technician report, leave, overtime, notifications and rollback on isolated accounts",
+    "Secure real DB backup and restore test",
+    "Sign release metadata with valid expiry or renew release policy, then enable official user rollout",
+    "Only after employee rollout and dependency audit delete old projects or branches"
+  ],
+  "prohibitedUntilReleased": [
+    "Delete staging Supabase project/users/data/tables/Edge functions",
+    "Delete historical signed OTA 0.4.3 or 0.4.4 and manifest branch",
+    "Delete current QA preview or pilot web domains",
+    "Publish old main branch as official web app",
+    "Publish QA Android debug APK as employee application",
+    "Change employee OTA signing trust root or appId",
+    "Remove legacy project URLs/QR notification origins without usage audit"
+  ],
+  "updatedBy": "GitHub runtime audit; does not assert any live Production deployment"
+}
