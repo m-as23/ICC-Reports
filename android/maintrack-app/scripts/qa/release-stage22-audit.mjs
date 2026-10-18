@@ -27,7 +27,7 @@ console.log('PASS existing owner-signed 0.4.3 OTA trust key and manifest');
 
 const candidate=JSON.parse(fs.readFileSync('unified-four-review/candidate.json','utf8'));
 assert.equal(candidate.gitCommit,head);
-assert.equal(candidate.branch,expectBranch);
+assert.ok(candidate.branch===''||candidate.branch===expectBranch,'review manifest may record detached GitHub checkout; trusted GITHUB_REF is required separately');
 assert.equal(candidate.appId,'com.icc.maintrack');
 assert.equal(candidate.mode,'review-only');
 assert.equal(candidate.deployable,false);
