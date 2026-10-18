@@ -16,9 +16,9 @@ const qaProfile=role=>({
 });
 const overtime=[
  {id:'OT-QA-MONEY',date:'2026-10-14',from:'15:00',to:'19:00',
-   minutes:240,hours:4,compensation:'FINANCIAL',workKind:'AFTER_SHIFT',status:'APPROVED',reason:'Demo'},
+   minutes:240,hours:4,compensation:'FINANCIAL',workKind:'AFTER_SHIFT',status:'APPROVED',reason:'Demo',decidedAt:'2026-10-17T11:00:00Z'},
  {id:'OT-QA-BADAL',date:'2026-10-15',from:'07:00',to:'15:00',
-   minutes:480,hours:8,compensation:'SUBSTITUTE',workKind:'INDEPENDENT_DAY',status:'PENDING',reason:'Demo'}
+   minutes:480,hours:8,compensation:'SUBSTITUTE',workKind:'INDEPENDENT_DAY',status:'PENDING',reason:'Demo',createdAt:'2026-10-18T08:00:00Z'}
 ];
 before(async()=>{
  const names=await fs.readdir(path.join(root,'releases'));
@@ -90,7 +90,7 @@ async function withPage(role,run){
    case 'leaveInbox':return ok({items:[
       {id:'LV-QA',name:'Pilot Engineer',code:'PILOT02',
        type:'annual',start:'2026-10-16',end:'2026-10-16',days:1,durationKind:'FULL_DAY',
-       status:decisions.leave||'PENDING',reason:'Demo leave'},
+       status:decisions.leave||'PENDING',reason:'Demo leave',createdAt:'2026-10-17T08:00:00Z'},
       {id:'LV-QA-APPROVED',name:'Approved Pilot Technician',code:'QATECH',
        type:'annual',start:'2026-10-17',end:'2026-10-17',days:1,status:'APPROVED'},
       {id:'LV-QA-REJECTED',name:'Rejected Pilot Technician',code:'QAREJ',
