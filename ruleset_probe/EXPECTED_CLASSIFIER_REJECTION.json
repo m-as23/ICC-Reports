@@ -1,7 +1,0 @@
-{
-  "schema": 1,
-  "kind": "harmless-github-rule-validation",
-  "purpose": "Trigger unknown-path classification failure without touching application, database or release code",
-  "production": false,
-  "deploy": false
-}
