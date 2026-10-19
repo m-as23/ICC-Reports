@@ -70,6 +70,12 @@ jobs:
         run: |
           node ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
           node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+      - name: Install locked dependencies for native session and local work QA bundle
+        run: npm --prefix android/maintrack-app ci --no-audit --no-fund
+      - name: Stage source-locked 0.4.5 native Web assets, preserving native session and offline work
+        run: |
+          node --test ops/maintrack/tests/prepare-native-405-qa.test.mjs
+          node ops/maintrack/scripts/prepare-native-405-qa.mjs --prepare
       - name: Inform owner — preflight never builds or publishes
         if: always()
         run: |
