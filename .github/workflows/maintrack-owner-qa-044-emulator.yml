@@ -84,7 +84,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             OLD=.qa-old-041/MainTrack-stage14-release.apk
             APK=.qa-044/MainTrack-0.4.4-Owner-QA-ONLY.apk
             adb wait-for-device
@@ -117,4 +117,4 @@ jobs:
         run: |
           echo '### Owner QA 0.4.4 emulator checks' >> "$GITHUB_STEP_SUMMARY"
           echo 'No employees, Production web, Production database, OTA manifest or production rollout were modified.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'PASS establishes genuine signed 0.4.1 -> 0.4.4 in-place install only; Owner session/data continuity still requires real device acceptance.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This workflow only attempts signed 0.4.1 to 0.4.4 in-place upgrade; check actual step outcome. Owner session/data continuity still requires real-device acceptance.' >> "$GITHUB_STEP_SUMMARY"
