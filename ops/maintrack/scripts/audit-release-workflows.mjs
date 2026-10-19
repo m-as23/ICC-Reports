@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
-const root=path.resolve(import.meta.dirname,'../../../..');
+const root=path.resolve(import.meta.dirname,'../../..');
 const conf=JSON.parse(fs.readFileSync(path.join(root,'ops/maintrack/security/release-surface-register.json'),'utf8'));
 const folder=path.join(root,'.github/workflows');
 const files=fs.readdirSync(folder).filter(n=>/\.ya?ml$/.test(n)).sort();
