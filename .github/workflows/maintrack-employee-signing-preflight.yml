@@ -32,6 +32,17 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+      - name: Verify current protected GitHub Environment native version floor is exactly 404
+        env:
+          MT_ANDROID_LAST_VERSION_CODE: ${{ vars.MT_ANDROID_LAST_VERSION_CODE }}
+        run: |
+          set -euo pipefail
+          if [ "$MT_ANDROID_LAST_VERSION_CODE" != '404' ]; then
+            echo 'BLOCKED: GitHub Environment MT_ANDROID_LAST_VERSION_CODE must equal approved Owner 0.4.4 / native code 404.' >&2
+            exit 1
+          fi
+          echo 'PASS: protected GitHub Environment native last versionCode equals Owner-accepted 404.'
+          echo 'No credentials, values other than approved floor, APK or OTA content are disclosed.'
       - name: Verify Android APK keystore certificate AND usable private key without building or publishing
         env:
           MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
