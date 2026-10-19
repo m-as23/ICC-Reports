@@ -28,7 +28,7 @@ async function inventory(dir,segment=''){
 export async function prepareQaBundle({from=source,to=output}={}){
  const absSrc=path.resolve(from),absDst=path.resolve(to);
  assert.notEqual(absSrc,absDst,'REFUSE_OVERWRITE_CANONICAL_SOURCE');
- assert.ok(absDst!==source&&!source.startsWith(absDst+'/')&&!absDst.startsWith(source+'/'),
+ assert.ok(!absSrc.startsWith(absDst+'/')&&!absDst.startsWith(absSrc+'/'),
    'REFUSE_OVERLAPPING_SOURCE_OUTPUT');
  const files=await inventory(absSrc);
  assert.ok(files.includes(entry)&&files.includes('index.html'),'MISSING_WEB_SHELL');
