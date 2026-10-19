@@ -31,6 +31,8 @@ jobs:
           cache-dependency-path: android/maintrack-app/package-lock.json
       - name: Classify update from ops reference (never publish)
         run: node ops/maintrack/scripts/classify-future-update.mjs
+      - name: Audit repository-write and Android signing workflow surface
+        run: node ops/maintrack/scripts/audit-release-workflows.mjs
       - name: Install locked dependencies
         run: npm --prefix android/maintrack-app ci --no-audit --no-fund
       - name: Regression tests — session, login, offline queue, OTA signature, rollback and roles
