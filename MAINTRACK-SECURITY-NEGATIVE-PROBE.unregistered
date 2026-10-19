@@ -1,0 +1,2 @@
+SECURITY_NEGATIVE_PROBE_ONLY
+This deliberately unregistered root-level file must be rejected by MainTrack Change QA's fail-closed update-impact classifier. It must never be merged into the protected branch and does not change runtime code.
