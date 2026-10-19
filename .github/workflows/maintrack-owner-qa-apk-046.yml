@@ -1,0 +1,182 @@
+name: MainTrack — 0.4.6 (406) Signed Owner QA APK, No Rollout
+on:
+  push:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-owner-qa-apk-046.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: maintrack-046-signed-owner-qa-one-at-a-time
+  cancel-in-progress: false
+jobs:
+  build-signed-owner-only-qa:
+    name: Build signed Android 0.4.6 (406) for Owner device review ONLY
+    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: maintrack-android-release
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - name: Check out exact approved MainTrack commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prepare Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - name: Prepare Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Require reviewed ops HEAD and combined QA PASS on this exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'm-as23/ICC-Reports'
+          test "$GITHUB_REF" = 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/ops/maintrack-044-production-foundation-20261018)" = "$GITHUB_SHA"
+          result="pending"
+          for attempt in $(seq 1 45); do
+            result="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name == "MainTrack Staging-only QA — required combined result")] | sort_by(.completed_at) | last | .conclusion // "pending"')"
+            if [ "$result" = "success" ]; then
+              break
+            fi
+            case "$result" in
+              failure|cancelled|timed_out|action_required) echo 'BLOCKED: required QA failed'; exit 1;;
+            esac
+            sleep 20
+          done
+          test "$result" = success
+          echo 'PASS required combined QA from exact protected release-source commit.'
+      - name: Enforce Staging-only Owner QA policy and strict native 406 floor
+        env:
+          MAINTRACK_RELEASE_APP_ID: com.icc.maintrack
+          MAINTRACK_RELEASE_VERSION_CODE: '406'
+          MAINTRACK_RELEASE_VERSION_NAME: '0.4.6'
+          MT_ANDROID_LAST_VERSION_CODE: ${{ vars.MT_ANDROID_LAST_VERSION_CODE }}
+        run: |
+          set -euo pipefail
+          node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+          case "$MT_ANDROID_LAST_VERSION_CODE" in 404|405) ;; *) echo "BLOCKED: unreviewed last installed version"; exit 1;; esac
+          export MAINTRACK_ANDROID_CERT_SHA256="$(node -p 'JSON.parse(require("fs").readFileSync("../../ops/maintrack/security/android-native-release-floor.json","utf8")).androidApkSigningCertificateSha256')"
+          node ../../ops/maintrack/scripts/native-release-floor.mjs --candidate
+          python3 -m unittest discover -s ../../ops/maintrack/tests -p 'test_verify_native_405_build.py' -v
+      - name: Prepare dependencies and Android SDK build tools
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -x "$MANAGER"
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Assemble reviewed native 405 source assets for 406 clean UI hotfix
+        run: |
+          set -euo pipefail
+          node ../../ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
+          node ../../ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+          node ../../ops/maintrack/scripts/prepare-complete-staging-web.mjs --prepare
+          node ../../ops/maintrack/scripts/prepare-complete-staging-web.mjs --verify
+          node ../../ops/maintrack/scripts/prepare-native-405-qa.mjs --prepare
+          node ../../ops/maintrack/scripts/check-next-native-session-assets.mjs --require
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py --mode candidate
+      - name: Prepare Capacitor Android after unsigned PR compile; audit all reviewed WebView assets
+        run: |
+          set -euo pipefail
+          test ! -e android
+          test ! -e www
+          cp -a ../../audit-output/native-405-qa/www ./www
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          node scripts/harden-native.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          file=Path('android/app/build.gradle')
+          data=file.read_text()
+          assert len(re.findall(r'\bversionCode\s+\d+',data)) == 1, 'GRADLE_VERSION_CODE_AMBIGUOUS'
+          assert len(re.findall(r'\bversionName\s+"[^"]+"',data)) == 1, 'GRADLE_VERSION_NAME_AMBIGUOUS'
+          data=re.sub(r'\bversionCode\s+\d+', 'versionCode 406', data, count=1)
+          data=re.sub(r'\bversionName\s+"[^"]+"', 'versionName "0.4.6"', data, count=1)
+          file.write_text(data)
+          PY
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py --mode android-sync
+      - name: Assemble unsigned native release using Gradle (strictly no signing yet)
+        run: |
+          set -euo pipefail
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          test -s android/app/build/outputs/apk/release/app-release-unsigned.apk
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py --mode android-sync
+      - name: Sign with original installed Android key and verify signed APK
+        env:
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYFILE="$(mktemp "${RUNNER_TEMP}/maintrack-406-key.XXXXXX")"
+          trap 'rm -f "$KEYFILE"' EXIT
+          python3 - <<'PY'
+          import importlib.util,json,os
+          from pathlib import Path
+          spec=importlib.util.spec_from_file_location('release_preflight','scripts/release-preflight.py')
+          module=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          expected=json.loads(Path('../../ops/maintrack/security/android-native-release-floor.json').read_text())['androidApkSigningCertificateSha256']
+          try:
+              module.verify_keystore(os.environ,expected)
+          except module.PreflightError as err:
+              raise SystemExit('BLOCKED: '+str(err))
+          print('PASS approved Android keystore and private key continuity')
+          PY
+          printf '%s' "$MT_ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYFILE"
+          test -s "$KEYFILE"
+          BUILD_TOOLS="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          mkdir -p release-output
+          "$BUILD_TOOLS/zipalign" -p -f 4 \
+            android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            release-output/MainTrack-046-aligned.tmp.apk
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks "$KEYFILE" --ks-key-alias "$MT_ANDROID_KEY_ALIAS" \
+            --ks-pass env:MT_ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:MT_ANDROID_KEY_PASSWORD \
+            --out release-output/MainTrack-0.4.6-406-OWNER-QA-ONLY.apk \
+            release-output/MainTrack-046-aligned.tmp.apk
+          rm -f release-output/MainTrack-046-aligned.tmp.apk
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py \
+            --mode signed \
+            --apk release-output/MainTrack-0.4.6-406-OWNER-QA-ONLY.apk \
+            --provenance release-output/owner-qa-406-provenance.json \
+            --sdk-build-tools "$BUILD_TOOLS"
+      - name: Store installable APK in GitHub Actions artifact ONLY — no OTA, Vercel, GitHub release or employee rollout
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.6-406-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES
+          path: |
+            android/maintrack-app/release-output/MainTrack-0.4.6-406-OWNER-QA-ONLY.apk
+            android/maintrack-app/release-output/owner-qa-406-provenance.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Document testing status clearly
+        if: always()
+        run: |
+          echo 'MainTrack 0.4.6 / versionCode 406 Owner QA build attempt.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'NO Android installation, NO user data test, NO signed OTA, NO Web deployment, NO Supabase change, NO employee rollout.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'APK installation over 0.4.5 and preservation of login/offline data require separate Owner-device acceptance.' >> "$GITHUB_STEP_SUMMARY"
