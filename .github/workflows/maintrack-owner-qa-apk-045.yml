@@ -93,7 +93,7 @@ jobs:
           node ../../ops/maintrack/scripts/prepare-native-405-qa.mjs --prepare
           node ../../ops/maintrack/scripts/check-next-native-session-assets.mjs --require
           python3 ../../ops/maintrack/scripts/verify-native-405-build.py --mode candidate
-      - name: Prepare Capacitor Android; permit empty optional Cordova plugin-list files only
+      - name: Prepare Capacitor Android after unsigned PR compile; audit all reviewed WebView assets
         run: |
           set -euo pipefail
           test ! -e android

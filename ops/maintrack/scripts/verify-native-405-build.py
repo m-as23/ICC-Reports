@@ -143,8 +143,8 @@ def verify_synced_asset_tree(reviewed, android_assets):
         require((reviewed / rel).read_bytes() == (android_assets / rel).read_bytes(),
                 "CAPACITOR_SYNC_BYTES_DIFFER: " + rel)
     # Capacitor emits empty plugin-loader placeholders when no Cordova plugins exist.
-    # Only these two exact optional bootstrap file names may have zero bytes.
-    optional_empty_plugins = {"cordova_plugins.js", "capacitor.plugins.js"}
+    # Only these three exact optional bootstrap file names may have zero bytes.
+    optional_empty_plugins = {"cordova.js", "cordova_plugins.js", "capacitor.plugins.js"}
     for rel in extra:
         size = (android_assets / rel).stat().st_size
         lower = 0 if rel in optional_empty_plugins else 1
