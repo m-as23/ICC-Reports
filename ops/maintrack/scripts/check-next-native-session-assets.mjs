@@ -36,7 +36,11 @@ function main(){
  const config=JSON.parse(fs.readFileSync(path.join(ROOT,'android/maintrack-app/capacitor.config.json'),'utf8'));
  try{
   const r=verifyNativeSessionAssets(candidateRoot,{config});
-  console.log('PASS Android-native candidate has the secure-session bridge and QA API',JSON.stringify(r));
+  const webQa=path.join(ROOT,'audit-output/maintrack-staging-web-qa/secure-assets/index-inline-1.js');
+  const nativeQa=path.join(candidateRoot,'secure-assets/index-inline-1.js');
+  assert.ok(fs.readFileSync(webQa).equals(fs.readFileSync(nativeQa)),
+    'WEB_AND_NATIVE_STAGING_API_BYTES_NOT_IDENTICAL');
+  console.log('PASS Android-native candidate has secure-session bridge; Web and Android reviewed API JS identical',JSON.stringify(r));
  }catch(error){
   if(mode!=='--audit')throw error;
   assert.match(error.message,/MISSING_NATIVE_SESSION_ASSET|NATIVE_SECURE_SESSION_BRIDGE_NOT_LOADED/,
