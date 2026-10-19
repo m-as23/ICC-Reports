@@ -26,3 +26,8 @@ Do **not** increment `MT_ANDROID_LAST_VERSION_CODE` to 405 merely on build succe
 - No Production endpoint or employee rollout.
 - No release of unreviewed GitHub main branch or test accounts.
 - No forced logout, uninstall or deletion of local reports.
+
+## First live Android build safeguard (run 39257753746)
+The initial live Owner QA build confirmed PR #13 checks passed and assembled the Native source, but **stopped before Gradle/signing** at `CAPACITOR_SYNC_ASSET_LIST_DRIFT`. Capacitor adds generated runtime files to `android/app/src/main/assets/public` alongside the byte-for-byte copied source.
+
+The refined check permits **only a short explicit allowlist** of generated Capacitor/WebView runtime names (`capacitor.js`, `capacitor.plugins.js`, `cordova.js`, `cordova_plugins.js`), still requires **every reviewed asset** to be present and identical, and rejects unexpected extra files, missing session bridge, changed HTML/JS or mismatched Gradle version. Tests cover all these conditions. A change to this workflow file triggers a fresh Owner-only build on protected ops after QA PASS; no rerun of the old SHA or signing attempt from the feature branch is permitted.
