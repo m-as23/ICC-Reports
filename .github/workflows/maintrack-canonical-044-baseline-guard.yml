@@ -32,6 +32,8 @@ jobs:
           git fetch --no-tags --depth=1 origin android/stage14-ota-native-lab
       - name: Verify canonical source and OTA signature/checksum without secrets
         run: node ops/maintrack/scripts/verify-registry.mjs
+      - name: Verify staged 32-action API contract against Web (no Production promotion)
+        run: node ops/maintrack/scripts/verify-prod-api-contract.mjs
       - name: Run immutable employee release gate (must remain blocked)
         run: node ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
       - name: Show non-production gate
