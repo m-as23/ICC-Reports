@@ -46,6 +46,11 @@ jobs:
           node --test ops/maintrack/tests/prepare-qa-api-client.test.mjs
           node ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
           node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+      - name: Validate complete Staging-only Web/Android package and future signed APK checks
+        run: |
+          node --test ops/maintrack/tests/full-qa-bundle.test.mjs ops/maintrack/tests/inspect-signed-apk.test.mjs ops/maintrack/tests/check-native-bridge-readiness.test.mjs
+          node ops/maintrack/scripts/prepare-full-qa-bundle.mjs
+          node ops/maintrack/scripts/check-native-bridge-readiness.mjs --audit
       - name: Install locked dependencies
         run: npm --prefix android/maintrack-app ci --no-audit --no-fund
       - name: Regression tests — session, login, offline queue, OTA signature, rollback and roles
