@@ -4,13 +4,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createRequire} from 'node:module';
+import {prepareStagingClient} from './prepare-staging-client.mjs';
 
 const root=path.resolve(import.meta.dirname,'../../..');
 const app=path.join(root,'android/maintrack-app');
 const require=createRequire(path.join(app,'package.json'));
 const {build}=require('esbuild');
 const source=path.join(app,'www');
-const web=path.join(root,'web/maintrack/public');
+const web=path.join(root,'audit-output/staging-client');
 const sha=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 if(!/^[a-f0-9]{40}$/.test(sha))throw Error('UNTRUSTED_CHECKOUT');
 // QA browser fixtures are generated from the checked-out review commit.
@@ -18,6 +19,7 @@ if(!/^[a-f0-9]{40}$/.test(sha))throw Error('UNTRUSTED_CHECKOUT');
 // intentionally distinct from the current canonical Web index. Production
 // packaging remains blocked by its own signature, lock and owner gates.
 await fs.rm(source,{recursive:true,force:true});
+await prepareStagingClient();
 await fs.cp(web,source,{recursive:true});
 await build({
   entryPoints:[path.join(app,'update-system/startup.mjs')],
