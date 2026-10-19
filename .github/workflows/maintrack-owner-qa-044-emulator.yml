@@ -30,6 +30,30 @@ jobs:
           run-id: 39172121032
           github-token: ${{ github.token }}
           path: android/maintrack-app/.qa-044
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-Background-Updates-Signed-APK
+          repository: m-as23/ICC-Reports
+          run-id: 38978979438
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/.qa-old-041
+      - name: Require original signed 0.4.1 / code 401 artifact before testing upgrade
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          old=pathlib.Path('.qa-old-041')
+          baseline=json.loads(pathlib.Path('../../ops/maintrack/employee-release-gates.json').read_text())['currentBaseline']
+          signed=json.loads((old/'release-provenance.json').read_text())
+          apk=old/'MainTrack-stage14-release.apk'
+          assert apk.is_file(),'ORIGINAL_SIGNED_041_APK_MISSING'
+          assert signed['signed'] is True and signed['appId']==baseline['appId'],'OLD_APK_IDENTITY'
+          assert signed['versionCode']==401 and signed['versionName']=='0.4.1','OLD_APK_NOT_PHONE_VERSION'
+          assert signed['certificateSha256']==baseline['installedAndroidCertificateSha256'],'OLD_APK_CERT_DIFFERENT_FROM_PHONE'
+          assert hashlib.sha256(apk.read_bytes()).hexdigest()==signed['apkSha256'],'OLD_APK_HASH_FAILED'
+          assert hashlib.sha256(apk.read_bytes()).hexdigest()==(old/'MainTrack-stage14-release.sha256').read_text().split()[0],'OLD_SIGNED_HASH_FILE_FAILED'
+          print('PASS archived 0.4.1 signed APK has correct certificate and exact phone version code 401')
+          PY
       - name: Verify downloaded bytes, app signature and non-production designation
         run: |
           set -euo pipefail
@@ -50,7 +74,7 @@ jobs:
           assert proof['channel']=='OWNER_QA_ONLY' and proof['qaApiOnly'] is True
           print('PASS exact signed QA-only APK artifact, original cert fingerprint and increasing versionCode')
           PY
-      - name: Android 35 emulator — install, launch, reopen, in-place reinstall without uninstall
+      - name: Android 35 emulator — real signed 0.4.1 to 0.4.4 in-place upgrade
         uses: reactivecircus/android-emulator-runner@v2
         with:
           working-directory: android/maintrack-app
@@ -61,9 +85,16 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             set -euo pipefail
+            OLD=.qa-old-041/MainTrack-stage14-release.apk
             APK=.qa-044/MainTrack-0.4.4-Owner-QA-ONLY.apk
             adb wait-for-device
             adb logcat -c
+            adb install -r "$OLD"
+            adb shell dumpsys package com.icc.maintrack | grep -E 'versionCode=401|versionName=0.4.1'
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 7
+            adb shell pidof com.icc.maintrack
+            adb shell am force-stop com.icc.maintrack
             adb install -r "$APK"
             adb shell pm path com.icc.maintrack
             adb shell dumpsys package com.icc.maintrack | grep -E 'versionCode=404|versionName=0.4.4'
@@ -74,20 +105,16 @@ jobs:
             adb shell am start -n com.icc.maintrack/.MainActivity
             sleep 5
             adb shell pidof com.icc.maintrack
-            adb install -r "$APK"
-            adb shell am start -n com.icc.maintrack/.MainActivity
-            sleep 5
-            adb shell pidof com.icc.maintrack
             if adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com\.icc\.maintrack,' > .qa-044/crash-hits.txt; then
               cat .qa-044/crash-hits.txt
               echo 'FAIL: Android crash detected during install/reopen/in-place reinstall'
               exit 1
             fi
-            echo 'PASS: APK installs, launches, reopens and upgrades in place on clean emulator without native process crash.'
-            echo 'LIMITATION: Not a real 0.4.1 -> 0.4.4 session continuity test; physical Owner acceptance still mandatory.'
+            echo 'PASS: original signed 0.4.1 installs, and signed 0.4.4 upgrades over it without uninstall, launches and reopens without process crash.'
+            echo 'LIMITATION: In-place 0.4.1 -> 0.4.4 installation verified on emulator; authenticated session and local data retention still require Owner acceptance.'
       - name: Record scope of synthetic test, not employee approval
         if: always()
         run: |
           echo '### Owner QA 0.4.4 emulator checks' >> "$GITHUB_STEP_SUMMARY"
           echo 'No employees, Production web, Production database, OTA manifest or production rollout were modified.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'PASS does **not** establish preservation of a 0.4.1 real user session or report queue.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'PASS establishes genuine signed 0.4.1 -> 0.4.4 in-place install only; Owner session/data continuity still requires real device acceptance.' >> "$GITHUB_STEP_SUMMARY"
