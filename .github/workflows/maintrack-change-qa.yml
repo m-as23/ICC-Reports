@@ -37,10 +37,11 @@ jobs:
         run: |
           node ops/maintrack/scripts/native-release-floor.mjs --audit
           node --test ops/maintrack/tests/native-release-floor.test.mjs
-      - name: Validate future-release Web/API parity guard without changing existing 0.4.4
+      - name: Validate deterministic shared Staging client API for Web and Android, preserving signed 0.4.4
         run: |
-          node --test ops/maintrack/tests/next-release-api-parity.test.mjs
-          node ops/maintrack/scripts/check-next-release-api-parity.mjs --audit
+          node --test ops/maintrack/tests/next-release-api-parity.test.mjs ops/maintrack/tests/prepare-staging-client.test.mjs
+          node ops/maintrack/scripts/prepare-staging-client.mjs
+          node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
       - name: Install locked dependencies
         run: npm --prefix android/maintrack-app ci --no-audit --no-fund
       - name: Regression tests — session, login, offline queue, OTA signature, rollback and roles
