@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "name": "MainTrack Release API Compatibility Contract",
+  "reviewedAt": "2026-10-19",
+  "state": "PRELAUNCH_NO_PRODUCTION_API",
+  "requiredAppId": "com.icc.maintrack",
+  "requiredActions": [
+    "session",
+    "init",
+    "nextId",
+    "submit",
+    "cmmsDelete",
+    "cmmsWrite",
+    "cmmsAudit",
+    "cmms",
+    "dashboard",
+    "overtimeMine",
+    "overtimeRequest",
+    "overtimeDecision",
+    "overtimeSummary",
+    "overtimeInbox",
+    "notifications",
+    "profile",
+    "accountSummary",
+    "updateProfile",
+    "leaveMine",
+    "leaveRequest",
+    "leaveDecision",
+    "leaveInbox",
+    "leavePendingCount",
+    "markNotificationRead",
+    "markAllNotificationsRead",
+    "adminCatalog",
+    "adminCatalogSave",
+    "adminCreateEmployee",
+    "adminResetEmployeePassword",
+    "adminUsers",
+    "adminSaveUser",
+    "change"
+  ],
+  "liveSourceAudit": {
+    "stagingSupabaseProject": "tdnkeskczcsukcujwinu",
+    "legacyFunction": {
+      "slug": "maintrack-stage9-security-api",
+      "version": 10,
+      "verifiedCount": 26,
+      "missingRequiredActions": [
+        "accountSummary",
+        "overtimeMine",
+        "overtimeRequest",
+        "overtimeDecision",
+        "overtimeSummary",
+        "overtimeInbox"
+      ]
+    },
+    "qaFunction": {
+      "slug": "maintrack-unified-four-qa",
+      "version": 15,
+      "verifiedCount": 32,
+      "hasAllRequiredActions": true
+    }
+  },
+  "webSource": {
+    "path": "web/maintrack/public/secure-assets/index-inline-1.js",
+    "embeddedLegacyApiPath": "/maintrack-stage9-security-api/api",
+    "productionReady": false,
+    "note": "Do not deploy as-is: existing Web source points to legacy 26-action deployed endpoint; QA Android 0.4.4 carries a controlled build-time rewrite."
+  },
+  "policy": {
+    "allowedDeploymentPhases": [
+      "QA",
+      "RELEASE_CANDIDATE",
+      "PRODUCTION"
+    ],
+    "canUseStagingDatabaseAsProduction": false,
+    "mustKeepAll32ActionNames": true,
+    "mustPreserveLegacy26ActionSemantics": true,
+    "requireAllRoleAuthorizationTests": true,
+    "requireCORSForOfficialWebOriginAndHttpsLocalhost": true,
+    "requireStableBackendAndWebSameRelease": true,
+    "releaseEnabled": false
+  }
+}
