@@ -1,0 +1,91 @@
+name: MainTrack — Android 0.4.6 Unsigned Assembly Gate (No Secrets)
+on:
+  pull_request:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-owner-qa-apk-046.yml'
+      - '.github/workflows/maintrack-android-406-unsigned-ci.yml'
+      - 'ops/maintrack/scripts/verify-native-406-build.py'
+      - 'ops/maintrack/tests/test_verify_native_405_build.py'
+      - 'ops/maintrack/scripts/prepare-native-405-qa.mjs'
+      - 'android/maintrack-app/tests-release/test_ui_046_release.py'
+      - 'android/maintrack-app/scripts/harden-native.mjs'
+permissions:
+  contents: read
+jobs:
+  unsigned-native-assembly:
+    name: Android 406 unsigned native compile and reviewed asset continuity
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Validate no Production rollout and native metadata unit tests
+        run: |
+          set -euo pipefail
+          node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+          python3 -m unittest discover -s ../../ops/maintrack/tests -p 'test_verify_native_405_build.py' -v
+      - name: Install Android build requirements only (no signing secrets)
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -x "$MANAGER"
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Review and assemble exact isolated Web and native session-safe Staging source
+        run: |
+          set -euo pipefail
+          node ../../ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
+          node ../../ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+          node ../../ops/maintrack/scripts/prepare-complete-staging-web.mjs --prepare
+          node ../../ops/maintrack/scripts/prepare-complete-staging-web.mjs --verify
+          node ../../ops/maintrack/scripts/prepare-native-405-qa.mjs --prepare
+          node ../../ops/maintrack/scripts/check-next-native-session-assets.mjs --require
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py --mode candidate
+      - name: Assemble Capacitor and verify Android session/plugin plus exact reviewed source bytes
+        run: |
+          set -euo pipefail
+          test ! -e android
+          test ! -e www
+          cp -a ../../audit-output/native-405-qa/www ./www
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          node scripts/harden-native.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          file=Path('android/app/build.gradle')
+          data=file.read_text()
+          assert len(re.findall(r'\bversionCode\s+\d+',data)) == 1
+          assert len(re.findall(r'\bversionName\s+"[^"]+"',data)) == 1
+          data=re.sub(r'\bversionCode\s+\d+','versionCode 406',data,count=1)
+          data=re.sub(r'\bversionName\s+"[^"]+"','versionName "0.4.6"',data,count=1)
+          file.write_text(data)
+          PY
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py --mode android-sync
+      - name: Compile real unsigned Android 406 release APK with Gradle — never sign or upload it
+        run: |
+          set -euo pipefail
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          test -s android/app/build/outputs/apk/release/app-release-unsigned.apk
+          python3 ../../ops/maintrack/scripts/verify-native-406-build.py --mode android-sync
+      - name: Report a safe unsigned result
+        if: always()
+        run: |
+          echo 'Unsigned Android 406 build check. No Environment access, no APK signing secrets, no published artifact, no rollout.' >> "$GITHUB_STEP_SUMMARY"
