@@ -70,6 +70,10 @@ jobs:
         run: |
           node ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
           node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+      - name: Deny APK build until complete staged native bundle has secure-session continuity
+        run: |
+          node ops/maintrack/scripts/prepare-full-qa-bundle.mjs
+          node ops/maintrack/scripts/check-native-bridge-readiness.mjs --enforce
       - name: Inform owner — preflight never builds or publishes
         if: always()
         run: |
