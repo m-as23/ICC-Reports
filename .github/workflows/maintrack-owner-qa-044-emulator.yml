@@ -1,0 +1,93 @@
+name: MainTrack — Owner QA 0.4.4 Device Boot Smoke (No Rollout)
+on:
+  push:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-owner-qa-044-emulator.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  signed-owner-apk-emulator:
+    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Assert no employee production release authorized
+        run: node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-0.4.4-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES
+          repository: m-as23/ICC-Reports
+          run-id: 39172121032
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/.qa-044
+      - name: Verify downloaded bytes, app signature and non-production designation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          p=Path('.qa-044')
+          proof=json.loads((p/'owner-qa-provenance.json').read_text())
+          baseline=json.loads(Path('../../ops/maintrack/employee-release-gates.json').read_text())['currentBaseline']
+          apk=p/'MainTrack-0.4.4-Owner-QA-ONLY.apk'
+          assert apk.is_file() and hashlib.sha256(apk.read_bytes()).hexdigest()==proof['sha256'],'APK_HASH_MISMATCH'
+          assert apk.stat().st_size==proof['bytes'],'APK_LENGTH_MISMATCH'
+          assert proof['certificateSha256']==baseline['installedAndroidCertificateSha256'],'ANDROID_CERT_MISMATCH'
+          assert proof['appId']==baseline['appId']=='com.icc.maintrack','APP_ID_MISMATCH'
+          assert proof['versionCode']>baseline['installedNativeVersionCode'],'NOT_AN_UPGRADE'
+          assert proof['versionCode']==404 and proof['versionName']=='0.4.4','UNEXPECTED_BUILD'
+          assert proof['employeeRelease'] is False and proof['rolloutEnabled'] is False
+          assert proof['channel']=='OWNER_QA_ONLY' and proof['qaApiOnly'] is True
+          print('PASS exact signed QA-only APK artifact, original cert fingerprint and increasing versionCode')
+          PY
+      - name: Android 35 emulator — install, launch, reopen, in-place reinstall without uninstall
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            APK=.qa-044/MainTrack-0.4.4-Owner-QA-ONLY.apk
+            adb wait-for-device
+            adb logcat -c
+            adb install -r "$APK"
+            adb shell pm path com.icc.maintrack
+            adb shell dumpsys package com.icc.maintrack | grep -E 'versionCode=404|versionName=0.4.4'
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 8
+            adb shell pidof com.icc.maintrack
+            adb shell am force-stop com.icc.maintrack
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 5
+            adb shell pidof com.icc.maintrack
+            adb install -r "$APK"
+            adb shell am start -n com.icc.maintrack/.MainActivity
+            sleep 5
+            adb shell pidof com.icc.maintrack
+            if adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com\.icc\.maintrack,' > .qa-044/crash-hits.txt; then
+              cat .qa-044/crash-hits.txt
+              echo 'FAIL: Android crash detected during install/reopen/in-place reinstall'
+              exit 1
+            fi
+            echo 'PASS: APK installs, launches, reopens and upgrades in place on clean emulator without native process crash.'
+            echo 'LIMITATION: Not a real 0.4.1 -> 0.4.4 session continuity test; physical Owner acceptance still mandatory.'
+      - name: Record scope of synthetic test, not employee approval
+        if: always()
+        run: |
+          echo '### Owner QA 0.4.4 emulator checks' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No employees, Production web, Production database, OTA manifest or production rollout were modified.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'PASS does **not** establish preservation of a 0.4.1 real user session or report queue.' >> "$GITHUB_STEP_SUMMARY"
