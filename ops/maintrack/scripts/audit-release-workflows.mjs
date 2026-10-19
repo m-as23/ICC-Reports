@@ -44,6 +44,25 @@ assert(signer.includes('node ../../ops/maintrack/scripts/employee-release-gate.m
  'OWNER_SIGNER_RELEASE_CHECKS_INCOMPLETE');
 assert(!/(?:gh release create|vercel deploy|supabase functions deploy|git push)/.test(signer),
  'OWNER_SIGNER_MUST_NOT_PUBLISH');
+// Next signed owner-only UI correction is isolated from the 0.4.5 signer.
+const signer046=read('maintrack-owner-qa-apk-046.yml');
+assert.equal(conf.ownerApprovedNextQASigningWorkflow?.path,
+ '.github/workflows/maintrack-owner-qa-apk-046.yml','UNREGISTERED_046_SIGNER');
+assert(signer046.includes('branches: [ops/maintrack-044-production-foundation-20261018]') &&
+ signer046.includes("      - '.github/workflows/maintrack-owner-qa-apk-046.yml'") &&
+ signer046.includes('environment: maintrack-android-release'),
+ 'OWNER_046_SIGNER_BRANCH_ENVIRONMENT_GATE_MISSING');
+assert(/permissions:\s*\n\s*contents:\s*read\s*\n\s*checks:\s*read/.test(signer046) &&
+ !/contents:\s*write/.test(signer046),
+ 'OWNER_046_SIGNER_MUST_BE_READ_ONLY');
+assert(signer046.includes('employee-release-gate.mjs --assert-blocked') &&
+ signer046.includes('native-release-floor.mjs --candidate') &&
+ signer046.includes('verify-native-406-build.py') &&
+ signer046.includes('MainTrack-0.4.6-406-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES') &&
+ signer046.includes('MainTrack Staging-only QA — required combined result'),
+ 'OWNER_046_SIGNER_RELEASE_PROOFS_INCOMPLETE');
+assert(!/(?:gh release create|vercel deploy|supabase functions deploy|git push)/.test(signer046),
+ 'OWNER_046_SIGNER_MUST_NOT_PUBLISH');
 const qa=read('maintrack-change-qa.yml');
 assert(/permissions:\s*\n\s*contents:\s*read/.test(qa),'QA_MUST_USE_READ_ONLY_PERMISSIONS');
 assert(!/contents:\s*write/.test(qa),'QA_MUST_NOT_WRITE_REPOSITORY');
