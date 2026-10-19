@@ -1,0 +1,110 @@
+name: MainTrack — Change QA Gate (Staging Only, No Deployment)
+on:
+  push:
+    branches:
+      - ops/maintrack-044-production-foundation-20261018
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - ops/maintrack-044-production-foundation-20261018
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-change-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  versioned-change-and-regression:
+    name: Impact classification and session/OTA/API release regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - name: Classify update from ops reference (never publish)
+        run: node ops/maintrack/scripts/classify-future-update.mjs
+      - name: Install locked dependencies
+        run: npm --prefix android/maintrack-app ci --no-audit --no-fund
+      - name: Regression tests — session, login, offline queue, OTA signature, rollback and roles
+        run: |
+          set -euo pipefail
+          npm --prefix android/maintrack-app test
+          python3 -m unittest discover -s android/maintrack-app/tests-release -v
+      - name: Verify source API has the complete 32-action contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const contract=JSON.parse(fs.readFileSync('ops/maintrack/production-api-contract.json','utf8'));
+          const src=fs.readFileSync('supabase/functions/maintrack-stage9-security-api/index.ts','utf8');
+          const matches=[...new Set([...src.matchAll(/case\s+'([A-Za-z][A-Za-z0-9_]*)'\s*:/g)].map(m=>m[1]))];
+          const missing=contract.requiredActions.filter(a=>!matches.includes(a));
+          assert.deepEqual(missing,[],'MISSING_APPROVED_API_ACTIONS');
+          console.log('PASS 32 action QA source compatibility; deployed backend requires a separate live check.');
+          NODE
+      - name: Show development-only decision
+        run: |
+          echo 'QA CHECKS ONLY — no staging write, web deploy, signed OTA, APK, database migration or employee rollout.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Save impact classification for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-Change-Impact-Review-Only
+          path: audit-output/update-impact.json
+          if-no-files-found: warn
+          retention-days: 7
+  browser-safety:
+    name: Chromium — unsent reports and update activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser dependencies and Chromium
+        run: |
+          npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
+          npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
+      - name: Browser data preservation and Web update scenarios
+        run: npm --prefix android/maintrack-app/tests-browser test
+  staging-backend-readonly:
+    name: Staging API — CORS, unauthenticated rejection and service health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only live Staging API contract smoke (no secrets or credentials)
+        run: node android/maintrack-app/scripts/qa/live-api-smoke.mjs
+  overall-qa:
+    name: MainTrack Staging-only QA — required combined result
+    if: always()
+    needs: [versioned-change-and-regression,browser-safety,staging-backend-readonly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed unless all QA suites passed
+        env:
+          UNIT: ${{ needs.versioned-change-and-regression.result }}
+          BROWSER: ${{ needs.browser-safety.result }}
+          API: ${{ needs.staging-backend-readonly.result }}
+        run: |
+          echo "Unit/release: $UNIT; Browser: $BROWSER; Staging safe API: $API" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Owner approval and exact-version QA deployment remain separate; passing these checks does not authorize publication.' >> "$GITHUB_STEP_SUMMARY"
+          test "$UNIT" = success
+          test "$BROWSER" = success
+          test "$API" = success
