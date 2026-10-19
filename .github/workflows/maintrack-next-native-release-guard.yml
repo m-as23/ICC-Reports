@@ -70,6 +70,11 @@ jobs:
         run: |
           node ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
           node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+      - name: Gate the complete Web QA candidate and require native Android secure-session bridge
+        run: |
+          node ops/maintrack/scripts/prepare-complete-staging-web.mjs --prepare
+          node ops/maintrack/scripts/prepare-complete-staging-web.mjs --verify
+          node ops/maintrack/scripts/check-next-native-session-assets.mjs --require
       - name: Inform owner — preflight never builds or publishes
         if: always()
         run: |
