@@ -1,9 +1,10 @@
-name: MainTrack — Owner QA 0.4.4 Device Boot Smoke (No Rollout)
+name: MainTrack — Signed Native 401-to-404 Upgrade Smoke (QA only)
 on:
   push:
     branches: [ops/maintrack-044-production-foundation-20261018]
     paths:
       - '.github/workflows/maintrack-owner-qa-044-emulator.yml'
+      - 'android/maintrack-app/scripts/qa/emulator-upgrade-044.sh'
   workflow_dispatch:
 permissions:
   contents: read
@@ -83,35 +84,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: |
-            set -eu
-            OLD=.qa-old-041/MainTrack-stage14-release.apk
-            APK=.qa-044/MainTrack-0.4.4-Owner-QA-ONLY.apk
-            adb wait-for-device
-            adb logcat -c
-            adb install -r "$OLD"
-            adb shell dumpsys package com.icc.maintrack | grep -E 'versionCode=401|versionName=0.4.1'
-            adb shell am start -n com.icc.maintrack/.MainActivity
-            sleep 7
-            adb shell pidof com.icc.maintrack
-            adb shell am force-stop com.icc.maintrack
-            adb install -r "$APK"
-            adb shell pm path com.icc.maintrack
-            adb shell dumpsys package com.icc.maintrack | grep -E 'versionCode=404|versionName=0.4.4'
-            adb shell am start -n com.icc.maintrack/.MainActivity
-            sleep 8
-            adb shell pidof com.icc.maintrack
-            adb shell am force-stop com.icc.maintrack
-            adb shell am start -n com.icc.maintrack/.MainActivity
-            sleep 5
-            adb shell pidof com.icc.maintrack
-            if adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com\.icc\.maintrack,' > .qa-044/crash-hits.txt; then
-              cat .qa-044/crash-hits.txt
-              echo 'FAIL: Android crash detected during install/reopen/in-place reinstall'
-              exit 1
-            fi
-            echo 'PASS: original signed 0.4.1 installs, and signed 0.4.4 upgrades over it without uninstall, launches and reopens without process crash.'
-            echo 'LIMITATION: In-place 0.4.1 -> 0.4.4 installation verified on emulator; authenticated session and local data retention still require Owner acceptance.'
+          script: sh scripts/qa/emulator-upgrade-044.sh
       - name: Record scope of synthetic test, not employee approval
         if: always()
         run: |
