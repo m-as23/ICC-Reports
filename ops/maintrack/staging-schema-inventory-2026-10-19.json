@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "project": "MainTrack-Staging",
+  "projectId": "tdnkeskczcsukcujwinu",
+  "checkedAt": "2026-10-19",
+  "scope": "Read-only metadata inventory, NOT schema dump, NOT a backup, NOT authorization to copy test data",
+  "tableCount": 23,
+  "allPublicTablesRlsEnabled": true,
+  "tables": [
+    {
+      "name": "public.mt_audit",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_categories",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_components",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_leave_balance_adjustments",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_leave_balances",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_leave_ledger",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_leave_requests",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_login_attempts",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_login_rate_guard",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_machines",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_mail_config",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_migrations",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_notifications",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_outbox",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_overtime_requests",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_reports",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_sections",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_sessions",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_statuses",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_substitute_time_adjustments",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_substitute_time_ledger",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_technicians",
+      "rls_enabled": true
+    },
+    {
+      "name": "public.mt_users",
+      "rls_enabled": true
+    }
+  ],
+  "migrationCount": 32,
+  "migrations": [
+    {
+      "version": "20261013203549",
+      "name": "maintrack_stage6_initial_schema_rls"
+    },
+    {
+      "version": "20261013204457",
+      "name": "maintrack_stage6_fk_indexes_calendar_check"
+    },
+    {
+      "version": "20261013210151",
+      "name": "maintrack_stage7_opaque_sessions"
+    },
+    {
+      "version": "20261013213554",
+      "name": "maintrack_stage7_durable_report_email_outbox"
+    },
+    {
+      "version": "20261014035125",
+      "name": "maintrack_pilot_email_recipient_config"
+    },
+    {
+      "version": "20261014035209",
+      "name": "maintrack_pilot_mail_dispatch_tracking"
+    },
+    {
+      "version": "20261014041701",
+      "name": "maintrack_pilot_dispatch_scheduler_auth"
+    },
+    {
+      "version": "20261014041805",
+      "name": "maintrack_pilot_schedule_dormant_mail_job"
+    },
+    {
+      "version": "20261014052405",
+      "name": "maintrack_pilot_notification_center_retention"
+    },
+    {
+      "version": "20261014082209",
+      "name": "pilot_add_technician_field"
+    },
+    {
+      "version": "20261014082215",
+      "name": "pilot_add_facility_field"
+    },
+    {
+      "version": "20261014082218",
+      "name": "pilot_add_client_reference_field"
+    },
+    {
+      "version": "20261014082220",
+      "name": "pilot_create_technicians_catalog"
+    },
+    {
+      "version": "20261014082237",
+      "name": "pilot_report_test_flag"
+    },
+    {
+      "version": "20261014102716",
+      "name": "pilot_catalog_stable_ids_for_categories_and_statuses"
+    },
+    {
+      "version": "20261014104814",
+      "name": "pilot_autofill_assigned_technician_from_authenticated_creator"
+    },
+    {
+      "version": "20261014104947",
+      "name": "pilot_google_sheets_readable_reports_view_owner_only"
+    },
+    {
+      "version": "20261014105023",
+      "name": "pilot_sheet_view_work_order_number_no_truncation"
+    },
+    {
+      "version": "20261014112534",
+      "name": "pilot_sheet_view_latest_work_orders_first"
+    },
+    {
+      "version": "20261014131950",
+      "name": "pilot_cmms_phase2_work_order_workflow_revision_and_audit_history"
+    },
+    {
+      "version": "20261014212730",
+      "name": "maintrack_soft_delete_owner_work_orders_v1"
+    },
+    {
+      "version": "20261015071839",
+      "name": "maintrack_sec_technicians_rls_deny_client_roles"
+    },
+    {
+      "version": "20261015073754",
+      "name": "maintrack_sec_revoke_direct_client_table_sequence_grants"
+    },
+    {
+      "version": "20261015073904",
+      "name": "maintrack_sec_revoke_all_mt_sequence_client_grants"
+    },
+    {
+      "version": "20261015074139",
+      "name": "maintrack_sec_postgres_future_object_least_privilege"
+    },
+    {
+      "version": "20261015074459",
+      "name": "maintrack_sec_close_direct_trigger_function_execution"
+    },
+    {
+      "version": "20261015092513",
+      "name": "maintrack_stage9_isolated_login_rate_limit_guard"
+    },
+    {
+      "version": "20261015114836",
+      "name": "maintrack_stage11_reports_deleted_by_index"
+    },
+    {
+      "version": "20261017160928",
+      "name": "maintrack_owner_balance_adjustment_audit_20261017"
+    },
+    {
+      "version": "20261017170619",
+      "name": "maintrack_compensatory_full_day_staging_20261017"
+    },
+    {
+      "version": "20261017182747",
+      "name": "maintrack_overtime_work_kind_staging_20261017"
+    },
+    {
+      "version": "20261017194814",
+      "name": "maintrack_overtime_notifications_staging_20261017"
+    }
+  ],
+  "restrictions": {
+    "noProductionDataMigrationWithoutOwnerApproval": true,
+    "notEnoughToRebuildDatabase": true,
+    "fullSchemaRequiresViewsIndexesPoliciesTriggersFunctionsRolesGrantsAndExtensions": true,
+    "backupRestoreRequiredBeforeGoLive": true
+  }
+}
