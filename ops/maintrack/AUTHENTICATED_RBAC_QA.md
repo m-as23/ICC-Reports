@@ -2,10 +2,15 @@
 
 ## Status (2026-10-20)
 
-**Prepared, not live-executed.** The existing project `MainTrack-Staging`
-(`tdnkeskczcsukcujwinu`) is populated with reports, users and sessions. The
-connected project currently has **no** users whose employee code starts
-`QA_RBAC_`. Do not use production/employee/PILOT credentials for this test.
+**Provisioned inactive; not live-executed (2026-10-20).** The existing
+project `MainTrack-Staging` (`tdnkeskczcsukcujwinu`) contains reports,
+users and sessions. Three new accounts `QA_RBAC_OWNER`,
+`QA_RBAC_ENGINEER` and `QA_RBAC_TECHNICIAN` were inserted in one guarded
+transaction, each with its matching role, **active=false**, **must_change=true**,
+an independently generated random bcrypt password hash, and **zero sessions**.
+The generated cleartext passwords were never returned and cannot be retrieved;
+a controlled staging-only password reset and activation are prerequisites for
+live testing. Do not use production/employee/PILOT credentials.
 
 The normal change gate executes ONLY
 `node --test ops/maintrack/tests/qa-authenticated-rbac-readonly.test.mjs`
@@ -31,12 +36,13 @@ bodies, user names or access tokens are printed in the report.
 1. Verify that this Supabase project is **not** serving employee Production
    traffic. Its name alone does not prove isolation. If not verified, keep
    the authenticated probe blocked and provision a genuinely isolated QA DB.
-2. With explicit owner approval, provision precisely three **QA-only**
-   staging accounts with codes `QA_RBAC_OWNER`, `QA_RBAC_ENGINEER` and
-   `QA_RBAC_TECHNICIAN`, corresponding roles, active status and
-   `must_change=false` after a legitimate first password change.
-   The owner role may need a controlled staging-only provisioning procedure.
-   Do not repurpose employees or historical PILOT accounts.
+2. **Account placeholders are provisioned, but intentionally disabled.**
+   After verifying isolation, reset each random unrecoverable placeholder
+   password through a controlled staging-only process, securely convey
+   credentials through a secret manager (never the repo or chat), activate
+   just the three approved QA identities, and complete the mandatory first
+   password-change flow to reach `must_change=false`. Do not repurpose
+   employees or historical PILOT accounts.
 3. Log in once via an approved secure QA client to issue a token for each account.
    Do not paste tokens, passwords, service-role keys or database connection
    strings into ChatGPT, the repository, or issue/PR comments.
