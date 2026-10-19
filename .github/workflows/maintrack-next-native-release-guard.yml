@@ -1,0 +1,75 @@
+name: MainTrack — Next Native Release Guard (Read-only Preflight)
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_commit:
+        description: '40-character approved ops-branch commit SHA (must equal current HEAD)'
+        type: string
+        required: true
+      version_code:
+        description: 'New native APK versionCode, greater than 404 and environment last version'
+        type: number
+        required: true
+        default: 405
+      version_name:
+        description: 'New Android versionName'
+        type: string
+        required: true
+        default: '0.4.5'
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: maintrack-next-native-preflight
+  cancel-in-progress: false
+jobs:
+  protected-preflight:
+    name: Validate candidate before ANY Android signing or build
+    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: maintrack-android-release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require exact current reviewed commit, correct repository and signed release blocked for employees
+        env:
+          EXPECTED_REVIEWED_SHA: ${{ inputs.reviewed_commit }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'm-as23/ICC-Reports'
+          test "$GITHUB_REF" = 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          [[ "$EXPECTED_REVIEWED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_REVIEWED_SHA" = "$GITHUB_SHA"
+          node ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
+      - name: Require combined QA success from same immutable commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name == "MainTrack Staging-only QA — required combined result" and .conclusion == "success")] | length' \
+            | grep -xE '[1-9][0-9]*'
+      - name: Refuse stale Environment versionCode=0 and unsafe native upgrades
+        env:
+          MAINTRACK_RELEASE_APP_ID: com.icc.maintrack
+          MAINTRACK_RELEASE_VERSION_CODE: ${{ inputs.version_code }}
+          MAINTRACK_RELEASE_VERSION_NAME: ${{ inputs.version_name }}
+          MT_ANDROID_LAST_VERSION_CODE: ${{ vars.MT_ANDROID_LAST_VERSION_CODE }}
+        run: |
+          set -euo pipefail
+          export MAINTRACK_ANDROID_CERT_SHA256="$(node -p 'JSON.parse(require("fs").readFileSync("ops/maintrack/security/android-native-release-floor.json","utf8")).androidApkSigningCertificateSha256')"
+          node ops/maintrack/scripts/native-release-floor.mjs --candidate
+      - name: Keep candidate blocked until Web and Android match QA API contract
+        run: node ops/maintrack/scripts/check-next-release-api-parity.mjs
+      - name: Inform owner — preflight never builds or publishes
+        if: always()
+        run: |
+          echo 'Next Android native release preflight only; NO APK built or signed; NO OTA/Web/Supabase deployment.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Future signed Android builder MUST depend on this exact reviewed SHA, the same native candidate validation and verified source API contract.' >> "$GITHUB_STEP_SUMMARY"
