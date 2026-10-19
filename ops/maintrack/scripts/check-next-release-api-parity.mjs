@@ -20,8 +20,15 @@ export function checkFutureClientApiSource(source,{expected=QA}={}){
 }
 
 function main(){
- const code=read('web/maintrack/public/secure-assets/index-inline-1.js');
  const mode=process.argv[2]||'--enforce';
+ const code=read(mode==='--candidate'
+   ?'audit-output/staging-client/secure-assets/index-inline-1.js'
+   :'web/maintrack/public/secure-assets/index-inline-1.js');
+ if(mode==='--candidate'){
+   const original=read('web/maintrack/public/secure-assets/index-inline-1.js');
+   assert.equal(original.split(OLD).length,2,'CANONICAL_SOURCE_MUST_REMAIN_FROZEN');
+   assert.equal(code.replace(QA,OLD),original,'STAGING_CLIENT_MUST_BE_API_ONLY_REWRITE');
+ }
  try{
    const r=checkFutureClientApiSource(code);
    console.log('PASS Canonical Web source points only to the 32-action reviewed QA API',JSON.stringify(r));
@@ -33,6 +40,6 @@ function main(){
    }
    throw e;
  }
- if(mode!=='--audit'&&mode!=='--enforce')throw new Error('UNKNOWN_MODE');
+ if(!['--audit','--enforce','--candidate'].includes(mode))throw new Error('UNKNOWN_MODE');
 }
 if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url))main();
