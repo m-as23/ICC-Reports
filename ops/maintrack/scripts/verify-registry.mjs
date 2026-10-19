@@ -35,7 +35,7 @@ const approvedUiHotfix=new Map([
  ['web/maintrack/public/v6-core.css','dc47c4c581b26c3319b0ab241e6c5b9f9a489ced']
 ]);
 const changed=execFileSync('git',['diff','--name-only',review,sha,'--',...paths],
- {encoding:'utf8'}).trim().split('\\n').filter(Boolean).sort();
+ {encoding:'utf8'}).trim().split('\n').filter(Boolean).sort();
 requireEqual(changed,[...approvedUiHotfix.keys()].sort(),
  'UNAPPROVED_CANONICAL_SOURCE_CHANGE_OUTSIDE_OWNER_UI_FIX');
 for(const [path,expectedBlob] of approvedUiHotfix){
