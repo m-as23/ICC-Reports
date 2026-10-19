@@ -34,6 +34,12 @@ jobs:
         run: node ops/maintrack/scripts/verify-registry.mjs
       - name: Verify staged 32-action API contract against Web (no Production promotion)
         run: node ops/maintrack/scripts/verify-prod-api-contract.mjs
+      - name: Run existing session, OTA, and release-regression unit suites (no Android emulator)
+        run: |
+          set -euo pipefail
+          npm --prefix android/maintrack-app ci --no-audit --no-fund
+          npm --prefix android/maintrack-app test
+          python3 -m unittest discover -s android/maintrack-app/tests-release -v
       - name: Run immutable employee release gate (must remain blocked)
         run: node ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
       - name: Show non-production gate
