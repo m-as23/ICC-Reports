@@ -3,10 +3,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {build} from '../../android/maintrack-app/node_modules/esbuild/lib/main.js';
+import {createRequire} from 'node:module';
 
 const root=path.resolve(import.meta.dirname,'../../..');
 const app=path.join(root,'android/maintrack-app');
+const require=createRequire(path.join(app,'package.json'));
+const {build}=require('esbuild');
 const source=path.join(app,'www');
 const sha=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 if(!/^[a-f0-9]{40}$/.test(sha))throw Error('UNTRUSTED_CHECKOUT');
