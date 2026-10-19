@@ -27,8 +27,26 @@ requireEqual(registry.android.localData,{reportQueue:1,writesReportQueue:1,migra
 const review=registry.repository.reviewedFeatureCommit;
 const sha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const paths=['web/maintrack/public','android/maintrack-app/update-system','android/maintrack-app/release/owner-public.json','supabase/functions/maintrack-stage9-security-api/index.ts'];
-execFileSync('git',['diff','--exit-code',review,sha,'--',...paths],{stdio:'pipe'});
-report.push('PASS source JS/backend/update-system unchanged from reviewed 0.4.4 base');
+// Immutable 0.4.4 baseline remains pinned. Permit ONLY the three Owner-reviewed
+// PR #17 UI removals on this operations branch, by exact Git blob identity.
+const approvedUiHotfix=new Map([
+ ['web/maintrack/public/index.html','b4c57297a5b709f41919673ecd98bb73d09e47ca'],
+ ['web/maintrack/public/v6-core.js','9cc283b7594f9952339115fdba594883151987ef'],
+ ['web/maintrack/public/v6-core.css','dc47c4c581b26c3319b0ab241e6c5b9f9a489ced']
+]);
+const changed=execFileSync('git',['diff','--name-only',review,sha,'--',...paths],
+ {encoding:'utf8'}).trim().split('\\n').filter(Boolean).sort();
+requireEqual(changed,[...approvedUiHotfix.keys()].sort(),
+ 'UNAPPROVED_CANONICAL_SOURCE_CHANGE_OUTSIDE_OWNER_UI_FIX');
+for(const [path,expectedBlob] of approvedUiHotfix){
+ const actual=execFileSync('git',['hash-object',path],{encoding:'utf8'}).trim();
+ requireEqual(actual,expectedBlob,'OWNER_APPROVED_UI_BLOB_CHANGED: '+path);
+}
+execFileSync('git',['diff','--exit-code',review,sha,'--',
+ 'android/maintrack-app/update-system',
+ 'android/maintrack-app/release/owner-public.json',
+ 'supabase/functions/maintrack-stage9-security-api/index.ts'],{stdio:'pipe'});
+report.push('PASS exact three-file Owner UI correction; legacy API, updater and frozen 0.4.4 baseline unchanged');
 
 const source=read('web/maintrack/public/secure-assets/index-inline-1.js');
 assert(source.includes('/maintrack-stage9-security-api/api'),'SOURCE_STABLE_API_NOT_DOCUMENTED');
