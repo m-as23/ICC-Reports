@@ -66,6 +66,31 @@ class TestNative045Verification(unittest.TestCase):
             self.assertEqual(result["capacitorRuntime"],
                              ["capacitor.js", "capacitor.plugins.js"])
 
+    def test_empty_optional_cordova_plugin_list_is_expected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = pathlib.Path(tmp) / "reviewed"
+            dst = pathlib.Path(tmp) / "android"
+            src.mkdir()
+            dst.mkdir()
+            (src / "index.html").write_text("<html>MainTrack</html>")
+            (dst / "index.html").write_text("<html>MainTrack</html>")
+            (dst / "cordova_plugins.js").write_bytes(b"")
+            (dst / "capacitor.plugins.js").write_bytes(b"")
+            verified = checker.verify_synced_asset_tree(src, dst)
+            self.assertEqual(verified["reviewedFiles"], 1)
+
+    def test_core_capacitor_runtime_must_not_be_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = pathlib.Path(tmp) / "reviewed"
+            dst = pathlib.Path(tmp) / "android"
+            src.mkdir()
+            dst.mkdir()
+            (src / "index.html").write_text("<html>MainTrack</html>")
+            (dst / "index.html").write_text("<html>MainTrack</html>")
+            (dst / "capacitor.js").write_bytes(b"")
+            with self.assertRaisesRegex(ValueError, "CAPACITOR_GENERATED_RUNTIME_SIZE_INVALID"):
+                checker.verify_synced_asset_tree(src, dst)
+
     def test_capacitor_must_not_modify_reviewed_web_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = pathlib.Path(tmp) / "reviewed"
