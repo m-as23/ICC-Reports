@@ -66,8 +66,10 @@ jobs:
           set -euo pipefail
           export MAINTRACK_ANDROID_CERT_SHA256="$(node -p 'JSON.parse(require("fs").readFileSync("ops/maintrack/security/android-native-release-floor.json","utf8")).androidApkSigningCertificateSha256')"
           node ops/maintrack/scripts/native-release-floor.mjs --candidate
-      - name: Keep candidate blocked until Web and Android match QA API contract
-        run: node ops/maintrack/scripts/check-next-release-api-parity.mjs
+      - name: Confirm isolated 32-action Staging Web/Android candidate is byte-locked
+        run: |
+          node ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
+          node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
       - name: Inform owner — preflight never builds or publishes
         if: always()
         run: |

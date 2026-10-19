@@ -1,0 +1,29 @@
+name: MainTrack — Protected Release Environment Native Floor Proof (Read Only)
+on:
+  push:
+    branches: [ops/maintrack-044-production-foundation-20261018]
+    paths:
+      - '.github/workflows/maintrack-native-env-floor-proof.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check-protected-native-code-floor:
+    name: Verify saved GitHub Environment variable is 404
+    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: maintrack-android-release
+    env:
+      LAST_NATIVE_CODE: ${{ vars.MT_ANDROID_LAST_VERSION_CODE }}
+    steps:
+      - name: Assert stored native versionCode floor without printing secrets or variable contents
+        run: |
+          set -euo pipefail
+          if [[ "$LAST_NATIVE_CODE" =~ ^[0-9]+$ ]] && [ "$LAST_NATIVE_CODE" -eq 404 ]; then
+            echo 'PASS protected environment native floor equals Owner-accepted 404' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'BLOCKED verify saved Environment variable MT_ANDROID_LAST_VERSION_CODE is exactly 404' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo 'NO_SIGNING / NO_APK / NO_OTA / NO_WEB_DEPLOY / NO_DB_WRITE' >> "$GITHUB_STEP_SUMMARY"
