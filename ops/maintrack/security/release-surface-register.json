@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "project": "MainTrack",
+  "policy": "STAGING_ONLY_NO_AUTOMATIC_PUBLISH",
+  "auditDate": "2026-10-19",
+  "knownWriteWorkflows": [
+    "maintrack-android-stage11-pin.yml",
+    "maintrack-background-release.yml",
+    "maintrack-owner-ota.yml",
+    "maintrack-owner-pilot-043.yml",
+    "maintrack-stage12-native-qa.yml",
+    "maintrack-stage13-source-import.yml",
+    "maintrack-stage13-unified-ci.yml",
+    "maintrack-stage14-fixtures.yml",
+    "maintrack-stage22-044-owner-lab-publish.yml"
+  ],
+  "knownSigningWorkflows": [
+    "maintrack-android-stage11-release.yml",
+    "maintrack-background-release.yml",
+    "maintrack-employee-signing-preflight.yml",
+    "maintrack-owner-ota.yml",
+    "maintrack-owner-pilot-043.yml",
+    "maintrack-owner-qa-apk-044.yml",
+    "maintrack-stage14-candidate.yml",
+    "maintrack-stage22-044-owner-lab-publish.yml",
+    "maintrack-stage22-owner-key-signonly.yml",
+    "maintrack-unified-four-owner-key-preflight.yml"
+  ],
+  "securityBaseline": {
+    "githubRulesetsObserved": 0,
+    "defaultBranch": "main",
+    "currentDevelopmentBranch": "ops/maintrack-044-production-foundation-20261018",
+    "employeeReleaseAuthorized": false,
+    "stagingDatabaseWriteAuthorized": false,
+    "sourceOfTruth": "ops/maintrack/runtime-registry-0.4.4.json",
+    "caveat": "Workflows in historical branches may still run; this allowlist only detects drift and cannot stop bypass without GitHub rulesets + environment protections."
+  },
+  "mandatoryControlsBeforeFutureRelease": [
+    "Protect canonical development branch from force-push, deletion and direct push; require PR and named QA status",
+    "Restrict maintrack-android-release environment to one reviewed release branch and a trusted reviewer",
+    "Restrict repository Actions workflow write permissions and retire historical write-capable workflows after dependency review",
+    "Do not treat an unprotected JSON manifest or a passing audit script as a release authorization",
+    "Preserve signed Android certificate identity, current local data and a rollback plan"
+  ]
+}
