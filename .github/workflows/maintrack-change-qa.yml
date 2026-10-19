@@ -68,6 +68,8 @@ jobs:
           set -euo pipefail
           npm --prefix android/maintrack-app test
           python3 -m unittest discover -s android/maintrack-app/tests-release -v
+      - name: Verify synthetic authenticated role contract (offline only; no live credentials)
+        run: node --test ops/maintrack/tests/qa-authenticated-rbac-readonly.test.mjs
       - name: Verify source API has the complete 32-action contract
         run: |
           node --input-type=module <<'NODE'
