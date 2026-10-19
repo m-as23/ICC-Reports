@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {checkFutureClientApiSource} from './check-next-release-api-parity.mjs';
 
 export const OLD_API='https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-stage9-security-api/api';
 export const QA_API='https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/api';
@@ -24,7 +23,8 @@ export function prepareAlignedClient(original,{pinnedBlob=PINNED_SOURCE_GIT_BLOB
  const output=original.replace(OLD_API,QA_API);
  assert.equal(output.length,original.length-OLD_API.length+QA_API.length,'UNEXPECTED_BUNDLE_SIZE');
  assert.equal(output.replace(QA_API,OLD_API),original,'NON_API_CONTENT_CHANGED');
- checkFutureClientApiSource(output);
+ const found=[...new Set([...output.matchAll(/https:\/\/tdnkeskczcsukcujwinu\.supabase\.co\/functions\/v1\/[a-zA-Z0-9_-]+\/api/g)].map(m=>m[0]))];
+ assert.deepEqual(found,[QA_API],'UNAPPROVED_STAGING_API_ENDPOINTS');
  return {content:output,record:{
    schema:1,status:'QA_CANDIDATE_NOT_SIGNED_NOT_PUBLISHED',
    appId:'com.icc.maintrack',backend:'maintrack-unified-four-qa',actions:32,
