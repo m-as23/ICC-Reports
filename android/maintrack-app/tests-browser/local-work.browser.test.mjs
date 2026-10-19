@@ -375,28 +375,23 @@ scenario('a proven native refusal restores the UI without clearing local values'
   });
 });
 
-scenario('profile draft and in-flight save defer updates, then a confirmed save releases the guard', async () => {
-  await fixture(async ({page, mock}) => {
+scenario('read-only Account profile has no removed contact editor and allows a safe update', async () => {
+  await fixture(async ({page}) => {
     await open(page); await login(page); await page.locator('#tabProfile').click();
     await page.waitForFunction(() => !MainTrackLocalWork.read().submitting);
-    assert.equal((await readState(page)).dirtyForm, false);
-    await page.locator('#profilePreferred').fill('Synthetic preferred name');
-    await page.locator('#tabDash').click();
-    assertDeferred(await attempt(page));
-    // Return without re-fetching/overwriting the existing editor.
-    await page.evaluate(() => show('profile'));
-    mock.holdAction = 'updateProfile'; await page.locator('#saveProfile').click();
-    await until(() => mock.held.length === 1, 'profile save must be held');
-    assert.equal((await readState(page)).submitting, true); assertDeferred(await attempt(page));
-    await mock.held.shift()();
-    await page.waitForFunction(() => !MainTrackLocalWork.read().submitting && !document.getElementById('saveProfile').disabled);
-    assert.equal((await readState(page)).dirtyForm, false);
+    assert.equal(await page.locator('#profileCode').count(),1,'Current Account profile is present');
+    assert.equal(await page.locator('#profilePreferred').count(),0,'Removed contact editor must stay removed');
+    assert.equal(await page.locator('#saveProfile').count(),0,'Removed profile-save action must stay removed');
+    assert.equal((await readState(page)).dirtyForm,false);
+    assert.equal((await attempt(page)).result.status,'ready');
   });
 });
 
-scenario('leave requests are protected while edited or waiting for acknowledgement', async () => {
+scenario('leave requests under Account remain protected while edited or awaiting acknowledgement', async () => {
   await fixture(async ({page, mock}) => {
-    await open(page); await login(page); await page.locator('#tabLeave').click();
+    await open(page); await login(page); await page.locator('#tabProfile').click();
+    const leave=page.locator('#accountLeaveDetails');
+    await leave.locator('summary').click();
     await page.locator('#leaveStart').fill('2026-11-01'); await page.locator('#leaveEnd').fill('2026-11-02');
     await page.locator('#leaveReason').fill('Synthetic leave request'); assertDeferred(await attempt(page));
     mock.holdAction = 'leaveRequest'; page.once('dialog', dialog => dialog.accept());
