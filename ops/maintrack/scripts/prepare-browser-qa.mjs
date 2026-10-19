@@ -10,8 +10,31 @@ const app=path.join(root,'android/maintrack-app');
 const require=createRequire(path.join(app,'package.json'));
 const {build}=require('esbuild');
 const source=path.join(app,'www');
+const web=path.join(root,'web/maintrack/public');
 const sha=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 if(!/^[a-f0-9]{40}$/.test(sha))throw Error('UNTRUSTED_CHECKOUT');
+// QA browser fixtures are generated from the checked-out review commit.
+// Do not call snapshot.mjs here: its immutable *native-release* index lock is
+// intentionally distinct from the current canonical Web index. Production
+// packaging remains blocked by its own signature, lock and owner gates.
+await fs.rm(source,{recursive:true,force:true});
+await fs.cp(web,source,{recursive:true});
+await build({
+  entryPoints:[path.join(app,'update-system/startup.mjs')],
+  outfile:path.join(source,'secure-assets/stage13-native-ready.js'),
+  bundle:true,format:'iife',platform:'browser',target:'es2022',logLevel:'silent'
+});
+await build({
+  entryPoints:[path.join(app,'update-system/local-work-startup.mjs')],
+  outfile:path.join(source,'secure-assets/stage14-local-work.js'),
+  bundle:true,format:'iife',platform:'browser',target:'es2022',logLevel:'silent'
+});
+const nativeHtmlPath=path.join(source,'index.html');
+let nativeHtml=await fs.readFile(nativeHtmlPath,'utf8');
+if(!nativeHtml.includes('<head>')||!nativeHtml.includes('</body>'))throw Error('INVALID_REVIEW_SOURCE_HTML');
+nativeHtml=nativeHtml.replace('<head>','<head>\\n<script src="secure-assets/stage13-native-ready.js"></script>')
+  .replace('</body>','<script src="secure-assets/stage14-local-work.js"></script></body>');
+await fs.writeFile(nativeHtmlPath,nativeHtml);
 const output=path.join(app,'web-pilot');
 const staticRoot=path.join(output,'.vercel/output/static');
 const releasePath='/releases/'+sha+'/';
