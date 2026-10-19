@@ -46,8 +46,14 @@ jobs:
           node --test ops/maintrack/tests/prepare-qa-api-client.test.mjs
           node ops/maintrack/scripts/prepare-qa-api-client.mjs --prepare
           node ops/maintrack/scripts/check-next-release-api-parity.mjs --candidate
+      - name: Verify native 405 QA package preserves encrypted sessions and local offline work
+        run: |
+          node --test ops/maintrack/tests/prepare-native-405-qa.test.mjs
+          node ops/maintrack/scripts/prepare-native-405-qa.mjs --check
       - name: Install locked dependencies
         run: npm --prefix android/maintrack-app ci --no-audit --no-fund
+      - name: Assemble full native Web asset candidate, no APK or signing
+        run: node ops/maintrack/scripts/prepare-native-405-qa.mjs --prepare
       - name: Regression tests — session, login, offline queue, OTA signature, rollback and roles
         run: |
           set -euo pipefail
