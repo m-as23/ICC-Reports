@@ -26,7 +26,7 @@ test('Stage22 source changes exactly the three approved UI resources, never othe
    assert.ok(allowed.has(item.path),'unexpected drift in locked asset: '+item.path);
    changed.push(item.path);
    if(Object.hasOwn(approvedHotfixBlobs,item.path)){
-    const blob=crypto.createHash('sha1').update('blob '+bytes.length+'\\0').update(bytes).digest('hex');
+    const blob=crypto.createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
     assert.equal(blob,approvedHotfixBlobs[item.path],'unapproved Owner UI hotfix drift: '+item.path);
    }
   }
@@ -36,9 +36,9 @@ test('Stage22 source changes exactly the three approved UI resources, never othe
  const css=fs.readFileSync(path.join(loc,'v6-core.css'),'utf8');
  const html=fs.readFileSync(path.join(loc,'index.html'),'utf8');
  assert.doesNotMatch(ui,/v6Dock|shortcuts/,'no clickable bottom dock may remain');
- assert.doesNotMatch(css,/v6Dock|padding-bottom:calc\\(78px|bottom:calc\\(76px/,'no dock space may remain');
+ assert.doesNotMatch(css,/v6Dock|padding-bottom:calc\(78px|bottom:calc\(76px/,'no dock space may remain');
  assert.doesNotMatch(html,/Pilot demo system|PILOT — بلاغات تجريبية فقط/,'no pilot overlay may remain');
- assert.match(ui,/toggle\\.id='v6Toggle'/,'sidebar menu remains');
+ assert.match(ui,/toggle\.id='v6Toggle'/,'sidebar menu remains');
  assert.match(ui,/v6Drawer/,'sidebar drawer remains functional');
 });
 
