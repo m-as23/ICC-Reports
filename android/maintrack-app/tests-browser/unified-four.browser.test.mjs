@@ -52,7 +52,7 @@ async function withPage(role,run){
  await ctx.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url());
   if(url.origin===origin)return route.continue();
-  if(!/^https:\/\/tdnkeskczcsukcujwinu\.supabase\.co\/functions\/v1\/maintrack-stage9-security-api\/api$/.test(request.url()))
+  if(!/^https:\/\/tdnkeskczcsukcujwinu\.supabase\.co\/functions\/v1\/maintrack-unified-four-qa\/api$/.test(request.url()))
    return route.abort('blockedbyclient');
   const ok=(data)=>route.fulfill({status:200,contentType:'application/json',headers:{
     'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*'},body:JSON.stringify(data)});
