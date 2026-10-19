@@ -23,6 +23,27 @@ assert.equal(conf.securityBaseline.employeeReleaseAuthorized,false);
 assert.equal(conf.securityBaseline.stagingDatabaseWriteAuthorized,false);
 assert.deepEqual(trim(riskWrite),trim([...conf.knownWriteWorkflows]),'UNREVIEWED_WORKFLOW_CONTENTS_WRITE_DRIFT');
 assert.deepEqual(trim(riskSign),trim([...conf.knownSigningWorkflows]),'UNREVIEWED_WORKFLOW_SIGNING_SECRET_DRIFT');
+// Explicitly reviewed new Owner-only QA signer: signing secrets are restricted
+// to the exact protected ops branch/environment. No repository write or rollout.
+const signer=read('maintrack-owner-qa-apk-045.yml');
+assert.equal(conf.ownerApprovedQASigningWorkflow?.path,
+ '.github/workflows/maintrack-owner-qa-apk-045.yml',
+ 'UNREGISTERED_OWNER_QA_SIGNER');
+assert(signer.includes('branches: [ops/maintrack-044-production-foundation-20261018]') &&
+ signer.includes("      - '.github/workflows/maintrack-owner-qa-apk-045.yml'") &&
+ signer.includes('environment: maintrack-android-release'),
+ 'OWNER_SIGNER_BRANCH_ENVIRONMENT_GATE_MISSING');
+assert(/permissions:\s*\n\s*contents:\s*read\s*\n\s*checks:\s*read/.test(signer) &&
+ !/contents:\s*write/.test(signer),
+ 'OWNER_SIGNER_MUST_NOT_HAVE_REPOSITORY_WRITE_ACCESS');
+assert(signer.includes('node ../../ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked') &&
+ signer.includes('native-release-floor.mjs --candidate') &&
+ signer.includes('verify-native-405-build.py --mode candidate') &&
+ signer.includes('--mode signed') &&
+ signer.includes('MainTrack-0.4.5-405-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES'),
+ 'OWNER_SIGNER_RELEASE_CHECKS_INCOMPLETE');
+assert(!/(?:gh release create|vercel deploy|supabase functions deploy|git push)/.test(signer),
+ 'OWNER_SIGNER_MUST_NOT_PUBLISH');
 const qa=read('maintrack-change-qa.yml');
 assert(/permissions:\s*\n\s*contents:\s*read/.test(qa),'QA_MUST_USE_READ_ONLY_PERMISSIONS');
 assert(!/contents:\s*write/.test(qa),'QA_MUST_NOT_WRITE_REPOSITORY');

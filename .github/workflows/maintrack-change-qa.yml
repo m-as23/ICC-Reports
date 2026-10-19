@@ -55,6 +55,8 @@ jobs:
         run: |
           node --test ops/maintrack/tests/prepare-native-405-qa.test.mjs
           node ops/maintrack/scripts/prepare-native-405-qa.mjs --check
+      - name: Verify no native 405 version downgrade, signer or package substitution
+        run: python3 -m unittest discover -s ops/maintrack/tests -p 'test_verify_native_405_build.py' -v
       - name: Install locked dependencies
         run: npm --prefix android/maintrack-app ci --no-audit --no-fund
       - name: Assemble full native Web asset candidate and validate secure session, no APK or signing
