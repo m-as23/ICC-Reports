@@ -75,6 +75,7 @@ class TestNative045Verification(unittest.TestCase):
             (src / "index.html").write_text("<html>MainTrack</html>")
             (dst / "index.html").write_text("<html>MainTrack</html>")
             (dst / "cordova_plugins.js").write_bytes(b"")
+            (dst / "cordova.js").write_bytes(b"")
             (dst / "capacitor.plugins.js").write_bytes(b"")
             verified = checker.verify_synced_asset_tree(src, dst)
             self.assertEqual(verified["reviewedFiles"], 1)
