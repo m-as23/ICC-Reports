@@ -22,6 +22,7 @@
     "maintrack-owner-pilot-043.yml",
     "maintrack-owner-qa-apk-044.yml",
     "maintrack-owner-qa-apk-045.yml",
+    "maintrack-owner-qa-apk-046.yml",
     "maintrack-stage14-candidate.yml",
     "maintrack-stage22-044-owner-lab-publish.yml",
     "maintrack-stage22-owner-key-signonly.yml",
@@ -54,5 +55,16 @@
     "nativeVersionCode": 405,
     "requiresNamedCombinedQAOfSameCommit": true,
     "apiContract": "maintrack-unified-four-qa_32_actions"
+  },
+  "ownerApprovedNextQASigningWorkflow": {
+    "path": ".github/workflows/maintrack-owner-qa-apk-046.yml",
+    "scope": "OWNER_DEVICE_QA_ONLY_NOT_EMPLOYEE_RELEASE",
+    "sourceBranch": "ops/maintrack-044-production-foundation-20261018",
+    "environment": "maintrack-android-release",
+    "permission": "contents_read_checks_read",
+    "released": false,
+    "nativeVersionCode": 406,
+    "requiresNamedCombinedQAOfSameCommit": true,
+    "noAutoPublish": true
   }
 }
