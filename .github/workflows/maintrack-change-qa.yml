@@ -77,10 +77,8 @@ jobs:
           npm --prefix android/maintrack-app ci --no-audit --no-fund
           npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
           npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
-      - name: Rebuild locked UI and local-only Web-update test fixtures
-        run: |
-          node android/maintrack-app/scripts/snapshot.mjs
-          node ops/maintrack/scripts/prepare-browser-qa.mjs
+      - name: Build QA-only browser fixtures from reviewed Web source, with no publishing
+        run: node ops/maintrack/scripts/prepare-browser-qa.mjs
       - name: Browser data preservation and Web update scenarios
         run: npm --prefix android/maintrack-app/tests-browser test
   staging-backend-readonly:
