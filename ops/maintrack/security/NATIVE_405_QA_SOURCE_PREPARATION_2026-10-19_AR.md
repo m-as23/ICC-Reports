@@ -23,3 +23,16 @@ Before producing a signed Android APK, a later explicitly approved workflow must
 PR #8 also built a QA client and validated GitHub Environment version floor, but overlapped merged PR #9 and now has merge conflicts. This candidate preserves its useful full-asset and symlink protections without merging conflicting changes blindly. No PR #8 changes have been merged.
 
 **No Android signing key used; no APK or OTA distributed; no Web deploy; no Supabase write.**
+
+
+## Post-PR9 browser/native QA consolidation
+After PR #9 established approved 32-action API parity and protected Environment native floor=404:
+- Full isolated **Web QA** package: `ops/maintrack/scripts/prepare-complete-staging-web.mjs`. Copies every reviewed Web asset, checks all SHA-256 digests, pinning the original JS Git blob and allowing **only one API URL change**. Also rejects symlinks, path overlap and tampering.
+- Web Chromium fixtures for local work, user approval requests and OTA scenarios use this QA Staging endpoint with **intercepted synthetic responses**. No live authenticated Supabase writes.
+- Full isolated **Native QA** package: `ops/maintrack/scripts/prepare-native-405-qa.mjs`. This adds native boot, secure session, offline/activation scripts in the safe order to avoid the missing `stage20-native-session.js` hazard found in canonical Web source.
+- `check-next-native-session-assets.mjs --require` verifies the secure session script is present **and loaded**, that appId is unchanged, that only the approved QA API is referenced, and **that Web and Android staged application JavaScript bytes are identical**.
+- QA unit tests verify full Web asset integrity, unsigned candidate provenance and explicit block for a Web-only Android package missing native bridge.
+
+PR #8 and PR #11 contain overlapping earlier work. Their useful safeguards were consolidated here to avoid conflicting merges, and they must not be merged independently.
+
+Nothing in this candidate is an installable or signed `APK`. Before exact-version testing on the Owner device, a protected build/sign workflow must be reviewed independently and final signed APK metadata/certificate/version verified. No rollout authorization.
