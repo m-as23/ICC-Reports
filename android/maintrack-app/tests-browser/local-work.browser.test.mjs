@@ -85,7 +85,7 @@ async function fixture(run, {role = 'technician'} = {}) {
   const catalog = {id:'LAB-WO-NEXT', role, sections:['LAB_SECTION'],
     machines:[['LAB_SECTION','LAB_MACHINE']], parts:[['LAB_SECTION','LAB_PART']],
     status:['Closed','Open'], cats:['Electrical','Mechanical']};
-  const apiUrl = 'https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-stage9-security-api/api';
+  const apiUrl = 'https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-unified-four-qa/api';
   await context.route('**/*', async route => {
     const req = route.request();
     const url = new URL(req.url());
