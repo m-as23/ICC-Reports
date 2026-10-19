@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "appId": "com.icc.maintrack",
+  "acceptedOwnerDevice": {
+    "versionName": "0.4.4",
+    "versionCode": 404,
+    "acceptanceDate": "2026-10-19",
+    "evidenceDocument": "ops/maintrack/OWNER_DEVICE_044_ACCEPTANCE_2026-10-19_AR.md",
+    "signedBuildRun": "https://github.com/m-as23/ICC-Reports/actions/runs/39172121032",
+    "deviceTests": [
+      "in-place install over 0.4.1",
+      "create report",
+      "delete report",
+      "create department",
+      "session retained after close/reopen"
+    ],
+    "scope": "OWNER_QA_ONLY; not employee Production"
+  },
+  "androidApkSigningCertificateSha256": "07a35f17c9a7a17b24b1867e839fab2043d83f998bb604701776f3f64c807d5b",
+  "nativeNextReleaseMinimumVersionCode": 405,
+  "policy": "NEXT_APK_MUST_HAVE_SAME_APPID_AND_SIGNING_CERT_AND_CODE_AT_LEAST_405",
+  "notes": {
+    "lastVersionGitHubEnvironmentVariable": "MT_ANDROID_LAST_VERSION_CODE",
+    "valueObservedFromOwnerScreenshot": "0 (STALE; admin must update to at least 404 before future signed APK releases)",
+    "otaKeyDistinctFromApkKeystore": true,
+    "reviewRequiredBeforeAnyRelease": true,
+    "noAutomaticDeploy": true,
+    "frozenNativeBaselineCode": 401,
+    "originalSourceBaseline": "ops/maintrack/runtime-registry-0.4.4.json"
+  }
+}
