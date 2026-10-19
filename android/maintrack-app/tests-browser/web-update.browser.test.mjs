@@ -66,7 +66,7 @@ test('current signed-in-or-out Web Pilot keeps update button hidden and discover
       const check=[...document.querySelectorAll('#profile button')].find(x=>x.textContent.trim()==='التحقق من التحديث');
       return {barHidden:bar.hidden,applyHidden:apply?.hidden,manual:!!check};
     });
-    assert.deepEqual(state,{barHidden:true,applyHidden:true,manual:true});
+    assert.deepEqual(state,{barHidden:true,applyHidden:true,manual:false},'No duplicate manual profile-update button when no new release exists');
     const afterCheck=metadataReads;
     await page.evaluate(()=>{for(let i=0;i<6;i++) dispatchEvent(new Event('focus'));});
     await page.waitForTimeout(350);
