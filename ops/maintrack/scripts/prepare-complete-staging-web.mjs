@@ -70,15 +70,15 @@ export async function prepareCompleteStagingWeb({source=canonicalWeb,destination
  return manifest;
 }
 
-export async function verifyCompleteStagingWeb({source=canonicalWeb,destination=stagedWeb,manifestPath=stagedWeb+'-provenance.json'}={}){
+export async function verifyCompleteStagingWeb({source=canonicalWeb,destination=stagedWeb,manifestPath=stagedWeb+'-provenance.json',expectedSourceBlob=PINNED_SOURCE_GIT_BLOB}={}){
  const original=await fs.readFile(path.join(source,JS),'utf8');
- const candidate=prepareAlignedClient(original);
+ const candidate=prepareAlignedClient(original,{pinnedBlob:expectedSourceBlob});
  const meta=JSON.parse(await fs.readFile(manifestPath,'utf8'));
  assert.equal(meta.mode,'STAGING_WEB_QA_ONLY_NO_PUBLISH');
  assert.equal(meta.backend,'maintrack-unified-four-qa');
  assert.equal(meta.requiredActions,32);
  assert.deepEqual(meta.changedFiles,[JS]);
- assert.equal(meta.sourceGitBlob,PINNED_SOURCE_GIT_BLOB);
+ assert.equal(meta.sourceGitBlob,expectedSourceBlob);
  for(const k of ['deploy','apkBuild','otaSign','employeeRollout'])assert.equal(meta[k],false);
  const sourceFiles=await enumerate(source);
  const stagedFiles=await enumerate(destination);
