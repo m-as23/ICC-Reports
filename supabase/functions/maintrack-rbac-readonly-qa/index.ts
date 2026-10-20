@@ -25,7 +25,7 @@ const round=n=>Math.round(n*100)/100;
 const woid=n=>'WO-'+String(n).padStart(2,'0');
 const rights={owner:['profile.view','profile.update','dashboard.view','report.create','leave.request','leave.approve','users.manage'],engineer:['profile.view','profile.update','dashboard.view','report.create','leave.request'],technician:['profile.view','profile.update','dashboard.view','report.create','leave.request']};
 const permit=(u,p)=>{if(!u||!u.active)die('AUTH',401);if(u.must_change)die('CHANGE_REQUIRED',403);if(!rights[u.role]?.includes(p))die('FORBIDDEN',403)};
-async function issue(u,c=pool){const token=randomBytes(32).toString('hex');await c.query("INSERT INTO mt_sessions(token_hash,user_id,token_version,expires_at) VALUES($1,$2,$3,now()+interval '7 days')",[sha(token),u.id,u.token_version]);return {token,code:u.employee_code,name:u.name,role:u.role,must:u.must_change};}
+async function issue(u,c=pool){const token=randomBytes(32).toString('hex');await c.query("INSERT INTO mt_sessions(token_hash,user_id,token_version,expires_at) VALUES($1,$2,$3,now()+interval '3 minutes')",[sha(token),u.id,u.token_version]);return {token,code:u.employee_code,name:u.name,role:u.role,must:u.must_change};}
 async function mtGlobalLoginGuard(){
  const sql="INSERT INTO public.mt_login_rate_guard(key_hash,window_start,attempts,updated_at) VALUES('maintrack_stage9_global_login',now(),1,now()) "+
  "ON CONFLICT(key_hash) DO UPDATE SET attempts=CASE WHEN mt_login_rate_guard.window_start<now()-interval '5 minutes' THEN 1 ELSE mt_login_rate_guard.attempts+1 END,window_start=CASE WHEN mt_login_rate_guard.window_start<now()-interval '5 minutes' THEN now() ELSE mt_login_rate_guard.window_start END,updated_at=now() RETURNING attempts";
