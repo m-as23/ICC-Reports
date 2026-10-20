@@ -28,9 +28,19 @@ def badging(text):
 
 def main():
     ap = argparse.ArgumentParser(description="Inspect APK signing and connected device safely. No writes.")
-    ap.add_argument("--apk", type=Path, required=True, help="local QA APK candidate to check, no install")
+    ap.add_argument("--apk", type=Path, required=False, help="local QA APK candidate to check, no install")
     ap.add_argument("--read-device", action="store_true", help="read-only adb list and package metadata")
+    ap.add_argument("--self-test", action="store_true", help="parser checks only; no tools, files or device required")
     opts=ap.parse_args()
+    if opts.self_test:
+        mock_cert="Signer #1 certificate SHA-256 digest: "+EXPECTED_CERT
+        mock_package="package: name='com.icc.maintrack' versionCode='405' versionName='0.4.5'"
+        if fingerprint(mock_cert)!=EXPECTED_CERT or badging(mock_package)!={"package":EXPECTED_APP,"versionCode":405,"versionName":"0.4.5"}:
+            raise ValueError("APK preflight self-test failed")
+        print(json.dumps({"result":"PASS_PARSER_ONLY","deviceAccess":False,"apkSignatureChecked":False}))
+        return 0
+    if opts.apk is None:
+        raise ValueError("--apk is required unless --self-test is set")
     candidate=opts.apk.resolve()
     if not candidate.is_file() or candidate.suffix.lower() != ".apk":
         raise ValueError("Provide an existing .apk file")
