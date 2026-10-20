@@ -44,7 +44,7 @@ test('18 authenticated synthetic role probes contain only safe read operations',
   const m=mockApi();
   const summary=await runReadOnlyRbac(configFromEnv(values),{request:m.request});
   assert.deepEqual(summary,{status:'PASS',checks:18,roles:3,
-    unauthorizedBlocks:10,ownerReadChecks:2,safeOnly:true,project:'MainTrack-Staging'});
+    unauthorizedBlocks:10,ownerReadChecks:2,safeOnly:true,project:'MainTrack-RBAC-QA-Isolated'});
   assert.equal(m.events.length,18);
   assert.ok(m.events.every(e=>!['login','submit','leaveDecision','overtimeDecision',
     'adminSaveUser','adminCatalogSave','cmmsWrite','change','leaveRequest'].includes(e.action)));
