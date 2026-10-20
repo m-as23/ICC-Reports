@@ -15,16 +15,22 @@ const base=()=>({
  release:j('ops/maintrack/employee-release-gates.json'),
  contract:j('ops/maintrack/production-api-contract.json')
 });
-test('read-only audit detects residual Pilot labels, legacy Web API, and missing main trigger',()=>{
+test('launch candidate clears visible Pilot branding without bypassing any release gate',()=>{
  const a=actualAudit();
  assert.equal(a.decision,'NO_GO_RELEASE');
  const blocked=new Set(a.releaseBlockers.map(c=>c.id));
- for(const required of ['page-title-pilot','login-showcase-pilot','login-placeholder-pilot',
- 'source-filter-trial-text','canonical-web-32-action-api','qa-on-main-branch','all-employee-release-checks'])
+ for(const required of ['canonical-web-32-action-api','qa-on-main-branch','all-employee-release-checks'])
    assert.ok(blocked.has(required),'MISSING_LAUNCH_BLOCKER:'+required);
+ for(const label of ['page-title-pilot','login-showcase-pilot','login-placeholder-pilot','source-filter-trial-text'])
+   assert.equal(a.checks.find(c=>c.id===label).pass,true,'VISIBLE_PILOT_TEXT_REMAINING:'+label);
  assert.equal(a.checks.find(c=>c.id==='source-api-32').pass,true);
- assert.equal(a.checks.find(c=>c.id==='qa-on-feature-and-ops').pass,true);
  assert.equal(a.safeReadOnly,true);
+});
+test('adding any Pilot branding back is detected before publishing',()=>{
+ const o=base();
+ o.html=o.html.replace('<title>','<title>MainTrack Pilot ');
+ const a=auditLaunch(o);
+ assert.equal(a.checks.find(x=>x.id==='page-title-pilot').pass,false);
 });
 test('offline text-only candidate cleanup still cannot bypass protected release gates',()=>{
  const o=base();

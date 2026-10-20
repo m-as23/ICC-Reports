@@ -14,7 +14,7 @@ test('Stage22 source changes exactly the three approved UI resources, never othe
  // allowlisted below with exact Git blob IDs, not an unrestricted asset unlock.
  const allowed=new Set(['index.html','secure-assets/index-inline-1.js','secure-assets/index-inline-1.css','v6-core.js','v6-core.css']);
  const approvedHotfixBlobs={
-  'index.html':'b4c57297a5b709f41919673ecd98bb73d09e47ca',
+  'index.html':'83776d6478463dc5d411df1101abf768827bbfb4',
   'v6-core.js':'9cc283b7594f9952339115fdba594883151987ef',
   'v6-core.css':'dc47c4c581b26c3319b0ab241e6c5b9f9a489ced'
  };
@@ -35,6 +35,27 @@ test('Stage22 source changes exactly the three approved UI resources, never othe
  const ui=fs.readFileSync(path.join(loc,'v6-core.js'),'utf8');
  const css=fs.readFileSync(path.join(loc,'v6-core.css'),'utf8');
  const html=fs.readFileSync(path.join(loc,'index.html'),'utf8');
+ // Owner-requested text-only Pilot cleanup. Reverse it to the original pinned
+ // approved HTML byte-for-byte, proving NO element, JS, CSS, sidebar or form change.
+ const substitutions=[
+  ['MainTrack • Asset &amp; Operations Intelligence',
+   'MainTrack Pilot • MainTrack | Asset &amp; Operations Intelligence'],
+  ['MAINTENANCE MADE SIMPLE','MAINTENANCE MADE SIMPLE · PILOT'],
+  ['placeholder="مثال: EMP001"','placeholder="مثال: PILOT01"'],
+  ['<option value="pilot">بلاغات الإعداد السابقة</option>',
+   '<option value="pilot">البلاغات التجريبية</option>']
+ ];
+ let originalHtml=html;
+ for(const [clean,original] of substitutions){
+  assert.equal(originalHtml.split(clean).length-1,1,'PILOT_ONLY_SUBSTITUTION_COUNT:'+clean);
+  originalHtml=originalHtml.replace(clean,original);
+ }
+ const originalBytes=Buffer.from(originalHtml,'utf8');
+ const originallyApprovedBlob=crypto.createHash('sha1')
+    .update('blob '+originalBytes.length+'\0').update(originalBytes).digest('hex');
+ assert.equal(originallyApprovedBlob,
+  'b4c57297a5b709f41919673ecd98bb73d09e47ca',
+  'UNAPPROVED_HTML_CHANGE_BEYOND_EXACT_FOUR_PILOT_TEXT_REPLACEMENTS');
  assert.doesNotMatch(ui,/v6Dock|shortcuts/,'no clickable bottom dock may remain');
  assert.doesNotMatch(css,/v6Dock|padding-bottom:calc\(78px|bottom:calc\(76px/,'no dock space may remain');
  assert.doesNotMatch(html,/Pilot demo system|PILOT — بلاغات تجريبية فقط/,'no pilot overlay may remain');
