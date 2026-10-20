@@ -1,4 +1,7 @@
 # MainTrack — Full Functional QA: decision report
+
+> **2026-10-20 status update:** The former 13-table schema blocker and persisted E2E blocker in this original report have since been resolved in an isolated private `qa_full` schema. Verified 23-table catalog parity and real report/leave/overtime/notification/database acceptance are documented in [FULL_SCHEMA_E2E_ACCEPTANCE_20261020.md](FULL_SCHEMA_E2E_ACCEPTANCE_20261020.md). The remaining release decision is still **NO-GO** due backup/restore, concurrency/device, canonical Web/API parity and protected Production rollout gates. This earlier report is preserved as a historical test stage, not a statement of current QA readiness.
+
 **Date:** 2026-10-20
 **Decision:** **NO-GO for Production and employee release**. **PASS for the scope of safe QA run here.**
 
