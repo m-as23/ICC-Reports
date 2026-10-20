@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'../../..');
 const read=p=>JSON.parse(fs.readFileSync(path.join(root,p),'utf8'));
 const backup=read('ops/maintrack/fixtures/isolated-qa-synthetic-export-20261020.json');
@@ -37,4 +38,16 @@ test('32-action release candidate remains strictly NO-GO until a separate produc
  assert.equal(contract.state,'PRELAUNCH_NO_PRODUCTION_API');
  assert.equal(contract.liveSourceAudit.legacyFunction.verifiedCount,26);
  assert.equal(contract.liveSourceAudit.qaFunction.verifiedCount,32);
+});
+
+test('Android preflight parser is tested without installing or reading a physical device',()=>{
+ const py=path.join(root,'ops/maintrack/scripts/owner-device-qa-preflight.py');
+ const check=spawnSync('python3',[py,'--self-test'],{encoding:'utf8',timeout:10000});
+ assert.equal(check.status,0,check.stderr);
+ const j=JSON.parse(check.stdout);
+ assert.equal(j.result,'PASS_PARSER_ONLY');
+ assert.equal(j.deviceAccess,false);
+ assert.equal(j.apkSignatureChecked,false);
+ const noApk=spawnSync('python3',[py],{encoding:'utf8',timeout:10000});
+ assert.equal(noApk.status,2,'No unverified APK may be accepted');
 });
