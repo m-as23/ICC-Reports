@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "product": "MainTrack",
+  "candidate": {
+    "nativeVersion": "0.4.6",
+    "nativeCode": 406,
+    "sourceCommit": "1248211b662981e3e7db27ac0a61ca4d23862ca1",
+    "userAcceptedUI": true,
+    "releaseApproved": false
+  },
+  "operatingModel": "ALL_USERS_AT_ONCE_NO_SMALL_COHORT",
+  "environment": {
+    "live": "MainTrack-Staging",
+    "syntheticQA": "MainTrack-RBAC-QA-Isolated",
+    "newSupabaseProjectRequired": false
+  },
+  "acceptanceThresholdsProposed": {
+    "syntheticConcurrentBusinessUsers": [
+      5,
+      10,
+      20,
+      30
+    ],
+    "targetValidOperationsSuccessRate": 0.99,
+    "targetApiP95Ms": 1000,
+    "lostAcknowledgedReportsAllowed": 0,
+    "duplicateProcessedReportsAllowed": 0,
+    "unauthorizedDataAccessAllowed": 0,
+    "undetectedCriticalBackendErrorsAllowed": 0
+  },
+  "gates": [
+    {
+      "id": "real-staging-backup-encrypted-offsite",
+      "status": "NOT_VERIFIED",
+      "meaning": "Encrypted backup of actual reports/users/transactions and secure restore drill, not synthetic QA export"
+    },
+    {
+      "id": "recoverable-signing-and-release-artifacts",
+      "status": "NOT_VERIFIED",
+      "meaning": "Protected code, signing material and exact signed 0.4.6 APK + OTA manifest backups, keys never stored in public code"
+    },
+    {
+      "id": "synthetic-business-load-30-users",
+      "status": "NOT_VERIFIED",
+      "meaning": "At least 30 concurrent synthetic sessions performing login, reporting, notifications, leave and overtime on isolated project; 5xx, p95, idempotency, row counts measured"
+    },
+    {
+      "id": "web-apk-backend-version-parity",
+      "status": "NOT_VERIFIED",
+      "meaning": "Owner-signed APK 0.4.6, deployed web and 32-action backend match the tested release contract"
+    },
+    {
+      "id": "all-user-roles-and-physical-upgrade",
+      "status": "PARTIAL_OWNER_TEST",
+      "meaning": "Owner manually validated roles; full scripted acceptance and existing native offline session retention still pending"
+    },
+    {
+      "id": "always-on-observability",
+      "status": "PREPARED_NOT_ACTIVE",
+      "meaning": "Hourly GitHub health workflow on repository default branch plus application failures, outbox, backups, usage and Owner alerts"
+    },
+    {
+      "id": "capacity-and-quota-budget",
+      "status": "EXCEEDS_MODEL_AT_20_ACTIVE",
+      "meaning": "Current 20-second notification polling can exceed monthly free Edge-call budget with 20 users active 8h x 22 days"
+    },
+    {
+      "id": "owner-full-launch-go",
+      "status": "NOT_APPROVED",
+      "meaning": "Explicit acceptance of measured results and recovery limits; no automatic publication"
+    }
+  ],
+  "criticalRules": {
+    "noAutomaticStagingWrites": true,
+    "noNewSupabaseProject": true,
+    "doNotBypassProtectedReleaseGates": true,
+    "doNotDeleteProductionData": true,
+    "testEnvironmentContainsSyntheticOnly": true,
+    "doNotPublishUnsignedApk": true,
+    "freezeRolloutIfAnyGateFails": true,
+    "doNotInterpretHealthAsLoadTest": true
+  }
+}
