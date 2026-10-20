@@ -14,8 +14,8 @@ const web=read(config.webSource.path);
 const ddl=read('ops/maintrack/qa-full-schema-only.sql');
 
 test('versioned QA reconstruction can create 23 RLS-protected tables with no release credentials',()=>{
- assert.equal([...ddl.matchAll(/CREATE TABLE qa_full\.mt_[a-z_]+/g)].length,23);
- assert.equal([...ddl.matchAll(/ALTER TABLE qa_full\.mt_[a-z_]+ ENABLE ROW LEVEL SECURITY/g)].length,23);
+ assert.equal([...ddl.matchAll(/CREATE TABLE qa_full\."mt_[a-z_]+"/g)].length,23);
+ assert.equal([...ddl.matchAll(/ALTER TABLE qa_full\."mt_[a-z_]+" ENABLE ROW LEVEL SECURITY/g)].length,23);
  assert.equal([...ddl.matchAll(/CREATE TRIGGER mt_[a-z_]+/g)].length,3);
  assert.equal([...ddl.matchAll(/CREATE OR REPLACE FUNCTION qa_full\.mt_[a-z_]+/g)].length,3);
  assert.match(ddl,/CREATE VIEW qa_full\.mt_reports_sheet_view WITH \(security_invoker = true\)/);
