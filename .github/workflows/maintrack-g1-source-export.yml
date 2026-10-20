@@ -50,7 +50,7 @@ jobs:
           mkdir -p g1-source/05_Signed_Original_0.4.6_APK
           gh run download 39302600652 --repo "$GITHUB_REPOSITORY" --name 'MainTrack-0.4.6-406-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES' --dir g1-source/05_Signed_Original_0.4.6_APK
           test "$(sha256sum g1-source/05_Signed_Original_0.4.6_APK/MainTrack-0.4.6-406-OWNER-QA-ONLY.apk | cut -d' ' -f1)" = "83d6ce7db52ff9150c6d44e5f3d98a51d09b61ae11a9e7cc9511e662c8404931"
-          (cd g1-source && sha256sum 0* 05_Signed_Original_0.4.6_APK/* > SHA256SUMS.txt)
+          (cd g1-source && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
           test -s g1-source/04_MainTrack_Git_History_All_Refs.bundle
           (cd g1-source && sha256sum -c SHA256SUMS.txt)
       - name: Upload complete Git source and tests archive
