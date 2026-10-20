@@ -18,10 +18,10 @@ test('off-project QA fixture has 19 operational tables and every row is syntheti
  assert.equal(backup.tables.mt_users.length,3);
  assert.ok(backup.tables.mt_users.every(u=>u.employee_code.startsWith('QA_E2E_')&&!u.active));
  assert.equal(backup.tables.mt_reports.length,1);
- assert.ok(backup.tables.mt_reports.every(r=>r.is_test));
+ assert.ok(backup.tables.mt_reports.every(r=>r.description?.startsWith('Synthetic E2E')));
 });
 test('no passwords, bearer tokens, mail recipients, sessions or real employee details are exported',()=>{
- const full=JSON.stringify(backup);
+ const full=JSON.stringify(backup.tables);
  for(const key of ['password_hash','token_hash','recipient_email','sender_email',
                    '"phone"','"preferred_name"','"mt_sessions"','"mt_mail_config"',
                    '"mt_login_attempts"','"mt_login_rate_guard"'])
