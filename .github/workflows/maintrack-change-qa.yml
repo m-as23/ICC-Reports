@@ -33,6 +33,8 @@ jobs:
         run: node ops/maintrack/scripts/classify-future-update.mjs
       - name: Audit repository-write and Android signing workflow surface
         run: node ops/maintrack/scripts/audit-release-workflows.mjs
+      - name: Verify employee release is still blocked until every independent gate is approved
+        run: node ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
       - name: Enforce signed native Android 0.4.4 owner baseline and future 405+ release floor
         run: |
           node ops/maintrack/scripts/native-release-floor.mjs --audit
@@ -70,6 +72,8 @@ jobs:
           python3 -m unittest discover -s android/maintrack-app/tests-release -v
       - name: Verify synthetic authenticated role contract (offline only; no live credentials)
         run: node --test ops/maintrack/tests/qa-authenticated-rbac-readonly.test.mjs
+      - name: Execute real backend business validators with synthetic in-memory data (no writes)
+        run: node --test ops/maintrack/tests/full-functional-source-acceptance.test.mjs
       - name: Verify source API has the complete 32-action contract
         run: |
           node --input-type=module <<'NODE'
@@ -126,6 +130,8 @@ jobs:
           node-version: '22'
       - name: Read-only live Staging API contract smoke (no secrets or credentials)
         run: node android/maintrack-app/scripts/qa/live-api-smoke.mjs
+      - name: Live isolated API 32-action denial security matrix (no credentials or writes)
+        run: node ops/maintrack/scripts/live-isolated-api-deny.mjs
   overall-qa:
     name: MainTrack Staging-only QA — required combined result
     if: always()

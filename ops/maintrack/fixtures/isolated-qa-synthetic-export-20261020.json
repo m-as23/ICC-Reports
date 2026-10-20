@@ -1,0 +1,460 @@
+{
+  "schema": "maintrack-synthetic-operational-export-v1",
+  "source": "isolated-qa-full-only",
+  "exported_on": "2026-10-20",
+  "sanitization": "excludes credentials, hashes, sessions, rate guards, mail config, phone, preferred name; restore regenerates disabled user password hashes",
+  "tables": {
+    "mt_audit": [
+      {
+        "id": 1,
+        "action": "report.created",
+        "entity": "report",
+        "details": {},
+        "actor_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "entity_id": "12af46ce-89c7-4757-b0a4-0cec5e12d9de",
+        "created_at": "2026-10-20T08:57:45.600356+00:00"
+      },
+      {
+        "id": 2,
+        "action": "leave.requested",
+        "entity": "leave",
+        "details": {},
+        "actor_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "entity_id": "LV-C33181C6",
+        "created_at": "2026-10-20T08:58:03.889474+00:00"
+      },
+      {
+        "id": 3,
+        "action": "leave.approved",
+        "entity": "leave",
+        "details": {
+          "days": "1.0",
+          "after": 27,
+          "before": 28
+        },
+        "actor_id": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "entity_id": "LV-C33181C6",
+        "created_at": "2026-10-20T08:58:09.437538+00:00"
+      },
+      {
+        "id": 4,
+        "action": "leave.requested",
+        "entity": "leave",
+        "details": {},
+        "actor_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "entity_id": "LV-388534BB",
+        "created_at": "2026-10-20T08:58:15.408009+00:00"
+      },
+      {
+        "id": 5,
+        "action": "leave.rejected",
+        "entity": "leave",
+        "details": {
+          "days": "1.0",
+          "after": 27,
+          "before": 27
+        },
+        "actor_id": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "entity_id": "LV-388534BB",
+        "created_at": "2026-10-20T08:58:18.25476+00:00"
+      },
+      {
+        "id": 6,
+        "action": "overtime.requested",
+        "entity": "overtime",
+        "details": {},
+        "actor_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "entity_id": "OT-7C494A16",
+        "created_at": "2026-10-20T08:58:20.80003+00:00"
+      },
+      {
+        "id": 7,
+        "action": "overtime.approved",
+        "entity": "overtime",
+        "details": {
+          "minutes": 240,
+          "compensation": "SUBSTITUTE"
+        },
+        "actor_id": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "entity_id": "OT-7C494A16",
+        "created_at": "2026-10-20T08:58:23.334961+00:00"
+      },
+      {
+        "id": 8,
+        "action": "overtime.requested",
+        "entity": "overtime",
+        "details": {},
+        "actor_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "entity_id": "OT-7C9C6C97",
+        "created_at": "2026-10-20T08:58:26.058999+00:00"
+      },
+      {
+        "id": 9,
+        "action": "overtime.approved",
+        "entity": "overtime",
+        "details": {
+          "minutes": 480,
+          "compensation": "FINANCIAL"
+        },
+        "actor_id": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "entity_id": "OT-7C9C6C97",
+        "created_at": "2026-10-20T08:58:28.59281+00:00"
+      }
+    ],
+    "mt_users": [
+      {
+        "id": "59afe44c-0dbf-440d-93d5-916463e5c3d2",
+        "name": "Synthetic Technician",
+        "role": "technician",
+        "active": false,
+        "job_title": "Synthetic Role",
+        "created_at": "2026-10-20T08:54:20.901146+00:00",
+        "department": "QA FULL E2E ONLY",
+        "updated_at": "2026-10-20T08:54:20.901146+00:00",
+        "must_change": false,
+        "employee_code": "QA_E2E_TECHNICIAN",
+        "token_version": 2
+      },
+      {
+        "id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "name": "Synthetic Engineer",
+        "role": "engineer",
+        "active": false,
+        "job_title": "Synthetic Role",
+        "created_at": "2026-10-20T08:54:20.901146+00:00",
+        "department": "QA FULL E2E ONLY",
+        "updated_at": "2026-10-20T08:54:20.901146+00:00",
+        "must_change": false,
+        "employee_code": "QA_E2E_ENGINEER",
+        "token_version": 2
+      },
+      {
+        "id": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "name": "Synthetic Owner",
+        "role": "owner",
+        "active": false,
+        "job_title": "Synthetic Role",
+        "created_at": "2026-10-20T08:54:20.901146+00:00",
+        "department": "QA FULL E2E ONLY",
+        "updated_at": "2026-10-20T08:54:20.901146+00:00",
+        "must_change": false,
+        "employee_code": "QA_E2E_OWNER",
+        "token_version": 2
+      }
+    ],
+    "mt_outbox": [
+      {
+        "id": "894c3a1c-7d21-4f0a-8e0e-76087449a435",
+        "state": "PENDING",
+        "done_at": null,
+        "payload": {
+          "report_id": "12af46ce-89c7-4757-b0a4-0cec5e12d9de",
+          "wo_number": 1
+        },
+        "attempts": 0,
+        "event_key": "report.email.12af46ce-89c7-4757-b0a4-0cec5e12d9de",
+        "claimed_at": null,
+        "created_at": "2026-10-20T08:57:45.600356+00:00",
+        "event_type": "report.created.email",
+        "last_error": null,
+        "next_run_at": "2026-10-20T08:57:45.600356+00:00",
+        "last_http_status": null,
+        "provider_message_id": null
+      }
+    ],
+    "mt_reports": [
+      {
+        "id": "12af46ce-89c7-4757-b0a4-0cec5e12d9de",
+        "status": "Closed",
+        "is_test": false,
+        "category": "Electrical",
+        "facility": "",
+        "revision": 1,
+        "solution": "Synthetic contactor replacement",
+        "legacy_wo": null,
+        "wo_number": 1,
+        "created_at": "2026-10-20T08:57:45.600356+00:00",
+        "creator_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "deleted_at": null,
+        "deleted_by": null,
+        "machine_id": 1,
+        "section_id": 1,
+        "updated_at": "2026-10-20T08:57:45.600356+00:00",
+        "description": "Synthetic E2E motor contactor fault",
+        "report_time": "07:00:00",
+        "spare_parts": "QA TEST",
+        "component_id": 1,
+        "delete_reason": null,
+        "incident_date": "2026-10-15",
+        "work_end_time": "09:15:00",
+        "request_digest": "4d552e7bfe7f6d56a270f099f579b070790f7e4ad43a5efbdbd945b65c747e75",
+        "workflow_state": "RECORDED",
+        "work_start_time": "07:15:00",
+        "legacy_sheet_row": null,
+        "client_request_id": "d9d79fb8-43db-46fc-9c2f-ec9ae9a566cc",
+        "legacy_client_ref": "",
+        "assigned_technician": "Synthetic Engineer"
+      }
+    ],
+    "mt_machines": [
+      {
+        "id": 1,
+        "name": "QA-E2E-MACHINE",
+        "active": true,
+        "section_id": 1
+      }
+    ],
+    "mt_sections": [
+      {
+        "id": 1,
+        "name": "QA-E2E-ELECTRICAL",
+        "active": true
+      }
+    ],
+    "mt_statuses": [
+      {
+        "id": 1,
+        "name": "Open",
+        "active": true
+      },
+      {
+        "id": 2,
+        "name": "Closed",
+        "active": true
+      }
+    ],
+    "mt_categories": [
+      {
+        "id": 1,
+        "name": "Electrical",
+        "active": true
+      }
+    ],
+    "mt_components": [
+      {
+        "id": 1,
+        "name": "QA-E2E-PLC",
+        "active": true,
+        "section_id": 1
+      }
+    ],
+    "mt_migrations": [
+      {
+        "version": "QA_E2E_PASS",
+        "applied_at": "2026-10-20T08:54:20.901146+00:00"
+      }
+    ],
+    "mt_technicians": [],
+    "mt_leave_ledger": [
+      {
+        "id": "e2162abe-c1fd-4672-af73-b6f484671457",
+        "delta": -1,
+        "user_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "created_at": "2026-10-20T08:58:09.437538+00:00",
+        "request_id": "b3fbb2b8-bdd4-4471-9d76-82b1474b3520",
+        "approved_by": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "balance_after": 27
+      }
+    ],
+    "mt_notifications": [
+      {
+        "id": "1ad2af29-5c0e-4ad8-9d40-958928718da9",
+        "type": "leaveDecision",
+        "title": "تم اعتماد الإجازة",
+        "target": "leave",
+        "read_at": null,
+        "source_id": "LV-C33181C6",
+        "created_at": "2026-10-20T08:58:09.437538+00:00",
+        "description": "LV-C33181C6 — E2E QA",
+        "recipient_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab"
+      },
+      {
+        "id": "28759f07-6376-4f2a-aa04-440498f4ca72",
+        "type": "overtimeDecision",
+        "title": "تم اعتماد الوقت الإضافي",
+        "target": "leave",
+        "read_at": null,
+        "source_id": "OT-7C494A16",
+        "created_at": "2026-10-20T08:58:23.334961+00:00",
+        "description": "OT-7C494A16",
+        "recipient_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab"
+      },
+      {
+        "id": "b5e27c06-6022-4ced-b459-c5b60bf7c997",
+        "type": "overtimeDecision",
+        "title": "تم اعتماد الوقت الإضافي",
+        "target": "leave",
+        "read_at": null,
+        "source_id": "OT-7C9C6C97",
+        "created_at": "2026-10-20T08:58:28.59281+00:00",
+        "description": "OT-7C9C6C97",
+        "recipient_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab"
+      },
+      {
+        "id": "dcec5117-e36b-43a2-af18-4a1606bb1ded",
+        "type": "leaveDecision",
+        "title": "تم رفض الإجازة",
+        "target": "leave",
+        "read_at": null,
+        "source_id": "LV-388534BB",
+        "created_at": "2026-10-20T08:58:18.25476+00:00",
+        "description": "LV-388534BB",
+        "recipient_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab"
+      },
+      {
+        "id": "e13a116f-00de-49ed-a981-49a0b895a0e7",
+        "type": "report",
+        "title": "تم تسجيل البلاغ WO-01",
+        "target": "report",
+        "read_at": "2026-10-20T08:57:58.220757+00:00",
+        "source_id": "WO-01",
+        "created_at": "2026-10-20T08:57:45.600356+00:00",
+        "description": "Synthetic E2E motor contactor fault",
+        "recipient_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab"
+      }
+    ],
+    "mt_leave_balances": [
+      {
+        "days": 27,
+        "user_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab"
+      },
+      {
+        "days": 28,
+        "user_id": "59afe44c-0dbf-440d-93d5-916463e5c3d2"
+      },
+      {
+        "days": 28,
+        "user_id": "b748a7f9-a42a-4d99-af52-cce85ab488e6"
+      }
+    ],
+    "mt_leave_requests": [
+      {
+        "id": "067f2f2c-cac0-42bd-b6cc-d802528f363d",
+        "days": 1,
+        "type": "annual",
+        "reason": "QA rejected annual day",
+        "status": "REJECTED",
+        "end_date": "2026-10-23",
+        "public_id": "LV-388534BB",
+        "created_at": "2026-10-20T08:58:15.408009+00:00",
+        "decided_at": "2026-10-20T08:58:18.25476+00:00",
+        "decided_by": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "start_date": "2026-10-23",
+        "requester_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "balance_after": 27,
+        "duration_kind": "FULL_DAY",
+        "balance_before": 27,
+        "request_digest": "a3e849ab5f297a5e380589f3c7b9e3b622c6ff086d1d5e51938f267b46c6a3ee",
+        "decision_reason": "",
+        "client_request_id": "15e825bc-8002-44d6-b5a7-23f972fdb5e3"
+      },
+      {
+        "id": "b3fbb2b8-bdd4-4471-9d76-82b1474b3520",
+        "days": 1,
+        "type": "annual",
+        "reason": "QA approved annual day",
+        "status": "APPROVED",
+        "end_date": "2026-10-22",
+        "public_id": "LV-C33181C6",
+        "created_at": "2026-10-20T08:58:03.889474+00:00",
+        "decided_at": "2026-10-20T08:58:09.437538+00:00",
+        "decided_by": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "start_date": "2026-10-22",
+        "requester_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "balance_after": 27,
+        "duration_kind": "FULL_DAY",
+        "balance_before": 28,
+        "request_digest": "35e0447dfccf9bd99bf6f20b3f016351aa7a28922b71bb8a183bf19bb391c2f4",
+        "decision_reason": "E2E QA",
+        "client_request_id": "03313f36-c825-42ba-8a8b-cd3a2319ed77"
+      }
+    ],
+    "mt_overtime_requests": [
+      {
+        "id": "4f2f8e0e-b171-439a-8926-738ad3ece6fc",
+        "reason": "QA synthetic overtime 4h",
+        "status": "APPROVED",
+        "minutes": 240,
+        "end_time": "19:00:00",
+        "public_id": "OT-7C494A16",
+        "work_date": "2026-10-12",
+        "work_kind": "AFTER_SHIFT",
+        "created_at": "2026-10-20T08:58:20.80003+00:00",
+        "decided_at": "2026-10-20T08:58:23.334961+00:00",
+        "decided_by": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "start_time": "15:00:00",
+        "requester_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "request_digest": "5872c395b2b0ad8abd308c6ac01d9c004af3c9c290a78315349ccd7af0d8d51f",
+        "decision_reason": "",
+        "client_request_id": "1961c4be-d04b-4b92-8ae8-b1d48c493dba",
+        "compensation_kind": "SUBSTITUTE"
+      },
+      {
+        "id": "705e139d-cfc3-4d0a-9e19-a5963c8faddf",
+        "reason": "QA synthetic overtime 8h",
+        "status": "APPROVED",
+        "minutes": 480,
+        "end_time": "15:00:00",
+        "public_id": "OT-7C9C6C97",
+        "work_date": "2026-10-11",
+        "work_kind": "INDEPENDENT_DAY",
+        "created_at": "2026-10-20T08:58:26.058999+00:00",
+        "decided_at": "2026-10-20T08:58:28.59281+00:00",
+        "decided_by": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "start_time": "07:00:00",
+        "requester_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "request_digest": "0baaf6ff27af7e6e1836947ea24f9c9b62c607361a8499032d960638fee63ca8",
+        "decision_reason": "",
+        "client_request_id": "dfc0a72e-14f0-4a82-b9b5-ec71cc89631c",
+        "compensation_kind": "FINANCIAL"
+      }
+    ],
+    "mt_substitute_time_ledger": [
+      {
+        "id": "a5f4bb2a-4bf8-4f6e-b9d5-3095b35081f5",
+        "user_id": "a2c6a8be-374d-4f3e-85ef-6d8a1a1311ab",
+        "leave_id": null,
+        "created_at": "2026-10-20T08:58:23.334961+00:00",
+        "approved_by": "b748a7f9-a42a-4d99-af52-cce85ab488e6",
+        "overtime_id": "4f2f8e0e-b171-439a-8926-738ad3ece6fc",
+        "delta_minutes": 240
+      }
+    ],
+    "mt_leave_balance_adjustments": [],
+    "mt_substitute_time_adjustments": []
+  },
+  "sequences": [
+    {
+      "name": "mt_audit_id_seq",
+      "last_value": 9
+    },
+    {
+      "name": "mt_categories_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_components_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_machines_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_sections_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_statuses_id_seq",
+      "last_value": 2
+    },
+    {
+      "name": "mt_technicians_id_seq",
+      "last_value": null
+    },
+    {
+      "name": "mt_wo_number_seq",
+      "last_value": 1
+    }
+  ]
+}
