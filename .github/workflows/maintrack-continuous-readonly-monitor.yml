@@ -1,0 +1,32 @@
+name: MainTrack — Continuous Read-only Health Watch (No User Data)
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-hourly-health-readonly
+  cancel-in-progress: false
+jobs:
+  api-health-only:
+    name: Staging + isolated QA public health/readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify read-only monitor policy and monthly budget arithmetic
+        run: node --test android/maintrack-app/tests/continuous-safety-net.test.mjs
+      - name: Probe two exact allowlisted projects; 4 GET requests total
+        run: node ops/maintrack/scripts/continuous-readonly-health.mjs
+      - name: Explain limits
+        if: always()
+        run: |
+          echo 'Read-only Staging/QA health checks. NO login, no employee records, no test writes, no APK/OTA/Web deployment.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This check does NOT prove concurrent-user capacity, 32-action business workflows, database backups, or zero bugs.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'GitHub schedule is active ONLY when this workflow exists on the repository default branch. In a draft branch the schedule does NOT run.' >> "$GITHUB_STEP_SUMMARY"
