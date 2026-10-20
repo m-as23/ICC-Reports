@@ -19,11 +19,11 @@ export const LOCKED='const MAINTRACK_PRODUCTION_OWNER_RELEASE_AUTHORIZED=false;'
 export function prepareProductionLocked(source,required){
  assert.equal(gitBlob(source),PINNED_GIT_BLOB,'REVIEWED_BACKEND_SOURCE_CHANGED');
  assert.equal(required.length,32,'EXPECTED_32_ACTIONS');
- const actions=[...new Set([...source.matchAll(/case\\s+'([A-Za-z][A-Za-z0-9_]*)'\\s*:/g)].map(x=>x[1]))];
+ const actions=[...new Set([...source.matchAll(/case\s+'([A-Za-z][A-Za-z0-9_]*)'\s*:/g)].map(x=>x[1]))];
  assert.deepEqual([...actions].sort(),[...required].sort(),'API_ACTION_PARITY_FAILURE');
  const pool="const pool=new pg.Pool({connectionString:Deno.env.get('SUPABASE_DB_URL'),max:2,idleTimeoutMillis:10000,connectionTimeoutMillis:6000});";
  assert.equal(source.split(pool).length,2,'UNEXPECTED_DB_CONNECTION');
- const matches=source.match(/const MT_ALLOWED_ORIGINS=new Set\\(\\[[\\s\\S]*?\\]\\);/g);
+ const matches=source.match(/const MT_ALLOWED_ORIGINS=new Set\(\[[\s\S]*?\]\);/g);
  assert.equal(matches?.length,1,'UNEXPECTED_CORS_CONFIG');
  const imports="import {randomBytes,randomUUID,createHash} from 'node:crypto';";
  assert.equal(source.split(imports).length,2,'UNEXPECTED_MODULE_IMPORT');
