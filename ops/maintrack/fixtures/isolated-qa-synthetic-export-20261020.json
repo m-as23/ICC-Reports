@@ -422,5 +422,39 @@
     ],
     "mt_leave_balance_adjustments": [],
     "mt_substitute_time_adjustments": []
-  }
+  },
+  "sequences": [
+    {
+      "name": "mt_audit_id_seq",
+      "last_value": 9
+    },
+    {
+      "name": "mt_categories_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_components_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_machines_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_sections_id_seq",
+      "last_value": 1
+    },
+    {
+      "name": "mt_statuses_id_seq",
+      "last_value": 2
+    },
+    {
+      "name": "mt_technicians_id_seq",
+      "last_value": null
+    },
+    {
+      "name": "mt_wo_number_seq",
+      "last_value": 1
+    }
+  ]
 }
