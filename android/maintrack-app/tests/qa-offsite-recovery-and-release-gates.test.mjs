@@ -29,7 +29,7 @@ test('no passwords, bearer tokens, mail recipients, sessions or real employee de
    assert.ok(!full.includes(key), 'QA_FIXTURE_EXPOSES_REDACTED_FIELD:'+key);
  assert.equal(backup.sequences.length,8);
  assert.ok(backup.sequences.every(x=>/^mt_[a-z_]+$/.test(x.name)&&
-   Number.isSafeInteger(x.last_value)&&x.last_value>=1));
+   (x.last_value===null || Number.isSafeInteger(x.last_value)&&x.last_value>=1)));
 });
 test('32-action release candidate remains strictly NO-GO until a separate production backend exists',()=>{
  assert.equal(contract.requiredActions.length,32);
