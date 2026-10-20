@@ -152,7 +152,7 @@ test('leave and overtime create/decision source includes locks, ledger and notif
  const leave=portion('async function leaveRequest(u,b)','async function decision');
  const decide=portion('async function decision(u,b)','async function notifications');
  const ot=portion('async function overtimeRequest(u,b)','async function overtimeDecision');
- const otApprove=portion('async function overtimeDecision(u,b)','const otSelect');
+ const otApprove=portion('async function overtimeDecision(u,b)','async function dispatch');
  for(const part of [leave,decide,ot,otApprove])assert.match(part,/FOR UPDATE|transaction\(async c=>/);
  assert.match(leave,/OVERLAPPING_LEAVE_REQUEST/);
  assert.match(leave,/INSUFFICIENT_LEAVE_BALANCE/);
