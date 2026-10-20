@@ -17,11 +17,11 @@ def call(argv):
     return p.returncode, p.stdout + "\n" + p.stderr
 
 def fingerprint(text):
-    match = re.search(r"Signer #1 certificate SHA-256 digest:\\s*([A-Fa-f0-9:]{64,95})", text)
+    match = re.search(r"Signer #1 certificate SHA-256 digest:\s*([A-Fa-f0-9:]{64,95})", text)
     return re.sub(r"[^0-9a-f]", "", match.group(1).lower()) if match else None
 
 def badging(text):
-    match = re.search(r"package:\s+name='([^']+)'\s+versionCode='(\\d+)'\s+versionName='([^']+)'", text)
+    match = re.search(r"package:\s+name='([^']+)'\s+versionCode='(\d+)'\s+versionName='([^']+)'", text)
     if not match:
         raise ValueError("Cannot parse Android APK identity from aapt badging")
     return {"package":match.group(1), "versionCode":int(match.group(2)), "versionName":match.group(3)}
@@ -60,7 +60,7 @@ def main():
         status,details=call(["adb","-s",connected[0],"shell","dumpsys","package",EXPECTED_APP])
         if status!=0 or "versionCode=" not in details:
             raise RuntimeError("Cannot read existing owner app package metadata")
-        installed=re.search(r"versionCode=(\\d+)",details)
+        installed=re.search(r"versionCode=(\d+)",details)
         report["device"]={"connected":True,"installedVersionCode":int(installed.group(1)) if installed else None}
     report["result"]="PASS_CANDIDATE_ONLY" if all(check.values()) else "BLOCKED"
     report["physicalUpgradeTested"]=False
