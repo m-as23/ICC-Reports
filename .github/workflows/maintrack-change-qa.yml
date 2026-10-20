@@ -33,6 +33,8 @@ jobs:
         run: node ops/maintrack/scripts/classify-future-update.mjs
       - name: Audit repository-write and Android signing workflow surface
         run: node ops/maintrack/scripts/audit-release-workflows.mjs
+      - name: Verify employee release is still blocked until every independent gate is approved
+        run: node ops/maintrack/scripts/employee-release-gate.mjs --assert-blocked
       - name: Enforce signed native Android 0.4.4 owner baseline and future 405+ release floor
         run: |
           node ops/maintrack/scripts/native-release-floor.mjs --audit
