@@ -1,71 +1,66 @@
-# MainTrack — Isolated RBAC QA Acceptance (2026-10-20)
+# MainTrack — Authenticated RBAC QA acceptance
 
-## Where testing actually lives
+Verified: **2026-10-20**. Scope: dedicated test Supabase project only.
 
-- Isolated project: `MainTrack-RBAC-QA-Isolated`, ID `szhstrafzkxzstjdcynl`, eu-central-1.
-- Staging/employee project remains `tdnkeskczcsukcujwinu`; **not** a target for new authenticated tests.
-- Isolated API: `https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-rbac-readonly-qa/api`.
-- Source (exact deployed revision v1): `supabase/functions/maintrack-rbac-readonly-qa/index.ts`.
-- Isolated DB has a **minimal RBAC-specific schema**: 11 public tables with RLS enabled, all direct browser-role table privileges revoked, zero production reports, no copied employees.
-- Only synthetic QA accounts exist: `QA_RBAC_OWNER`, `QA_RBAC_ENGINEER`, `QA_RBAC_TECHNICIAN`. Active with correct roles; bcrypt passwords generated randomly inside the isolated DB and **not retrievable**. No login sessions have been issued. These credentials must be reset through a protected setup to execute live authenticated probes.
+## Isolation
+- Project: `MainTrack-RBAC-QA-Isolated` (`szhstrafzkxzstjdcynl`), Frankfurt.
+- The employee Staging project `tdnkeskczcsukcujwinu` was **not** used for the authenticated acceptance run.
+- API: `https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-rbac-readonly-qa/api`.
+- 13 isolated, RLS-enabled public tables; zero production reports and zero real employee identities transferred.
+- Exactly three synthetic identities with matching roles: `QA_RBAC_OWNER`, `QA_RBAC_ENGINEER`, and `QA_RBAC_TECHNICIAN`.
+- Auth is the application’s opaque session/token mechanism, **not Supabase Auth JWT**. `verify_jwt=false` on the isolated API is intentional because its code performs authentication itself. Direct anon/authenticated table access remains revoked.
 
-## Current verified results
+## Actual acceptance — PASS
+The first one-time test was executed **against the deployed Edge API**,
+not a mocked browser, and the isolated database reached the terminal marker
+`rbac_qa_pass` only after all assertions passed.
 
-1. The isolated Supabase project is ACTIVE_HEALTHY.
-2. The isolated API deployment is ACTIVE, with custom opaque-token authentication (verify_jwt=false) and QA-only action gating.
-3. Real remote GET `/healthz`: `status=up`.
-4. Real remote GET `/readyz`: `status=ready`, only marker `20261020`.
-5. Database inventory: 11/11 RLS enabled; 3 synthetic users, 0 reports, 0 sessions.
-6. Github Change QA Gate (CI): offline synthetic RBAC test suite + browser/OTA regression suites passed on the isolated-script change branch. These **do not** prove real live authenticated RBAC.
-7. Supabase Security Advisor: informational `rls_enabled_no_policy` for 11 deliberately deny-all tables. No browser Data API table policies are granted.
-8. No MainTrack Web, Android, APK, OTA or employee backend was changed or deployed by this work.
+- 6/6 real authenticated session/profile identity checks.
+- 10/10 expected HTTP 403 FORBIDDEN for Engineer and Technician on Owner-only reads.
+- 2/2 Owner-only positive metadata reads returned HTTP 200 with the expected shape.
+- 9/9 additional negative controls: missing/fake token, non-QA login, unauthorized mutations, role spoofing, rejected Origin and wrong catalog/CMMS scope.
+- 4 fixture preflight assertions (account count and role/status checks), for 31 total assertions.
 
-## Read-only API scope
+The second one-time test verified **real password login**, followed by
+session and profile calls, for each synthetic account. Its success marker
+`qa_login_pass` is recorded only after **13 assertions passed**:
+- Three correct QA identities/roles validated.
+- Three genuine password logins returned opaque tokens and correct roles.
+- Three post-login session requests returned the right role.
+- Three profile requests returned the correct identity.
+- Plus the fixture account-count preflight.
 
-Only these actions are permitted on the isolated function: `login` for
-`QA_RBAC_*` accounts, `session`, `profile`, `adminCatalog`
-(`kind=sections` only), `adminUsers`, `leaveInbox`, `overtimeInbox`, and
-`cmms` (`mode=machines` only). Every other action is rejected with
-`QA_ACTION_DISABLED` before dispatch, including report submission, user
-management, leave decisions, overtime decisions and password changes.
+The one-time endpoints produced duplicate GET HTTP 409 on the external
+URL-fetching client; this is the expected fail-closed response to a replay.
+The authoritative completion evidence is the durable terminal database
+markers, which were separately read through Supabase.
 
-The function has no browser Origin allowlist; requests with an Origin are
-rejected. QA server-to-server requests with no Origin require a valid
-opaque bearer token for authenticated actions. All account codes are checked
-against the exact three synthetic identities.
+## Post-test security verification
+- Three QA identities remain in the isolated database but are now **inactive** (`active=false`).
+- Their temporary passwords were replaced by new high-entropy hashes, and their `token_version` advanced, invalidating old sessions.
+- `mt_sessions` = **0**; `mt_reports` = **0**;
+  `mt_leave_requests` = **0**; `mt_overtime_requests` = **0**.
+- 13/13 public test tables have RLS enabled; direct read/write checks for browser roles were denied.
+- Both temporary acceptance functions (`maintrack-rbac-one-shot-runner` and
+  `maintrack-rbac-login-once`) have been **retired**: safe 410 handler,
+  `verify_jwt=true`, no test code or shared secret in their current deployments.
+- The read-only QA API continues to deny report creation, user edits, approvals and other mutations.
+  Its session TTL was reduced from seven days to **three minutes** in QA only.
+- No secrets, raw passwords, bearer tokens, or QA challenge strings are committed to GitHub.
 
-This schema is a **minimal, non-production functional slice**. Some Owner
-actions outside the permitted read probes may still require the full 23-table
-schema, so do not label this a production-equivalent backend or a full app
-acceptance environment.
+## Source/CI evidence
+- Isolated API: `supabase/functions/maintrack-rbac-readonly-qa/index.ts`.
+- Offline CI authorization contract: `ops/maintrack/tests/qa-authenticated-rbac-readonly.test.mjs`.
+- Optional protected external probe: `ops/maintrack/scripts/qa-authenticated-rbac-readonly.mjs`.
+- Branch: `fix/maintrack-staging-role-ui-qa-20261020`; **Draft PR #19**, target
+  `ops/maintrack-044-production-foundation-20261018`. Do not merge without owner review.
 
-## How to complete the real 18-check authentication gate
+## Limitations
+This is real authenticated access-control and password-login acceptance against a
+**13-table minimal isolated RBAC fixture**, not a full production-equivalent
+23-table MainTrack system. Passing these tests does not prove that all
+report/leave/overtime **write** workflows or Production permissions are secure.
+A later full staging-to-release audit must run separately before production rollout.
 
-The probe is at `ops/maintrack/scripts/qa-authenticated-rbac-readonly.mjs`.
-It is deliberately locked to the isolated project and requires **three
-distinct, real QA bearer tokens** and an explicit QA opt-in. It does not log in
-or create credentials. An isolated secure provisioning process must:
-
-1. Set three new random passwords in a protected secret manager for these
-   synthetic accounts (not chat, public repo, issue or PR comment).
-2. Call the isolated QA login endpoint using those secure passwords to get
-   the three tokens. The QA login path creates sessions; rotate/revoke after QA.
-3. Set protected runner environment secrets
-   `MAINTRACK_RBAC_QA_OWNER_TOKEN`,
-   `MAINTRACK_RBAC_QA_ENGINEER_TOKEN`,
-   `MAINTRACK_RBAC_QA_TECHNICIAN_TOKEN`.
-4. Set runner-only `MAINTRACK_RBAC_QA_PROJECT_REF=szhstrafzkxzstjdcynl`
-   and `MAINTRACK_RBAC_QA_CONFIRMATION=APPROVED_QA_RBAC_READ_ONLY`.
-5. Run `node ops/maintrack/scripts/qa-authenticated-rbac-readonly.mjs --live`
-   from an approved, non-PR runner with outbound HTTPS and protected secrets.
-
-Expected checks: 6 session/profile identities, 10 denied Owner-only reads
-(Engineer and Technician), 2 permitted Owner reads. A status deviation, wrong
-identity, inaccessible API or invalid/expired token fails closed.
-
-## Merge/release rules
-
-The PR remains Draft against `ops/maintrack-044-production-foundation-20261018`,
-not `main`. No merge or Production deployment without explicit owner review.
-Do not repoint actual Web/APK clients at this QA endpoint. Never add
-`service_role`, database URL, bearer tokens, employee data or passwords to GitHub.
+No Vercel deploy, app release, APK/OTA update, Production write, employee
+password reset or MainTrack main-branch merge was performed.
