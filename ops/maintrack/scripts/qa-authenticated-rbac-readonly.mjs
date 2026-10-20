@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 
-export const STAGING_PROJECT_REF='tdnkeskczcsukcujwinu';
-export const QA_API='https://'+STAGING_PROJECT_REF+'.supabase.co/functions/v1/maintrack-unified-four-qa/api';
+export const STAGING_PROJECT_REF='szhstrafzkxzstjdcynl';
+export const QA_API='https://'+STAGING_PROJECT_REF+'.supabase.co/functions/v1/maintrack-rbac-readonly-qa/api';
 export const OPT_IN='APPROVED_QA_RBAC_READ_ONLY';
 const roles=['owner','engineer','technician'];
 const allowed={
@@ -87,7 +87,7 @@ export async function runReadOnlyRbac(config,{request=fetch}={}){
   }
   return Object.freeze({status:'PASS',checks,roles:3,
     unauthorizedBlocks:privileged.length*2,ownerReadChecks:2,
-    safeOnly:true,project:'MainTrack-Staging'});
+    safeOnly:true,project:'MainTrack-RBAC-QA-Isolated'});
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
