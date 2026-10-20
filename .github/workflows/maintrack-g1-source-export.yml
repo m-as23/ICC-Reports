@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: maintrack-g1-source-export
   cancel-in-progress: false
@@ -23,6 +24,8 @@ jobs:
           persist-credentials: false
       - name: Export pinned approved 0.4.6 + recent QA sources and all Git refs
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           umask 077
@@ -43,8 +46,11 @@ jobs:
           git bundle verify g1-source/04_MainTrack_Git_History_All_Refs.bundle
           git ls-files > g1-source/06_Release_Branch_File_Index.txt
           printf 'Release_0.4.6_SHA=%s\nQA_SHA=%s\nFrontend_Candidate_SHA=%s\nExport_SHA=%s\n' "$RELEASE" "$QA" "$FRONT" "$GITHUB_SHA" > g1-source/07_Version_References.txt
-          printf '%s\n' 'Source only. NO database rows, authentication secrets, private keys, external Storage objects, signed native APK, or verified restore included.' > g1-source/08_SCOPE_AND_MISSING_COMPONENTS.txt
-          (cd g1-source && sha256sum 0* > SHA256SUMS.txt)
+          printf '%s\n' 'G1 public source and signed original 0.4.6 APK. NO database rows, authentication secrets, private keys, external Storage objects, or verified restore included.' > g1-source/08_SCOPE_AND_MISSING_COMPONENTS.txt
+          mkdir -p g1-source/05_Signed_Original_0.4.6_APK
+          gh run download 39302600652 --repo "$GITHUB_REPOSITORY" --name 'MainTrack-0.4.6-406-SIGNED-OWNER-QA-NOT-FOR-EMPLOYEES' --dir g1-source/05_Signed_Original_0.4.6_APK
+          test "$(sha256sum g1-source/05_Signed_Original_0.4.6_APK/MainTrack-0.4.6-406-OWNER-QA-ONLY.apk | cut -d' ' -f1)" = "83d6ce7db52ff9150c6d44e5f3d98a51d09b61ae11a9e7cc9511e662c8404931"
+          (cd g1-source && sha256sum 0* 05_Signed_Original_0.4.6_APK/* > SHA256SUMS.txt)
           test -s g1-source/04_MainTrack_Git_History_All_Refs.bundle
           (cd g1-source && sha256sum -c SHA256SUMS.txt)
       - name: Upload complete Git source and tests archive
@@ -56,5 +62,5 @@ jobs:
           if-no-files-found: error
       - name: Scope notice
         run: |
-          echo 'ARCHIVED: exact 0.4.6 source + pinned QA + UI review + full PUBLIC Git ref history.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'ARCHIVED: exact 0.4.6 source + original signed QA APK + pinned QA + UI review + full PUBLIC Git ref history.' >> "$GITHUB_STEP_SUMMARY"
           echo 'NO Supabase data read/export; NO secret access; NO deployment; NO APK signing; NO employee update.' >> "$GITHUB_STEP_SUMMARY"
