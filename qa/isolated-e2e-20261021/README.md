@@ -18,6 +18,7 @@
 - Schema parity **PASS for `qa_full`** (23 of 23 tables; exact column-name coverage). Do not mistake the limited legacy `public` RBAC fixture for `qa_full`.
 - Two additional preserved QA schemas, `qa_offsite` and `qa_restore`, each have 23 tables, RLS on 23, 28 valid foreign keys and three enabled application triggers.
 - `qa_full` currently contains three `QA*` accounts, all **inactive**; zero sessions, one test report, two leave requests, two overtime requests, five notifications and one outbox record. Mail-config table is empty. This is preexisting synthetic fixture data; do not delete or silently reactivate it.
+- **OUTBOX SAFETY BLOCKER**: the single existing `qa_full.mt_outbox` record is in `PENDING` or `PROCESSING`. Do not start a worker, dispatch external notifications or live emails. Test mail must be sinked/disabled and the pre-existing queue reviewed before any E2E writes.
 - Historical one-shot full-E2E/race-runner Edge Functions are intentionally retired (HTTP 410). Do not reuse or reactivate them.
 - No changes to the existing QA database or user accounts were made during this preparation step.
 
