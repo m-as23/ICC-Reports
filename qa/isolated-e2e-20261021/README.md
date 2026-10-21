@@ -13,23 +13,18 @@
 
 ## Read-only baseline recorded on 2026-10-21
 
-- Existing QA database: **13** `public.mt_*` tables; RLS enabled on all 13.
+- The QA project's **public** RBAC fixture has 13 `mt_*` tables (RLS enabled on all 13). The separate **`qa_full` schema has all 23 application tables**, with the same table/column names as staging's `public` schema, RLS on all 23, 28 valid foreign keys and three enabled application triggers.
 - Three test-role accounts (Owner, Engineer, Technician), **all inactive**; zero sessions, reports, leave requests or overtime requests.
-- QA is **not** schema-equivalent to staging's 23 tables.
-- Missing QA tables:
-  `mt_components`, `mt_statuses`, `mt_categories`, `mt_leave_ledger`,
-  `mt_notifications`, `mt_outbox`, `mt_audit`, `mt_mail_config`,
-  `mt_technicians`, `mt_leave_balance_adjustments`.
-- Staging/QA differences also exist in columns of `mt_reports`, `mt_leave_requests`,
-  `mt_migrations`, `mt_overtime_requests`, `mt_substitute_time_ledger` and
-  `mt_substitute_time_adjustments`.
+- Schema parity **PASS for `qa_full`** (23 of 23 tables; exact column-name coverage). Do not mistake the limited legacy `public` RBAC fixture for `qa_full`.
+- Two additional preserved QA schemas, `qa_offsite` and `qa_restore`, each have 23 tables, RLS on 23, 28 valid foreign keys and three enabled application triggers.
+- `qa_full` currently contains three `QA*` accounts, all **inactive**; zero sessions, one test report, two leave requests, two overtime requests, five notifications and one outbox record. Mail-config table is empty. This is preexisting synthetic fixture data; do not delete or silently reactivate it.
 - Historical one-shot full-E2E/race-runner Edge Functions are intentionally retired (HTTP 410). Do not reuse or reactivate them.
 - No changes to the existing QA database or user accounts were made during this preparation step.
 
 ## Gates before connected E2E
 
 1. Record a QA-specific schema-and-data baseline and verify an independently restorable QA snapshot.
-2. Review and apply **additive QA-only** schema parity changes; never import live employee records, credentials, sessions, mail configuration, or production secrets.
+2. Verify and preserve `qa_full` schema parity; **no schema migration is currently required for table/column-name parity**. Verify exact column types, constraints, permissions and trigger/functions separately before any authenticated test. Never import live employee data or secrets.
 3. Provision disposable QA-only accounts for each role with independently generated credentials; verify login lockout, permissions, and session expiration. Never share passwords via Git or logs.
 4. Build a QA-only API endpoint with explicit project-ID validation, strict test-only identity restrictions, and separate mail/outbox sandbox or disabled external delivery.
 5. Run synthetic local unit, Chromium, API-denial and mobile session/OTA checks.
