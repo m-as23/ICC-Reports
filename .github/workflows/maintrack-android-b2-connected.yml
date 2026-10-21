@@ -1,0 +1,70 @@
+name: MainTrack B2 Android UI cloud-adapter smoke
+on:
+  push:
+    branches: [qa/android-b2-isolated-20261022]
+    paths: ['qa/android-b2-20261022/connected.mjs', 'qa/android-b2-20261022/bounded-client.mjs', '.github/workflows/maintrack-android-b2-connected.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: maintrack-b2-connected
+  cancel-in-progress: false
+jobs:
+  connected-ui:
+    if: github.ref == 'refs/heads/qa/android-b2-isolated-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - name: Require dedicated B2 test credentials; no account/admin secrets
+        env:
+          MAINTRACK_B2_QA_CREDENTIALS: ${{ secrets.MAINTRACK_B2_QA_CREDENTIALS }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ -z "$MAINTRACK_B2_QA_CREDENTIALS" ]; then
+            echo 'BLOCKED: MAINTRACK_B2_QA_CREDENTIALS is missing. No backend request was sent.'
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-B2-NativeQA-Accepted-Only
+          repository: m-as23/ICC-Reports
+          run-id: 39685618749
+          github-token: ${{ github.token }}
+          path: android/maintrack-app/.b2-native/apks
+      - name: Verify exact accepted offline APK and install test driver
+        run: |
+          set -euo pipefail
+          echo 'de188558dae33825e760dad154cf75b76372a8ef59fd6499bd9ecb10ab37f80c  .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk' | sha256sum -c -
+          npm --prefix tests-browser ci --no-audit --no-fund
+      - name: Android 35 UI to bounded real B2 transport
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MAINTRACK_B2_QA_CREDENTIALS: ${{ secrets.MAINTRACK_B2_QA_CREDENTIALS }}
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk
+            adb shell monkey -p com.icc.maintrack.b2lab -c android.intent.category.LAUNCHER 1
+            node ../../qa/android-b2-20261022/connected.mjs
+      - name: Preserve only sanitized cloud-adapter evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-B2-Android-Cloud-Adapter-Evidence
+          path: android/maintrack-app/.b2-connected/evidence.json
+          if-no-files-found: ignore
+          retention-days: 7
