@@ -1,0 +1,113 @@
+name: MainTrack B2 isolated Android native acceptance
+on:
+  push:
+    branches: [qa/android-b2-isolated-20261022]
+    paths:
+      - 'qa/android-b2-20261022/**'
+      - '.github/workflows/maintrack-android-b2-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-b2-native-qa
+  cancel-in-progress: false
+jobs:
+  native-session:
+    if: github.ref == 'refs/heads/qa/android-b2-isolated-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install build and device-test dependencies
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm --prefix tests-browser ci --no-audit --no-fund
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)
+          test -x "$MANAGER"
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Generate isolated B2 native candidate and assemble Debug only
+        run: |
+          set -euo pipefail
+          node --test ../../qa/android-b2-20261022/prepare.test.mjs
+          node ../../qa/android-b2-20261022/prepare.mjs
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleDebug)
+          mkdir -p .b2-native/apks
+          cp android/app/build/outputs/apk/debug/app-debug.apk .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk
+          SDK_BUILD="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          "$SDK_BUILD/apksigner" verify --verbose --print-certs .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk > .b2-native/apks/certificate.txt
+          "$SDK_BUILD/aapt" dump badging .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk > .b2-native/apks/identity.txt
+          "$SDK_BUILD/aapt" dump permissions .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk > .b2-native/apks/permissions.txt
+          python3 - <<'PY'
+          import pathlib,re,zipfile,json,hashlib,os
+          p=pathlib.Path('.b2-native/apks');apk=p/'MainTrack-B2-NativeQA-Debug.apk'
+          match=re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",(p/'identity.txt').read_text(),re.M)
+          assert match and match.groups()==('com.icc.maintrack.b2lab','406','0.4.6-b2-nativeqa'),'APK_IDENTITY'
+          assert 'android.permission.INTERNET' not in (p/'permissions.txt').read_text(),'NETWORK_PERMISSION_NOT_REMOVED'
+          cert=re.search(r'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]+)',(p/'certificate.txt').read_text());assert cert,'MISSING_CERT'
+          with zipfile.ZipFile(apk) as z:
+              js=z.read('assets/public/secure-assets/index-inline-1.js').decode()
+              html=z.read('assets/public/index.html').decode()
+              assert 'https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-isolated-e2e-b2/api' in js
+              assert 'tdnkeskczcsukcujwinu' not in js
+              assert "connect-src 'none'" in html
+              assert 'stage15-pilot-update.js' not in html
+              assert 'stage20-native-session.js' in html
+          report={'sourceCommit':os.environ['GITHUB_SHA'],'packageId':match[1],'versionCode':406,'debugOnly':True,'nativeSessionAcceptanceOnly':True,'liveB2BusinessFlowsTested':False,'networkPermission':False,'originalMainTrackUpgradeCompatible':False,'certificateSha256':cert[1].lower(),'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest()}
+          (p/'QA-DELIVERY.json').write_text(json.dumps(report,indent=2)+'\n')
+          print('PASS separate Debug package, exact B2 main API target, no INTERNET permission')
+          PY
+      - name: Enable emulator acceleration
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Android 35 actual Keystore force-stop offline restart and logout
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: android/maintrack-app
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -eu
+            adb install .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk
+            adb shell monkey -p com.icc.maintrack.b2lab -c android.intent.category.LAUNCHER 1
+            node ../../qa/android-b2-20261022/device.mjs store
+            adb shell am force-stop com.icc.maintrack.b2lab
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell monkey -p com.icc.maintrack.b2lab -c android.intent.category.LAUNCHER 1
+            node ../../qa/android-b2-20261022/device.mjs restore
+            node ../../qa/android-b2-20261022/device.mjs logout
+            adb shell am force-stop com.icc.maintrack.b2lab
+            adb shell monkey -p com.icc.maintrack.b2lab -c android.intent.category.LAUNCHER 1
+            node ../../qa/android-b2-20261022/device.mjs post-logout
+      - name: Export accepted QA-only native APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-B2-NativeQA-Accepted-Only
+          path: android/maintrack-app/.b2-native/apks/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain synthetic test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-B2-NativeQA-Evidence
+          path: android/maintrack-app/.b2-native/evidence/
+          if-no-files-found: warn
+          retention-days: 7
