@@ -16,11 +16,11 @@ device.setDefaultTimeout(30000);
 let page;let boundary='device-found';
 function diagnostics(){
  fsSync.writeFileSync(evidence+'/boundary-'+phase+'.json',JSON.stringify({phase,boundary,syntheticOnly:true}));
- for(const [name,args] of [['logcat',['logcat','-d','-t','400']],['activity',['shell','dumpsys','activity','activities']],['sockets',['shell','cat','/proc/net/unix']]]){
+ for(const [name,args] of [['crash',['logcat','-b','crash','-d']],['exits',['shell','dumpsys','activity','exit-info',pkg]],['logcat',['logcat','-d','-t','400']],['activity',['shell','dumpsys','activity','activities']],['sockets',['shell','cat','/proc/net/unix']]]){
   try{fsSync.writeFileSync(evidence+'/'+name+'-'+phase+'.txt',execFileSync('adb',args,{encoding:'utf8',timeout:5000,maxBuffer:1048576}));}catch{}
  }
 }
-const watchdog=setTimeout(()=>{console.error('DEVICE_SESSION_TEST_TIMEOUT',boundary);diagnostics();process.exit(1);},120000);
+const watchdog=setTimeout(()=>{console.error('DEVICE_SESSION_TEST_TIMEOUT',boundary);diagnostics();process.exit(1);},45000);
 try{
   boundary='waiting-webview';console.log('B2_BOUNDARY',boundary);const view=await device.webView({pkg},{timeout:30000});
   boundary='connecting-page';console.log('B2_BOUNDARY',boundary);
