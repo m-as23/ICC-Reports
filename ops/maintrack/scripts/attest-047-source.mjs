@@ -31,6 +31,7 @@ const allow=new Set([
  'ops/maintrack/tests/test_047_static.cjs',
  'ops/maintrack/inventory/001_inventory_core.review.sql',
  'ops/maintrack/inventory/test_inventory_disposable.sql',
+ 'ops/maintrack/inventory/test_sessions_disposable.sql',
  'ops/maintrack/inventory/backend/src/domain.mjs',
  'ops/maintrack/inventory/backend/src/http-adapter.mjs',
  'ops/maintrack/inventory/backend/src/maintrack-session-adapter.mjs',
