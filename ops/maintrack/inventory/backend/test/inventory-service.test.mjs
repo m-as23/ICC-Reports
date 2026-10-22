@@ -1,0 +1,61 @@
+// Synthetic service-level QA only; no XLSX parser, database, HTTP server or mail.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createInventoryService} from '../src/inventory-service.mjs';
+const session='a'.repeat(64);
+const owner={authenticated:true,active:true,role:'owner',userId:'owner-1'};
+const technician={authenticated:true,active:true,role:'technician',userId:'tech-1'};
+const baseDiff={draftId:'10',baseVersionId:'9',currentVersionId:'9',
+ fileSha256:'f'.repeat(64),counts:{NEW:1,CHANGED:0,ABSENT:11,UNCHANGED:0},
+ total:1,requiresExplicitReview:true,details:[{code:'ABC',type:'NEW',after:{description:'Cable'}}]};
+function fixture(user=owner){
+ const seen=[],diff={...baseDiff};
+ const store={
+ current:async()=>({versionId:'9'}),search:async(q,limit)=>{seen.push(['search',q,limit]);return [];},
+ item:async code=>({code}),stage:async input=>{seen.push(['stage',input]);return {draftId:'10',baseVersionId:'9'};},
+ diff:async()=>diff,
+ publish:async (...args)=>{seen.push(['publish',args]);return {versionId:'10'};},
+ history:async()=>[],stageRestore:async()=>({draftId:'10',baseVersionId:'9'})
+ };
+ const parser=async(bytes)=>{seen.push(['parse',bytes]);return {filename:'demo.xlsx',fileSha256:'f'.repeat(64),items:[{code:'ABC',quantity:1}]};};
+ return {seen,diff,store,parser,make:(options={})=>createInventoryService({verifySession:async()=>user,store,parseXlsx:parser,...options})};
+}
+test('Technician reads confirmed inventory only; spoofing body role never grants upload/history/publish',async()=>{
+ const f=fixture(technician),service=f.make();
+ assert.deepEqual(await service.execute({action:'inventorySearch',query:'Parker 65A',role:'owner',session}),[]);
+ assert.deepEqual(f.seen,[['search','Parker 65A',undefined]]);
+ for(const action of ['inventoryDraft','inventoryPublish','inventoryHistory','inventoryDiff','inventoryRestore']){
+  await assert.rejects(()=>service.execute({action,role:'owner',userId:'fake-owner',session}),/FORBIDDEN/);
+ }
+ assert.equal(f.seen.length,1);
+});
+test('Owner upload stays pending, receipt binds complete current diff and requires explicit review',async()=>{
+ const f=fixture(),service=f.make();
+ const drafted=await service.execute({action:'inventoryDraft',bytes:Buffer.from('synthetic'),filename:'demo.xlsx',session});
+ assert.equal(drafted.draftId,'10');
+ assert.match(drafted.reviewReceipt,/^[a-f0-9]{64}$/);
+ assert.equal(f.seen.some(x=>x[0]==='publish'),false,'Upload never publishes');
+ await assert.rejects(()=>service.execute({action:'inventoryPublish',draftId:'10',reviewReceipt:drafted.reviewReceipt,session}),/OWNER_REVIEW_REQUIRED/);
+ await assert.rejects(()=>service.execute({action:'inventoryPublish',draftId:'10',confirmReviewed:true,reviewReceipt:'0'.repeat(64),session}),/REVIEW_RECEIPT_MISMATCH/);
+ await assert.rejects(()=>service.execute({action:'inventoryPublish',draftId:'10',confirmReviewed:true,reviewReceipt:drafted.reviewReceipt,session}),/LARGE_ABSENCE_NEEDS_EXPLICIT_APPROVAL/);
+ const approved=await service.execute({action:'inventoryPublish',draftId:'10',confirmReviewed:true,acknowledgeLargeAbsence:true,reviewReceipt:drafted.reviewReceipt,session});
+ assert.deepEqual(approved,{versionId:'10'});
+ assert.deepEqual(f.seen.filter(x=>x[0]==='publish'),[['publish',['10','9','owner-1']]]);
+});
+test('Stale base or modified diff rejects old receipt before any publish write',async()=>{
+ const f=fixture(),service=f.make();
+ const read=await service.execute({action:'inventoryDiff',draftId:'10',session});
+ f.diff.currentVersionId='11';
+ await assert.rejects(()=>service.execute({action:'inventoryPublish',draftId:'10',confirmReviewed:true,reviewReceipt:read.reviewReceipt,acknowledgeLargeAbsence:true,session}),/STALE_BASE_RECOMPARE_REQUIRED/);
+ f.diff.currentVersionId='9';
+ f.diff.details.push({code:'UNREVIEWED',type:'NEW'});
+ await assert.rejects(()=>service.execute({action:'inventoryPublish',draftId:'10',confirmReviewed:true,reviewReceipt:read.reviewReceipt,acknowledgeLargeAbsence:true,session}),/REVIEW_RECEIPT_MISMATCH/);
+ assert.equal(f.seen.some(x=>x[0]==='publish'),false);
+});
+test('Upload fails closed if parser not configured or session revoked',async()=>{
+ const f=fixture();const missing=f.make({parseXlsx:null});
+ await assert.rejects(()=>missing.execute({action:'inventoryDraft',session,bytes:Buffer.from('synthetic')}),/XLSX_PARSER_NOT_CONFIGURED/);
+ const revoked=createInventoryService({verifySession:async()=>null,store:f.store,parseXlsx:f.parser});
+ await assert.rejects(()=>revoked.execute({action:'inventorySearch',session}),/UNAUTHENTICATED/);
+ assert.equal(f.seen.length,0);
+});
