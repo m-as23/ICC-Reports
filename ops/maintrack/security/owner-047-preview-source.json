@@ -18,15 +18,15 @@
     },
     {
       "path": "index.html",
-      "sha256": "d172f1d1fa4664675b3e1c4bb543c6cdffa65b1d3311547fcb40707f3353878d"
+      "sha256": "335ad5d3c3be3321193e60f7d7a9504bf0c59ab7583de65288c7812bdf0d4954"
     },
     {
       "path": "inventory-047.css",
-      "sha256": "21a7ea4183ec7381d8340a3a50debb782582404ced560d847807855f026ee454"
+      "sha256": "fcd3552721b35cc67ca610b5e647f030cc52153be8887a3a9db5e5679e29c532"
     },
     {
       "path": "inventory-047.js",
-      "sha256": "612ecc7df4aa5e9062b0b4a2eaae9a8a6fd7e8a7bb6967af304fdb97b0d88650"
+      "sha256": "67bc35994f48a8f5376b52daeb0d705f0284cc8ecddd27b139e3ba8cf576ab9d"
     },
     {
       "path": "manifest.webmanifest",

@@ -29,7 +29,7 @@ jobs:
           node --check web/maintrack/public/secure-assets/index-inline-1.js
           node --check ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/tests/test_047_static.cjs
-          node --test ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs
+          node --test ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
       - name: Install locked XLSX dependencies (no install scripts; isolated runner only)
         run: npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)

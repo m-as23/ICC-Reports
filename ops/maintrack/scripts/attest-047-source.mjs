@@ -24,6 +24,11 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'DESIGN.md',
+ 'UX-CONTRACT.md',
+ 'ops/maintrack/inventory/frontend/inventory-presentation.mjs',
+ 'ops/maintrack/inventory/frontend/inventory-presentation.test.mjs',
+ 'ops/maintrack/inventory/frontend/inventory-icons.mjs',
  'ops/maintrack/inventory/frontend/inventory-client.mjs',
  'ops/maintrack/inventory/frontend/inventory-client.test.mjs',
  'ops/maintrack/inventory/frontend/inventory-ui.mjs',

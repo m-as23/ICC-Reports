@@ -23,7 +23,7 @@ for(const role of ['owner','technician'])test('inventory usable search/paging an
     if(opts.headers.Authorization!=='Bearer '+'a'.repeat(64))throw Error('NO_BEARER');
     let data;
     if(x.action==='inventoryVersion')data={versionId:'1',filename:'stock.xlsx'};
-    else if(x.action==='inventorySearchPage')data={versionId:'1',offset:x.offset,totalMatches:2,nextOffset:x.offset===0?1:null,items:[{code:x.offset===0?'A1':'A2',quantity:x.offset===0?'7':null,description:x.offset===0?'<img src=x onerror=alert(1)> Parker 65A':'Parker 90L',location:'مخزن'}]};
+    else if(x.action==='inventorySearchPage')data={versionId:'1',offset:x.offset,totalMatches:25,nextOffset:x.offset===0?13:null,items:Array.from({length:x.offset===0?13:12},(_,j)=>{const n=x.offset+j;return {code:'A'+(n+1),quantity:n===24?null:n===0?'0':'7',description:n===0?'<img src=x onerror=alert(1)> Parker inverter 65A':'Parker inverter 90L',location:n%2?'R2':'R1',extra:{drawer:'D1',newCard:'C1'}};})};
     else if(x.action==='inventoryDraft')data={draftId:'2'};
     else if(x.action==='inventoryDiff')data={draftId:'2',baseVersionId:'1',currentVersionId:'1',reviewReceipt:'b'.repeat(64),isStale:false,detailsTotal:1,total:1,offset:0,limit:500,nextOffset:null,hasMore:false,truncated:false,counts:{CHANGED:1},requiresExplicitReview:false,details:[{code:'A1',type:'CHANGED',before:{description:'Parker',quantity:7},after:{description:'Parker',quantity:9}}]};
     else if(x.action==='inventoryPublish')data={versionId:'2'};
@@ -35,15 +35,29 @@ for(const role of ['owner','technician'])test('inventory usable search/paging an
   await page.evaluate(()=>document.getElementById('inventory').style.display='block');
   await page.waitForFunction(()=>document.getElementById('inv47Version').textContent.includes('stock.xlsx'));
   await page.locator('#inv47Query').fill('Parker');await page.locator('#inv47Find').click();
-  await page.waitForFunction(()=>document.getElementById('inv47Results').textContent.includes('65A'));
+  await page.waitForFunction(()=>document.querySelectorAll('#inv47Results .part-card').length===12);
   assert.equal(await page.locator('#inv47Results img').count(),0,'Descriptions render as safe text');
   await page.locator('#inv47More').click();
   await page.waitForFunction(()=>document.getElementById('inv47Results').textContent.includes('90L'));
-  assert.equal(await page.locator('#inv47Results tbody tr').count(),2);
-  assert.equal(await page.locator('#inv47More').isDisabled(),true);
+  assert.equal(await page.locator('#inv47Results .part-card').count(),24);
+  await page.locator('#inv47More').click();
+  assert.equal(await page.locator('#inv47Results .part-card').count(),25);
+  assert.equal(await page.locator('#inv47More').isVisible(),false);
+  await page.locator('#inv47Stock').selectOption('unknown');
+  assert.equal(await page.locator('#inv47Results .part-card').count(),1);
+  assert.match(await page.locator('#inv47Results').textContent(),/A25/);
+  await page.locator('#inv47ResetFilters').click();
+  const detail=page.getByRole('button',{name:'التفاصيل',exact:true}).first();
+  await detail.click();
+  await page.locator('#inv47Detail').waitFor({state:'visible'});
+  assert.match(await page.locator('#inv47DetailBody').textContent(),/D1/);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#inv47Detail').isVisible(),false);
+  assert.equal(await detail.evaluate(x=>x===document.activeElement),true);
   const calls=await page.evaluate(()=>requests.filter(x=>x.action==='inventorySearchPage'));
   assert.equal(calls[1].versionId,'1');
   assert.equal(await page.locator('#inv47Owner').isVisible(),role==='owner');
+  assert.ok((await page.locator('#inventory').evaluate(x=>x.scrollWidth))<=390,'Inventory overflow');
   if(role==='owner'){
    assert.equal(await page.locator('#inv47Publish').isDisabled(),true);
    await page.locator('#inv47File').setInputFiles({name:'test.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('synthetic-upload-fixture')});
@@ -55,6 +69,7 @@ for(const role of ['owner','technician'])test('inventory usable search/paging an
    await page.waitForFunction(()=>document.getElementById('inv47State').textContent.includes('تم اعتماد'));
    assert.equal((await page.evaluate(()=>requests.filter(x=>x.action==='inventoryPublish'))).length,1);
   }
+  await page.screenshot({path:path.join(root,'audit-output/maintrack-047-mobile/inventory-design-'+role+'.png'),fullPage:true});
   await page.evaluate(()=>{window.S=null;document.getElementById('inventory').style.display='none';});
   await page.waitForFunction(()=>document.getElementById('inv47Results').textContent==='');
  }finally{await browser.close();}
