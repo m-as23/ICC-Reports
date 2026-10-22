@@ -29,6 +29,7 @@ const allow=new Set([
  'ops/maintrack/MAINTRACK_047_CHECKPOINTS_AR.md',
  'ops/maintrack/scripts/attest-047-source.mjs',
  '.github/workflows/maintrack-owner-qa-apk-047.yml',
+ '.github/workflows/maintrack-isolated-preview-apk-047.yml',
  'ops/maintrack/scripts/prepare-native-405-qa.mjs',
  'ops/maintrack/scripts/prepare-047-owner-preview.mjs',
  'ops/maintrack/scripts/verify-native-407-build.py',
