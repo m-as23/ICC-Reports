@@ -41,7 +41,7 @@ export class PostgresInventoryStore {
   if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
   return filterConfirmedInventoryItems(await this.approvedRows(),term,{limit:n});
  }
- async searchPage(term,{limit=50,offset=0}={}){
+ async searchPage(term,{limit=50,offset=0,versionId}={}){
   // Never silently hide matches: return exact total and explicit next offset.
   if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
   const terms=inventoryTerms(term);
@@ -49,10 +49,19 @@ export class PostgresInventoryStore {
   const start=offset===undefined?0:Number(offset);
   if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
   if(!Number.isInteger(start)||start<0||start>30000)throw Error('INVALID_OFFSET');
-  const all=(await this.approvedRows()).filter(item=>matchesInventoryItem(item,terms));
+  // Pin all pages to one approved snapshot. A concurrent Owner publish must
+  // return HTTP409 rather than silently skipping or duplicating stock rows.
+  const before=await this.current();
+  if(versionId!==undefined&&versionId!==before.versionId)
+   throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
+  const rows=await this.approvedRows();
+  const after=await this.current();
+  if(before.versionId!==after.versionId||before.generation!==after.generation)
+   throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
+  const all=rows.filter(item=>matchesInventoryItem(item,terms));
   const items=all.slice(start,start+n),hasMore=start+items.length<all.length;
   return {items,totalMatches:all.length,offset:start,limit:n,hasMore,
-   nextOffset:hasMore?start+items.length:null};
+   nextOffset:hasMore?start+items.length:null,versionId:before.versionId};
  }
  async item(code){
   const r=await this.pool.query('SELECT i.code,i.description,i.quantity::text AS quantity,i.location,i.extra,i.version_id::text AS "versionId" FROM inv_lab.items i JOIN inv_lab.active a ON a.current_version_id=i.version_id WHERE i.code=$1',[String(code).normalize('NFKC').trim().toUpperCase()]);
