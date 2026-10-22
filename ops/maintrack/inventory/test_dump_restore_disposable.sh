@@ -71,8 +71,8 @@ pg "$restored_db" <<'SQL'
 DO $assert$
 BEGIN
  IF has_schema_privilege('mt047_untrusted_web','inv_lab','USAGE')
- OR EXISTS(SELECT 1 FROM pg_class c WHERE c.relnamespace='inv_lab'::regnamespace AND c.relkind IN ('r','p') AND has_table_privilege('mt047_untrusted_web',c.oid,'SELECT,INSERT,UPDATE,DELETE'))
- OR EXISTS(SELECT 1 FROM pg_class c WHERE c.relnamespace='inv_lab'::regnamespace AND c.relkind='S' AND has_sequence_privilege('mt047_untrusted_web',c.oid,'USAGE,SELECT,UPDATE'))
+ OR EXISTS(SELECT 1 FROM pg_class c WHERE CASE WHEN c.relnamespace='inv_lab'::regnamespace AND c.relkind IN ('r','p') THEN has_table_privilege('mt047_untrusted_web',c.oid,'SELECT,INSERT,UPDATE,DELETE') ELSE false END)
+ OR EXISTS(SELECT 1 FROM pg_class c WHERE CASE WHEN c.relnamespace='inv_lab'::regnamespace AND c.relkind='S' THEN has_sequence_privilege('mt047_untrusted_web',c.oid,'USAGE,SELECT,UPDATE') ELSE false END)
  OR EXISTS(SELECT 1 FROM pg_proc p WHERE p.pronamespace='inv_lab'::regnamespace AND has_function_privilege('mt047_untrusted_web',p.oid,'EXECUTE'))
  THEN RAISE EXCEPTION 'RESTORED_ACL_EXPOSES_PRIVATE_INVENTORY'; END IF;
 END;
