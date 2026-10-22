@@ -70,8 +70,10 @@ function safeCell(c) {
   if (v === null || v === void 0) return "";
   if (typeof v === "object") {
     if ("formula" in v || "sharedFormula" in v) {
-      if (v.result === null || v.result === void 0) throw new Error("FORMULA_WITHOUT_CACHED_RESULT");
-      return v.result;
+      const result = c.result;
+      if (result === null || result === void 0) throw new Error("FORMULA_WITHOUT_CACHED_RESULT");
+      if (!["string", "number"].includes(typeof result)) throw new Error("FORMULA_ERROR_RESULT");
+      return result;
     }
     if ("richText" in v) return v.richText.map((x) => x.text).join("");
     if ("text" in v && "hyperlink" in v) throw new Error("HYPERLINK_NOT_ALLOWED");
@@ -79,6 +81,15 @@ function safeCell(c) {
   }
   if (v instanceof Date || typeof v === "boolean") throw new Error("UNSUPPORTED_CELL_TYPE");
   return v;
+}
+function optionalCell(c) {
+  if (c.value && typeof c.value === "object" && "error" in c.value) return "";
+  try {
+    return safeCell(c);
+  } catch (e) {
+    if (["FORMULA_WITHOUT_CACHED_RESULT", "FORMULA_ERROR_RESULT"].includes(e.message)) return "";
+    throw e;
+  }
 }
 function qty(value, line) {
   if (value === null || value === void 0 || clean(value) === "") throw new Error("MISSING_QUANTITY_ROW_" + line);
@@ -106,7 +117,7 @@ function zipPreflight(bytes) {
         if (entry.uncompressedSize > 8 * 1024 * 1024) return fail("XLSX_ENTRY_LIMIT");
         if (entry.uncompressedSize > entry.compressedSize * 250 && entry.uncompressedSize > 32768) return fail("XLSX_COMPRESSION_RATIO");
         const name = entry.fileName;
-        if (name.startsWith("/") || name.includes("\\") || name.split("/").includes("..") || /(?:^|\/)(?:vbaProject\.bin|externalLinks|embeddings)(?:\/|$)/i.test(name))
+        if (name.startsWith("/") || name.includes("\\") || name.split("/").includes("..") || /(?:^|\/)(?:vbaProject\.bin|embeddings)(?:\/|$)/i.test(name))
           return fail("XLSX_UNSAFE_ENTRY");
         zip.readEntry();
       });
@@ -153,13 +164,13 @@ async function parseInventoryXlsx(input, { filename = "inventory.xlsx", minItems
     if (!k) return;
     if (locationMap.has(k)) throw new Error("DUPLICATE_LOCATION_CODE:" + k);
     locationMap.set(k, {
-      description: clean(safeCell(r.getCell(3))),
-      location: clean(safeCell(r.getCell(6))),
+      description: clean(optionalCell(r.getCell(3))),
+      location: clean(optionalCell(r.getCell(6))),
       extra: {
-        iccCode: clean(safeCell(r.getCell(2))),
-        oldCard: clean(safeCell(r.getCell(4))),
-        newCard: clean(safeCell(r.getCell(7))),
-        drawer: clean(safeCell(r.getCell(8))),
+        iccCode: clean(optionalCell(r.getCell(2))),
+        oldCard: clean(optionalCell(r.getCell(4))),
+        newCard: clean(optionalCell(r.getCell(7))),
+        drawer: clean(optionalCell(r.getCell(8))),
         sourceSheet: "locations"
       }
     });

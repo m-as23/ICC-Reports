@@ -14,8 +14,11 @@ function safeCell(c){
  if(v===null||v===undefined)return '';
  if(typeof v==='object'){
    if('formula' in v||'sharedFormula' in v) {
-     if(v.result===null||v.result===undefined)throw new Error('FORMULA_WITHOUT_CACHED_RESULT');
-     return v.result;
+     // ExcelJS cell.value omits falsy cached values; cell.result preserves zero.
+     const result=c.result;
+     if(result===null||result===undefined)throw new Error('FORMULA_WITHOUT_CACHED_RESULT');
+     if(!['string','number'].includes(typeof result))throw new Error('FORMULA_ERROR_RESULT');
+     return result;
    }
    if('richText' in v)return v.richText.map(x=>x.text).join('');
    if('text' in v && 'hyperlink' in v)throw new Error('HYPERLINK_NOT_ALLOWED');
@@ -23,6 +26,15 @@ function safeCell(c){
  }
  if(v instanceof Date||typeof v==='boolean')throw new Error('UNSUPPORTED_CELL_TYPE');
  return v;
+}
+// Optional location/card lookups may have no cached result or #N/A in exports.
+// They never supply stock quantities; preserve unavailable metadata as blank.
+function optionalCell(c){
+ if(c.value&&typeof c.value==='object'&&'error' in c.value)return '';
+ try{return safeCell(c);}catch(e){
+  if(['FORMULA_WITHOUT_CACHED_RESULT','FORMULA_ERROR_RESULT'].includes(e.message))return '';
+  throw e;
+ }
 }
 function qty(value,line){
  if(value===null||value===undefined||clean(value)==='')throw new Error('MISSING_QUANTITY_ROW_'+line);
@@ -43,9 +55,11 @@ function zipPreflight(bytes){
      if(entries>MAX_ENTRIES||total>MAX_UNZIPPED)return fail('XLSX_UNPACK_LIMIT');
      if(entry.uncompressedSize>8*1024*1024)return fail('XLSX_ENTRY_LIMIT');
      if(entry.uncompressedSize>entry.compressedSize*250 && entry.uncompressedSize>32768)return fail('XLSX_COMPRESSION_RATIO');
+     // External-link XML is inert metadata: ExcelJS ignores these entries and never
+     // resolves external workbooks. Only stored cell results are consumed below.
      const name=entry.fileName;
      if(name.startsWith('/')||name.includes('\\')||name.split('/').includes('..')||
-        /(?:^|\/)(?:vbaProject\.bin|externalLinks|embeddings)(?:\/|$)/i.test(name))
+        /(?:^|\/)(?:vbaProject\.bin|embeddings)(?:\/|$)/i.test(name))
        return fail('XLSX_UNSAFE_ENTRY');
      zip.readEntry();
    });
@@ -82,13 +96,13 @@ export async function parseInventoryXlsx(input,{filename='inventory.xlsx',minIte
   const k=code(safeCell(r.getCell(1)));if(!k)return;
   if(locationMap.has(k))throw new Error('DUPLICATE_LOCATION_CODE:'+k);
   locationMap.set(k,{
-   description:clean(safeCell(r.getCell(3))),
-   location:clean(safeCell(r.getCell(6))),
+   description:clean(optionalCell(r.getCell(3))),
+   location:clean(optionalCell(r.getCell(6))),
    extra:{
-    iccCode:clean(safeCell(r.getCell(2))),
-    oldCard:clean(safeCell(r.getCell(4))),
-    newCard:clean(safeCell(r.getCell(7))),
-    drawer:clean(safeCell(r.getCell(8))),
+    iccCode:clean(optionalCell(r.getCell(2))),
+    oldCard:clean(optionalCell(r.getCell(4))),
+    newCard:clean(optionalCell(r.getCell(7))),
+    drawer:clean(optionalCell(r.getCell(8))),
     sourceSheet:'locations'
    }
   });
