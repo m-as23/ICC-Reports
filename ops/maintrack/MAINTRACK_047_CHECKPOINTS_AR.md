@@ -124,6 +124,20 @@
 - الخطوة التالية: تفعيل API مراجَعة فقط بعد تثبيت Backend Store، ثم تجربة Postgres + Excel صناعي + session RBAC في عزل، ومراجعة الـRate Limits وعقد API ثم Migration على Staging بموافقة صريحة، وأخيرًا اختبار QA browser/APK وتشغيل Canary آمن.
 
 
+### CP-06 follow-up — isolated store, Owner review and legacy QA separation (22 أكتوبر 2026)
+- المصدر التجريبي المراجَع حاليًا: \`feature/maintrack-047-integration-20261022\`; النسخة 0.4.6 و\`main\` وProduction لم تُعدّل.
+- فصل خاص بالفرع 0.4.7 فقط في \`.github/workflows/maintrack-change-qa.yml\`: خطوات Legacy QA تعتمد Checkout SHA ثابت \`1248211b662981e3e7db27ac0a61ca4d23862ca1\` وترفض أي اختلاف في \`HEAD\`. هذا **لا** يغيّر \`PINNED_SOURCE_GIT_BLOB\` التاريخي. باقي الأفرع لا تتغير. Workflow \`maintrack-047-isolated-qa.yml\` يتأكد من مصدر 0.4.7 نفسه.
+- بوابة Legacy بعدما أعيد تشغيلها على المصدر المثبت: نجح Unit/Release وتحقق API Staging read-only، لكن تشغيل سابق \`39824111082\` فشل في سيناريو Chromium \`owner edits, catalog entries and an open work-order editor\` بسبب عدم ظهور \`#v6Editor\` خلال 10 ثوانٍ (22/23 Browser tests نجحت). الاختبار جديد هنا على نفس مصدر 0.4.6 التاريخي؛ السبب الوظيفي لم يُحسم، ولا يُلغي نجاح 0.4.7 المعزول الحاجة لفحصه.
+- أُعدت \`postgres-store.mjs\` من مصدر SpareParts Lab المثبت مع استبدال literal substring search بمحرك \`search-normalizer.mjs\`. يقرأ فقط \`inv_lab.active → versions(current,sealed) → items\`، ويرد نتائج صفوف أصلية دون تخمين كميات، ويفشل عند >30000 صف بدل الاقتصاص الصامت. هذه **وحدة قراءة غير منشورة** ولم تُختبر على Excel حقيقي بعد.
+- أضيفت \`inventory-service.mjs\` بخدمة \`inventoryDraft / inventoryDiff / inventoryPublish / inventoryHistory / inventoryRestore\` في وضع المعاينة فقط: تحميل لا يساوي اعتمادًا؛ Receipt من SHA-256 مربوط بالـDiff؛ رفض Stale Base؛ موافقة إضافية للحذف الجماعي؛ Backend Server identity هو الوحيد الذي يحدد صلاحية Owner. Parser ملف XLSX مطلوب حقنه صراحة، ومفقود حاليًا في MainTrack، لذا **Upload الحي مغلق**.
+- الاختبارات الجديدة على بيانات صناعية: \`postgres-search.test.mjs\` و\`inventory-service.test.mjs\`، بالإضافة إلى Auth/HTTP/SQL/browser؛ آخر تشغيل للمسار المستقل \`39824426064\` **PASS في الوظائف الثلاث** (Static + Mobile Chromium + PostgreSQL disposable).
+- تحقق Supabase Staging read-only: \`inv_lab\` غير موجودة، \`maintrack-inventory-archive-staging\` Bucket خاصة موجودة. تحقق Vercel: صفر Preview Deployments لفرع 0.4.7؛ لا URL حقيقي مختبر ولا إصدار APK.
+- Supabase Security Advisors: 23 جدولًا عليها RLS دون Policy (INFO، قد يكون مقصودًا لقاعدة Server-only؛ لا يعد ثغرة مثبتة)، وتحذير \`pg_net\` داخل \`public\` (WARN)، و12 فهرسًا غير مستخدم (INFO). لا تُعدل الأذونات أو تنقل امتدادات في هذه المرحلة دون تحليل أثر منفصل.
+- **BLOCKED / NOT READY**: مطلوب Parser XLSX آمن ومثبت وتحقق Archive Storage + HTTP route، اختبار بحث/صحة بيانات حقيقية، اختبارات جلسات Staging الحقيقية/موافقة Owner/الضغوط، ومراجعة نتيجة اختبار محرر البلاغ التاريخي، بالإضافة إلى \`FULL_APP_RESTORE_VERIFIED=false\` وبوابة Backup قبل أي Migration.
+- Supabase Edge Function حين تستخدم MainTrack opaque bearer بدلاً من Supabase JWT يجب إعداد Platform JWT check وفق نمط Auth خاص آمن ومراجَع، **وليس** الاعتماد على تعطيله وحده؛ لن يُنشر أي Endpoint بدون Server-side session verification ورقابة Rate Limit.
+- لا تنفيذ Schema/SQL أو Storage upload أو بريد Resend أو نشر Vercel أو توقيع OTA/APK في هذه الجولة.
+
+
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
 - Source commit / PR:
