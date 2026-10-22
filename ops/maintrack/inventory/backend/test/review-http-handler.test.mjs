@@ -43,7 +43,7 @@ test('Technician and Engineer denied Owner audit and publication; spoof cannot e
  for(const role of ['technician','engineer']){
   const f=sandbox(role),handler=await createReviewInventoryHttpHandler({pool:f.pool,storage:f.storage,bucket:'maintrack-inventory-archive-staging',allowedOrigins:[origin]});
   for(const action of ['inventoryHistory','inventoryDraft','inventoryPublish','inventoryRestore']){
-   const response=await handler(post(action,{confirmReviewed:true,draftId:'9',fileBase64:'AAA='}));
+   const response=await handler(post(action,{confirmReviewed:true,draftId:'9',fileBase64:Buffer.alloc(120,0x41).toString('base64')}));
    assert.equal(response.status,403,role+' '+action);
   }
   assert.equal(f.calls.filter(c=>c[0]==='verified-session').length,4);
