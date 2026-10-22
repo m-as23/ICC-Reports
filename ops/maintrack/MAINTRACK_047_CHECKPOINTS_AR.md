@@ -252,3 +252,8 @@
 - Matching Web Preview READY: https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app/ deployment dpl_G9d1Hvwqn27Y9xDfuYQhuWZrcpz4, target=null; shared20 assets. Served inventory JS byte-equal. Inventory Edge explicitly permits this origin.
 - Web login remains BLOCKED: maintrack-unified-four-qa v15 preflight for new origin returns403 ORIGIN_FORBIDDEN. Prior automatic approval rejection still respected. Exact prepared pending change: add only https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app to MT_ALLOWED_ORIGINS, all other source bytes/config/auth unchanged. NOT_DEPLOYED; explicit Owner approval requested at handoff.
 - No main/Production promotion, no original app signing, no OTA. Next acceptance: Owner approves first actual inventory XLSX and verifies next report email; Web requires exact Origin approval above.
+
+### CP-08F — Web exact Origin explicitly approved and deployed
+- Owner explicitly approved the pending change. maintrack-unified-four-qa v16 deployed with only the exact km1nq1386 Preview origin added; all other source bytes and verify_jwt unchanged, verified by fetching deployed files.
+- Live verification: Web OPTIONS200 with exact CORS; native https://localhost OPTIONS200; unapproved.example OPTIONS403 without CORS; Web bootstrap without a session401 AUTH with exact CORS. This resolves the confirmed browser Origin rejection, without bypassing login authorization.
+- Real Owner login/report/inventory flows remain user acceptance checks; no credentials assumed and no report/email created by these probes. Use the existing matching Web and Preview2 APK links from CP-08E. Previous Origin approval blocker is CLOSED.
