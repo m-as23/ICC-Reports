@@ -13,6 +13,8 @@ const webIndex=read('web/maintrack/public/index.html');
 const webJs=read('web/maintrack/public/secure-assets/index-inline-1.js');
 const css=read('web/maintrack/public/v6.css');
 const menuCore=read('web/maintrack/public/v6-core.js');
+const nav=read('web/maintrack/public/v6.js');
+const inventoryCss=read('web/maintrack/public/inventory-047.css');
 const api=read('supabase/functions/maintrack-stage9-security-api/index.ts');
 const worker=read('supabase/functions/maintrack-pilot-mail-worker/index.ts');
 
@@ -66,4 +68,42 @@ assert.ok(worker.includes("from:'MainTrack Notifications <'+sender+'>'"));
 assert.ok(worker.includes("to_char(r.report_time,'HH24:MI') AS report_clock"));
 assert.ok(worker.includes("to_char(r.work_end_time,'HH24:MI') AS work_end_clock"));
 new vm.Script(worker.replace(/^import .*;\r?\n/gm,''),{filename:'mail-worker-index.ts-stripped-imports'});
+
+// CP-06 MT-01: menu must keep its original items/order and add inventory ONLY last.
+const order=nav.match(/const order=\[([^\]]+)\]/)?.[1].match(/'[^']+'/g)?.map(x=>x.slice(1,-1));
+assert.deepEqual(order,['tabDash','tabForm','tabCmms','tabCatalog','tabProfile','tabLeave','tabApprove','tabAdmin','tabInventory']);
+assert.ok(webIndex.includes('<button id="tabInventory" type="button" style="display:none">قطع الغيار</button>'));
+assert.ok(webIndex.includes('<section id="inventory" style="display:none"'));
+assert.ok(webIndex.includes('<link rel="stylesheet" href="inventory-047.css">'));
+assert.ok(webIndex.includes('id="inv47Query"')&&webIndex.includes('id="inv47Find"'));
+assert.ok(webIndex.includes('id="inv47Owner"')&&webIndex.includes('id="inv47State"'));
+assert.ok(/<input id="inv47Query"[^>]* disabled>/.test(webIndex),'Search must be disabled until backend integration');
+assert.ok(/<button id="inv47Find"[^>]* disabled>/.test(webIndex),'Search button must be disabled until backend integration');
+assert.ok(menuCore.includes('tabInventory:'),'New menu icon must not replace existing icons');
+assert.ok(inventoryCss.split('\n').filter(line=>line.trim()).every(line=>line.startsWith('#inventory')||line.startsWith('/*')||line.startsWith('@media')||line.startsWith('}')),'CSS must be scoped to inventory preview');
+assert.ok(webJs.includes("$('tabInventory').style.display=canReport()?'block':'none';"));
+assert.ok(webJs.includes("$('inv47Owner').hidden=!(S&&S.role==='owner');"));
+assert.ok(webJs.includes("$('tabInventory').onclick=()=>{if(!canReport())return;show('inventory');};"));
+const viewSource=webJs.match(/function show\(v\) \{[\s\S]*?\n\}\nasync function save\(d\)/)?.[0];
+assert.ok(viewSource,'Canonical app view function must be testable');
+const showCode=viewSource.slice(0,viewSource.indexOf('\nasync function save(d)'));
+for(const role of ['owner','engineer','technician','unassigned']){
+ const elements=new Map();
+ const $=id=>{
+  if(!elements.has(id))elements.set(id,{style:{},classList:{toggle(){}},hidden:false,setAttribute(){},textContent:''});
+  return elements.get(id);
+ };
+ const ctx={window:{__maintrackActiveView:'dashboard',scrollTo(){}},document:{body:{classList:{toggle(){}}}},$,S:{role,displayName:'Test'},canReport:()=>['owner','engineer','technician'].includes(role),note(){}};
+ vm.runInNewContext(showCode+';show("dashboard");',ctx);
+ assert.equal($('tabInventory').style.display,role==='unassigned'?'none':'block',role);
+ assert.equal($('inv47Owner').hidden,role!=='owner',role);
+ if(role!=='unassigned'){
+  vm.runInNewContext('show("inventory");',ctx);
+  assert.equal($('inventory').style.display,'block',role);
+  assert.equal($('headTitle').textContent,'رصيد المخزن',role);
+  assert.equal($('form').style.display,'none',role);
+ }
+}
+console.log('PASS MT-01 menu order, inventory preview fail-closed, role-only UI checks.');
+
 console.log('PASS MainTrack v0.4.7 static/syntax/duration checks (offline only).');
