@@ -32,11 +32,8 @@ jobs:
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)
         run: |
           node --test ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs ops/maintrack/inventory/backend/test/search-normalizer.test.mjs ops/maintrack/inventory/backend/test/postgres-search.test.mjs ops/maintrack/inventory/backend/test/inventory-service.test.mjs
-      - name: Resolve pinned XLSX dependencies in isolated CI runner (lock pending review)
-        run: |
-          npm install --prefix ops/maintrack/inventory/backend --package-lock-only --ignore-scripts --no-audit --no-fund
-          npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
-          node -e "const b=require('fs').readFileSync('ops/maintrack/inventory/backend/package-lock.json').toString('base64');for(let i=0;i<b.length;i+=3000)console.log('MT047LOCK:'+String(i/3000).padStart(4,'0')+':'+b.slice(i,i+3000));"
+      - name: Install locked XLSX dependencies (no install scripts; isolated runner only)
+        run: npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
       - name: Verify actual synthetic XLSX parser, private bucket and Owner import review flow
         run: |
           node --test ops/maintrack/inventory/backend/test/import-xlsx.test.mjs ops/maintrack/inventory/backend/test/private-bucket.test.mjs ops/maintrack/inventory/backend/test/import-service.test.mjs
