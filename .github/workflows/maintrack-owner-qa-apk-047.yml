@@ -1,0 +1,170 @@
+name: MainTrack 0.4.7 Owner Preview APK and matching Web
+on:
+  push:
+    branches: [feature/maintrack-047-integration-20261022]
+    paths:
+      - '.github/workflows/maintrack-owner-qa-apk-047.yml'
+      - 'ops/maintrack/scripts/prepare-047-owner-preview.mjs'
+      - 'ops/maintrack/scripts/verify-native-407-build.py'
+      - 'ops/maintrack/security/owner-047-preview-source.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: maintrack-047-owner-preview-build
+  cancel-in-progress: false
+jobs:
+  assemble:
+    name: Build real Android 407 and identical Web source (no secrets)
+    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install locked build dependencies
+        run: npm --prefix android/maintrack-app ci --no-audit --no-fund
+      - name: Test 047 source parity and APK identity guards
+        run: |
+          mkdir -p audit-output
+          node ops/maintrack/tests/test_047_static.cjs
+          node ops/maintrack/scripts/audit-release-workflows.mjs
+          node --test ops/maintrack/tests/prepare-047-owner-preview.test.mjs
+          python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_407_build.py -v
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          // Historical 046 source pins stay covered on immutable baseline in maintrack-change-qa.
+          // Current source hashes are checked by the dedicated 047 parity test above.
+          const files=fs.readdirSync('android/maintrack-app/tests').filter(p=>p.endsWith('.test.mjs')&&p!=='shared-source.test.mjs').sort().map(p=>'android/maintrack-app/tests/'+p);
+          execFileSync(process.execPath,['--test',...files],{stdio:'inherit'});
+          JS
+      - name: Assemble matching Web and native 047 assets
+        run: node ops/maintrack/scripts/prepare-047-owner-preview.mjs --prepare
+      - name: Prepare Android 407 with existing Keystore session plugin
+        working-directory: android/maintrack-app
+        run: |
+          set -euo pipefail
+          cp -a ../../audit-output/owner-047/native/www ./www
+          npm run android:prepare
+          npm run android:icons
+          npx cap sync android
+          node scripts/harden-native.mjs
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import re
+          p=Path('android/app/build.gradle')
+          s=p.read_text()
+          assert len(re.findall(r'\bversionCode\s+\d+',s))==1
+          assert len(re.findall(r'\bversionName\s+"[^"]+"',s))==1
+          s=re.sub(r'\bversionCode\s+\d+','versionCode 407',s,count=1)
+          s=re.sub(r'\bversionName\s+"[^"]+"','versionName "0.4.7"',s,count=1)
+          p.write_text(s)
+          PYTHON
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+          python3 ../../ops/maintrack/scripts/verify-native-407-build.py --mode android-sync
+      - name: Compile actual unsigned release APK
+        working-directory: android/maintrack-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+      - name: Retain tested unsigned APK and exact matching Web for signing/handoff
+        run: |
+          mkdir -p audit-output/owner-047/apk
+          cp android/maintrack-app/android/app/build/outputs/apk/release/app-release-unsigned.apk audit-output/owner-047/apk/MainTrack-0.4.7-407-UNSIGNED.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-047-407-Web-and-Unsigned-APK
+          path: audit-output/owner-047
+          if-no-files-found: error
+          retention-days: 7
+  sign-owner-preview:
+    name: Sign Owner 407 APK with original certificate (no rollout)
+    needs: assemble
+    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: maintrack-android-release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: MainTrack-047-407-Web-and-Unsigned-APK
+          path: audit-output/owner-047
+      - name: Require independent candidate and baseline QA on exact event SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 50); do
+            gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" > "$RUNNER_TEMP/047-checks.json"
+            if python3 - <<'PYTHON'
+          import json,os
+          checks=json.load(open(os.environ['RUNNER_TEMP']+'/047-checks.json'))['check_runs']
+          required=['v0.4.7 — syntax, leave overlap, roles, mail duration, immutable legacy root','v0.4.7 — pinned inventory SQL contract on disposable Postgres only','v0.4.7 — mobile Chromium form collision QA (offline backend)','MainTrack Staging-only QA — required combined result']
+          raise SystemExit(0 if all(any(c['name']==n and c['conclusion']=='success' for c in checks) for n in required) else 1)
+          PYTHON
+            then break; fi
+            test "$attempt" -lt 50
+            sleep 15
+          done
+      - name: Verify source parity before reading signing inputs
+        run: |
+          npm --prefix android/maintrack-app ci --no-audit --no-fund
+          node ops/maintrack/scripts/prepare-047-owner-preview.mjs --verify
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          MANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          "$MANAGER" --install 'build-tools;36.0.0'
+      - name: Verify original key, sign 407 and inspect final APK bytes
+        env:
+          MT_ANDROID_KEYSTORE_BASE64: ${{ secrets.MT_ANDROID_KEYSTORE_BASE64 }}
+          MT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MT_ANDROID_KEYSTORE_PASSWORD }}
+          MT_ANDROID_KEY_ALIAS: ${{ secrets.MT_ANDROID_KEY_ALIAS }}
+          MT_ANDROID_KEY_PASSWORD: ${{ secrets.MT_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYFILE="$(mktemp "$RUNNER_TEMP/maintrack-407-key.XXXXXX")"
+          trap 'rm -f "$KEYFILE"' EXIT
+          python3 - <<'PYTHON'
+          import importlib.util,os
+          spec=importlib.util.spec_from_file_location('preflight','android/maintrack-app/scripts/release-preflight.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          m.verify_keystore(os.environ,'07a35f17c9a7a17b24b1867e839fab2043d83f998bb604701776f3f64c807d5b')
+          print('PASS original Owner private-key continuity')
+          PYTHON
+          printf '%s' "$MT_ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYFILE"
+          TOOLS="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
+          mkdir -p release-output
+          "$TOOLS/zipalign" -p -f 4 audit-output/owner-047/apk/MainTrack-0.4.7-407-UNSIGNED.apk "$RUNNER_TEMP/047-aligned.apk"
+          "$TOOLS/apksigner" sign --ks "$KEYFILE" --ks-key-alias "$MT_ANDROID_KEY_ALIAS" --ks-pass env:MT_ANDROID_KEYSTORE_PASSWORD --key-pass env:MT_ANDROID_KEY_PASSWORD --v2-signing-enabled true --v3-signing-enabled true --out release-output/MainTrack-0.4.7-407-OWNER-PREVIEW.apk "$RUNNER_TEMP/047-aligned.apk"
+          python3 ops/maintrack/scripts/verify-native-407-build.py --mode signed --apk release-output/MainTrack-0.4.7-407-OWNER-PREVIEW.apk --sdk-build-tools "$TOOLS" --provenance release-output/MainTrack-047-APK-Provenance.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-0.4.7-407-SIGNED-OWNER-PREVIEW
+          path: release-output
+          if-no-files-found: error
+          retention-days: 7

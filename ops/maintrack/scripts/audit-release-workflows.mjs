@@ -64,6 +64,17 @@ assert(signer046.includes('employee-release-gate.mjs --assert-blocked') &&
 assert(!/(?:gh release create|vercel deploy|supabase functions deploy|git push)/.test(signer046),
  'OWNER_046_SIGNER_MUST_NOT_PUBLISH');
 const qa=read('maintrack-change-qa.yml');
+// Owner explicitly requested an installable 047 preview and matching Web.
+const signer047=read('maintrack-owner-qa-apk-047.yml');
+assert.equal(conf.ownerApproved047PreviewSigningWorkflow?.sourceBranch,'feature/maintrack-047-integration-20261022','047_PREVIEW_BRANCH_NOT_REGISTERED');
+assert(signer047.includes('branches: [feature/maintrack-047-integration-20261022]') &&
+ signer047.includes("github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'") &&
+ signer047.includes('environment: maintrack-android-release'),'047_PREVIEW_BRANCH_ENVIRONMENT_REQUIRED');
+assert(/permissions:\s*\n\s*contents:\s*read\s*\n\s*checks:\s*read/.test(signer047) && !/contents:\s*write/.test(signer047),'047_SIGNER_READ_ONLY_REQUIRED');
+assert(signer047.includes('MainTrack Staging-only QA — required combined result') &&
+ signer047.includes('verify-native-407-build.py --mode signed') &&
+ signer047.includes('MainTrack-0.4.7-407-SIGNED-OWNER-PREVIEW'),'047_SIGNER_PROOFS_REQUIRED');
+assert(!/(?:gh release create|vercel deploy|supabase functions deploy|git push)/.test(signer047),'047_NO_AUTOMATIC_ROLLOUT');
 assert(/permissions:\s*\n\s*contents:\s*read/.test(qa),'QA_MUST_USE_READ_ONLY_PERMISSIONS');
 assert(!/contents:\s*write/.test(qa),'QA_MUST_NOT_WRITE_REPOSITORY');
 assert(!/\$\{\{\s*secrets\./.test(qa),'UNTRUSTED_PR_QA_MUST_NOT_EXPOSE_SECRETS');

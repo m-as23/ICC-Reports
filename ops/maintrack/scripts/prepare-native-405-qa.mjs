@@ -57,14 +57,14 @@ export async function inventory(directory,prefix='') {
   return result;
 }
 
-export async function prepareNativeCandidate({source=web,target=output,buildBundles}={}) {
+export async function prepareNativeCandidate({source=web,target=output,buildBundles,pinnedBlob}={}) {
   const names=await inventory(source);
   assert.ok(names.includes(asset)&&names.includes('index.html'),'CANONICAL_WEB_ASSETS_MISSING');
   const original=await fs.readFile(path.join(source,asset),'utf8');
   if(path.resolve(source)===path.resolve(web)){
     assert.equal(path.resolve(source,asset),sourcePath,'UNREVIEWED_WEB_SOURCE');
   }
-  const aligned=prepareAlignedClient(original);
+  const aligned=prepareAlignedClient(original,{pinnedBlob});
   checkFutureClientApiSource(aligned.content);
   const originalHtml=await fs.readFile(path.join(source,'index.html'),'utf8');
   const nativeHtml=prepareNativeHtml(originalHtml);

@@ -218,3 +218,13 @@
 - فحص Bash syntax وJavaScript syntax محليًا PASS، وحاجز التشغيل خارج CI رفض التنفيذ كما هو متوقع. مراجعة مستقلة للمصدر لم تجد مانعًا؛ **اختبار PostgreSQL الفعلي على هذا التعديل PENDING حتى ظهور نتيجة CI لنفس SHA**.
 - هذا يجهز إثبات استعادة PostgreSQL الخاص بالمخزن فقط؛ لا ينسخ ملفات Bucket أو إعدادات Edge أو أسرارها أو خدمات Supabase كاملة. `FULL_BACKUP_VERIFIED=false` و`FULL_APP_RESTORE_VERIFIED=false` و`ORIGINAL_MAINTRACK_OTA_VERIFIED=false` باقية.
 - الحالة: CP-08B PREPARATION IN PROGRESS؛ لم ينفذ Migration أو نشر API/Web/APK/OTA، ولا تغيير main/Production.
+
+
+### CP-08C — Owner requested 047 APK + identical Web Preview (22 أكتوبر 2026)
+- تصحيح أولوية المالك: الهدف الحالي نسخة APK قابلة للتجربة وويب من نفس المصدر. لا نعيد G1 ولا نربط تجهيز المعاينة بإغلاق شهادة الاستعادة الكاملة؛ النشر التشغيلي والدمج النهائي يظلان منفصلين.
+- آخر مصدر قبل التغليف `ac714955365ab8f942d1011e1b1f1fb8d53e12e9`: isolated QA `39848983267` PASS 3/3 وLegacy `39848983134` PASS 4/4؛ اختبار pg_dump/restore للمخزن الصناعي نجح، ولا يثبت Full App Restore.
+- أضيفت سياسة بصمات مستقلة `owner-047-preview-source.json` لملفات الويب 19؛ لا تعديل للقفل التاريخي 046 أو بصماته. `prepare-047-owner-preview.mjs` يولد الويب والـNative من نفس المصدر وAPI QA الحالية، مع 3 جسور native أصلية للجلسة والعمل المحلي؛ فحص bytes وحماية العبث PASS محليًا.
+- الهوية المستهدفة `com.icc.maintrack` / `0.4.7` / code407 ونفس SHA256 لشهادة المالك. لا توقيع تجريبي بديل فوق تطبيق المالك، ولا حذف بيانات أو uninstall. workflow منفصل يبني unsigned أولًا دون أسرار، ثم توقيع داخل البيئة المحمية بشرط نجاح CI لنفس SHA. تسليم Artifact فقط؛ لا OTA ولا Production ولا employee rollout.
+- اختبار full native unit الحالي أظهر فشلًا واحدًا في اختبار `Stage22 source changes exactly the three approved UI resources` لأن بصماته مخصصة 046. لم نغيرها أو نخفي الفشل: الحزمة الحالية تفحص 047 بالسياسة الجديدة وتختبر بقية native suite؛ المصدر 046 بكل اختبارات 109 يبقى في Legacy gate. اختبار `prepare-native-405-qa` القديم كذلك يرفض مصدر047 عمدًا؛ إعداد047 يستخدم pin مستقلًا لا يستبدل القديم.
+- حدود المعاينة: شاشة المخزن موجودة لكن البحث ورفع Excel الحقيقي غير مفعّلين؛ تعديلات mail worker غير منشورة. يجب إبلاغ المالك بهذه الحدود عند التسليم. Web/APK authenticated device acceptance ما زالت NOT_RUN.
+- Build407/Signed407/WebPreview: PENDING؛ تُعتمد النتيجة من مخرجات نفس SHA لا من اسم Artifact.
