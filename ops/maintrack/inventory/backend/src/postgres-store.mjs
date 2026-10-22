@@ -2,7 +2,7 @@
 // This candidate deliberately fixes upstream literal-substring search.
 // Private PostgreSQL inventory repository; never call with a browser database key.
 import {randomUUID} from 'node:crypto';
-import {inventoryTerms,filterConfirmedInventoryItems} from './search-normalizer.mjs';
+import {inventoryTerms,matchesInventoryItem,filterConfirmedInventoryItems} from './search-normalizer.mjs';
 export class PostgresInventoryStore {
  constructor({pool,privateFiles}){
   if(!pool?.connect||!privateFiles?.putObject||!privateFiles?.deleteObject)
@@ -19,15 +19,9 @@ export class PostgresInventoryStore {
   if(!r.rows.length)throw Error('ACTIVE_POINTER_MISSING');
   return {...r.rows[0],generation:Number(r.rows[0].generation)};
  }
- async search(term,limit=50){
-  // Fail closed on oversized sets instead of hiding genuine matches.
-  // Only CURRENT confirmed snapshot is eligible; all comparisons are
-  // performed against the unchanged rows returned from that snapshot.
-  if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
-  inventoryTerms(term);
-  const n=limit===undefined?50:Number(limit);
-  if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
-  const MAX_APPROVED_ROWS=30000; // same ceiling as the reviewed XLSX importer.
+ async approvedRows(){
+  // Read only sealed/current approved snapshot, never pending or archived.
+  const MAX_APPROVED_ROWS=30000;
   const r=await this.pool.query(
    'SELECT i.code,i.description,i.quantity::text AS quantity,i.location,i.extra '+
    'FROM inv_lab.active a JOIN inv_lab.versions v ON v.id=a.current_version_id '+
@@ -37,7 +31,28 @@ export class PostgresInventoryStore {
    [MAX_APPROVED_ROWS+1]
   );
   if(r.rows.length>MAX_APPROVED_ROWS)throw Error('INVENTORY_SCAN_TOO_LARGE');
-  return filterConfirmedInventoryItems(r.rows,term,{limit:n});
+  return r.rows;
+ }
+ async search(term,limit=50){
+  // Backward-compatible short list. For exhaustive counts/pages use searchPage.
+  if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
+  inventoryTerms(term);
+  const n=limit===undefined?50:Number(limit);
+  if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
+  return filterConfirmedInventoryItems(await this.approvedRows(),term,{limit:n});
+ }
+ async searchPage(term,{limit=50,offset=0}={}){
+  // Never silently hide matches: return exact total and explicit next offset.
+  if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
+  const terms=inventoryTerms(term);
+  const n=limit===undefined?50:Number(limit);
+  const start=offset===undefined?0:Number(offset);
+  if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
+  if(!Number.isInteger(start)||start<0||start>30000)throw Error('INVALID_OFFSET');
+  const all=(await this.approvedRows()).filter(item=>matchesInventoryItem(item,terms));
+  const items=all.slice(start,start+n),hasMore=start+items.length<all.length;
+  return {items,totalMatches:all.length,offset:start,limit:n,hasMore,
+   nextOffset:hasMore?start+items.length:null};
  }
  async item(code){
   const r=await this.pool.query('SELECT i.code,i.description,i.quantity::text AS quantity,i.location,i.extra,i.version_id::text AS "versionId" FROM inv_lab.items i JOIN inv_lab.active a ON a.current_version_id=i.version_id WHERE i.code=$1',[String(code).normalize('NFKC').trim().toUpperCase()]);
