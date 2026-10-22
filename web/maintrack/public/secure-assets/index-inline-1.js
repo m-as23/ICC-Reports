@@ -99,17 +99,19 @@ function show(v) {
  if(window.__maintrackActiveView!==v)note('','');
  window.__maintrackActiveView=v;
   document.body.classList.toggle('auth-screen', v === 'login' || v === 'change');
-  ['login','change','form','profile','approvals','admin','cmms','catalog'].forEach(x => $(x).style.display = x === v ? 'block' : 'none');
+  ['login','change','form','profile','approvals','admin','cmms','catalog','inventory'].forEach(x => $(x).style.display = x === v ? 'block' : 'none');
   $('authStage').style.display = v==='login' ? 'grid' : 'none';
   $('dashboard').style.display = v === 'dashboard' ? 'block' : 'none';
   $('send').style.display = v === 'form'&&canReport() ? 'block' : 'none';
   const logged = !!S && v !== 'login' && v !== 'change';
   $('bar').style.display = S && v !== 'login' && v !== 'change' ? 'flex' : 'none';
   $('tabs').style.display = logged ? 'flex' : 'none';
-  ['Dash','Form','Profile','Leave','Approve','Admin','Cmms','Catalog'].forEach(tab=>$('tab'+tab).classList.toggle('active',v===({Dash:'dashboard',Form:'form',Profile:'profile',Leave:'leave',Approve:'approvals',Admin:'admin',Cmms:'cmms',Catalog:'catalog'}[tab])));
+  ['Dash','Form','Profile','Leave','Approve','Admin','Cmms','Catalog','Inventory'].forEach(tab=>$('tab'+tab).classList.toggle('active',v===({Dash:'dashboard',Form:'form',Profile:'profile',Leave:'leave',Approve:'approvals',Admin:'admin',Cmms:'cmms',Catalog:'catalog',Inventory:'inventory'}[tab])));
   $('tabAdmin').style.display=S&&S.role==='owner'?'block':'none';$('tabCmms').style.display=S&&S.role==='owner'?'block':'none';$('tabCatalog').style.display=S&&S.role==='owner'?'block':'none';$('tabApprove').style.display=S&&S.role==='owner'?'block':'none';$('tabLeave').style.display='none';
   $('tabForm').style.display=canReport()?'block':'none';
-  $('headTitle').textContent = ({dashboard:'لوحة الأداء',form:'بلاغ عطل جديد',profile:'حسابي',leave:'حسابي',approvals:'اعتماد الإجازات والإضافي',admin:'إدارة المستخدمين',cmms:'سجل أوامر الشغل',catalog:'إدارة بيانات الصيانة',change:'تغيير كلمة المرور'})[v]||'MainTrack';
+  $('tabInventory').style.display=canReport()?'block':'none';
+  $('inv47Owner').hidden=!(S&&S.role==='owner');
+  $('headTitle').textContent = ({dashboard:'لوحة الأداء',form:'بلاغ عطل جديد',profile:'حسابي',leave:'حسابي',approvals:'اعتماد الإجازات والإضافي',admin:'إدارة المستخدمين',cmms:'سجل أوامر الشغل',catalog:'إدارة بيانات الصيانة',inventory:'رصيد المخزن',change:'تغيير كلمة المرور'})[v]||'MainTrack';
   if(v==='login'||v==='change'){noticeOpen=false;$('notifications').style.display='none';$('notifications').setAttribute('aria-hidden','true');$('bellBtn').setAttribute('aria-expanded','false');}
   $('who').textContent = S ? '◉  '+(S.displayName||S.name) : '';
   if (v === 'form' || v === 'dashboard') $('wo').style.display = v === 'form' ? 'inline-block' : 'none';
@@ -890,6 +892,7 @@ $('saveAdmin').onclick=async()=>{
  try{const d=await api('adminSaveUser',{code,role:$('adminRole').value,active:$('adminActive').checked,leaveBalance:$('adminLeave').value,substituteHours:$('adminSubHours').value,adjustmentReason:$('adminBalanceReason').value.trim(),department:$('adminDepartment').value,jobTitle:$('adminJob').value});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);note('تم تحديث الحساب على السيرفر','ok');await showAdmin();}
  catch(e){note('تعذر حفظ الصلاحيات: '+(e.message||'خطأ اتصال'),'err');}finally{btn.disabled=false;}
 };
+$('tabInventory').onclick=()=>{if(!canReport())return;show('inventory');};
 $('tabProfile').onclick=showProfile;$('tabLeave').onclick=showProfile;$('tabApprove').onclick=showApprovals;$('tabAdmin').onclick=showAdmin;$('who').onclick=showProfile;
 $('tabDash').onclick=()=>showDashboard(false);$('tabForm').onclick=()=>{if(!canReport())return note('ليس لديك صلاحية تسجيل بلاغات','err');show('form');if(!D)load();refreshWorkOrder();};$('prevMonth').onclick=()=>{selectedMonth=new Date(selectedMonth.getFullYear(),selectedMonth.getMonth()-1,1);showDashboard(false);};$('nextMonth').onclick=()=>{const n=new Date(selectedMonth.getFullYear(),selectedMonth.getMonth()+1,1);if(n<=new Date(new Date().getFullYear(),new Date().getMonth(),1)){selectedMonth=n;showDashboard(false);}};$('refreshDash').onclick=()=>showDashboard(true);
 window.addEventListener('online',()=>{if(!S)return;flush();loadNotices(true);if($('dashboard').style.display!=='none')showDashboard(true);});
