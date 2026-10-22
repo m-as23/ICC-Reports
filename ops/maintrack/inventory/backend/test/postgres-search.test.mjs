@@ -8,7 +8,12 @@ const bearing={code:'BEARING-A65',description:'Bearing 65 type A',quantity:'7.00
 const storeFor=rows=>{
  const calls=[];
  const pool={connect(){throw Error('not permitted in read-only test');},
- async query(sql,params){calls.push({sql,params});return {rows};}};
+ async query(sql,params){
+  calls.push({sql,params});
+  if(sql.includes('FROM inv_lab.active a LEFT JOIN inv_lab.versions'))
+   return {rows:[{versionId:'9',generation:'2',filename:'approved.xlsx'}]};
+  return {rows};
+ }};
  return {store:new PostgresInventoryStore({pool,privateFiles:{putObject(){throw Error('no writes');},deleteObject(){throw Error('no deletes');}}}),calls};
 };
 test('Search reads only the current sealed approved version, preserving original rows',async()=>{
@@ -46,12 +51,28 @@ test('Never silently truncate confirmed inventory scan; never query DB on invali
 test('Approved-only paged search reports every matching row without hidden cutoff',async()=>{
  const {store,calls}=storeFor([good,also,bearing]);
  const first=await store.searchPage('Parker M700',{limit:1,offset:0});
- assert.deepEqual(first,{items:[good],totalMatches:2,offset:0,limit:1,hasMore:true,nextOffset:1});
- const second=await store.searchPage('Parker M700',{limit:1,offset:1});
- assert.deepEqual(second,{items:[also],totalMatches:2,offset:1,limit:1,hasMore:false,nextOffset:null});
+ assert.deepEqual(first,{items:[good],totalMatches:2,offset:0,limit:1,hasMore:true,nextOffset:1,versionId:'9'});
+ const second=await store.searchPage('Parker M700',{limit:1,offset:1,versionId:first.versionId});
+ assert.deepEqual(second,{items:[also],totalMatches:2,offset:1,limit:1,hasMore:false,nextOffset:null,versionId:'9'});
  const empty=await store.searchPage('Parker 900A',{limit:5});
  assert.equal(empty.totalMatches,0);
  await assert.rejects(()=>store.searchPage('Parker',{offset:-1}),/INVALID_OFFSET/);
  await assert.rejects(()=>store.searchPage('Parker',{limit:101}),/INVALID_LIMIT/);
- assert.equal(calls.length,3,'Invalid pagination rejected without DB query');
+ assert.equal(calls.length,9,'Invalid pagination rejected without additional DB query');
+ await assert.rejects(()=>store.searchPage('Parker',{limit:1,offset:1,versionId:'8'}),/INVENTORY_VERSION_CHANGED_RESTART_SEARCH/);
+ assert.equal(calls.length,10,'Wrong snapshot rejects before scanning item rows');
+});
+
+test('Concurrent Owner approval invalidates paged search rather than mixing two stock versions',async()=>{
+ let reads=0;
+ const pool={connect(){throw Error('NO_WRITE')},async query(sql){
+  if(sql.includes('FROM inv_lab.active a LEFT JOIN inv_lab.versions')){
+   reads++;return {rows:[{versionId:reads===1?'9':'10',generation:String(reads)}]};
+  }
+  assert.match(sql,/v\.status='current' AND v\.sealed=true/);
+  return {rows:[good]};
+ }};
+ const store=new PostgresInventoryStore({pool,privateFiles:{putObject(){throw Error('NO_UPLOAD')},deleteObject(){throw Error('NO_DELETE')}}});
+ await assert.rejects(()=>store.searchPage('Parker',{limit:1}),/INVENTORY_VERSION_CHANGED_RESTART_SEARCH/);
+ assert.equal(reads,2);
 });
