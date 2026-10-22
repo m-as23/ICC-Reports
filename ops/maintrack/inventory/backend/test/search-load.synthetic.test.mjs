@@ -17,6 +17,8 @@ test('3,920 synthetic item inventory: bilingual recall + exact pagination across
  const pool={
   connect(){throw Error('UNEXPECTED_WRITE')},
   async query(sql,params){
+   if(sql.includes('FROM inv_lab.active a LEFT JOIN inv_lab.versions'))
+    return {rows:[{versionId:'7',generation:'2',filename:'approved.xlsx'}]};
    queries++;
    assert.match(sql,/v\.status='current' AND v\.sealed=true/);
    assert.deepEqual(params,[30001]);
@@ -28,7 +30,8 @@ test('3,920 synthetic item inventory: bilingual recall + exact pagination across
  const totalExpected=392;
  for(let round=0;round<30;round++){
   const start=performance.now();
-  const resp=await store.searchPage(round%2?'انفرتر باركر':'Parker M700 65 أمبير',{limit:75,offset:(round%5)*75});
+  const resp=await store.searchPage(round%2?'انفرتر باركر':'Parker M700 65 أمبير',{limit:75,offset:(round%5)*75,versionId:'7'});
+  assert.equal(resp.versionId,'7');
   latencies.push(performance.now()-start);
   assert.equal(resp.totalMatches,totalExpected,'All confirmed matches must remain visible');
   assert.equal(resp.items.length,round%5===4?75:75);
