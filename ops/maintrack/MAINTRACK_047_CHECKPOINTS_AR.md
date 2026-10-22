@@ -25,8 +25,8 @@
 |---|---|---|---|
 | CP-00 | تحديد النطاق | MT-01..MT-05 موثقة مع المعلّقات الصريحة | PASS — Scope Recorded |
 | CP-01A | مصدر أساس غير قابل للخلط | أصل SHA مثبت، فرع تجريبي مستقل، سجل قرارات | PASS — Repository Preparation |
-| CP-01B | QA isolation preflight | هوية بيئة DB/API/host + rollback للبيانات الاختبارية + عدم توجيهها إلى Production | PENDING — NO DEPLOY |
-| CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | NOT STARTED |
+| CP-01B | QA isolation preflight | هوية بيئة DB/API/host + rollback للبيانات الاختبارية + عدم توجيهها إلى Production | PARTIAL — مشروع QA منفصل موجود، لكنه لا يضم كل جداول Staging؛ NO DEPLOY |
+| CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | CSS PATCH COMMITTED — VISUAL/REGRESSION TEST PENDING |
 | CP-03 | MT-03 تكرار الإجازة | التحقق من الطلبات المتداخلة على السيرفر، رفض التكرار دون مضاعفة البيانات | NOT STARTED |
 | CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | NOT STARTED |
 | CP-05 | MT-05 البريد والزمن الإجمالي | بريد QA صحيح مرة واحدة، قياس عبر منتصف الليل، مصدر وقت البداية والنهاية موثوق | NOT STARTED |
@@ -41,6 +41,16 @@
 - يُراجع تصميم `backend/INTEGRATION_PLAN_AR.md`، `backend/REAL_STAGING_SESSION_BUCKET_AR.md` وعمليات Auth/Storage/Inventory قبل النقل.
 - Backend معزول جزئيًا، الجلسات MainTrack opaque tokens، لا نظام Supabase Auth آخر. Bucket خاصة موجودة في Staging، لكن ربط تدفق اعتماد Excel الحقيقي / البحث / الاستعادة يحتاج إثباتًا منفصلًا.
 - التحقق من اختلاف هيكل بيانات الواجهة القديمة وآليات نشر Web وAPK جزء أساسي من بوابة الدمج. لا نقل HTML مضمّن به جرد أصلي إلى GitHub.
+
+
+## تنفيذ 22 أكتوبر 2026 — تقدم موثق
+- Branch: `feature/maintrack-047-integration-20261022`, root commit `1248211b662981e3e7db27ac0a61ca4d23862ca1`.
+- بدأ MT-02 بتعديل CSS محدود على هذا الفرع فقط: `web/maintrack/public/v6.css` و`index.html`. يضيف Mobile scroll clearance داخل `main#form` عند العرض ≤700px فوق زر الحفظ الثابت. لا JavaScript ولا DB ولا تغيير لترتيب الحقول.
+- Commits: `6525c689c93f1b6f5681c0ddb2769c3715179558` و`0892b83a348f4f1135abca4a14bbd696db31b058`.
+- GitHub compare مقابل Baseline أعطى فقط 3 ملفات متغيرة: وثيقة الـCheckpoints وملفا CSS/HTML؛ لا تغيير للوظائف أو SQL. هذا إثبات Diff، **وليس اختبارًا بصريًا ناجحًا**.
+- فحص Supabase للقراءة فقط: `MainTrack-RBAC-QA-Isolated` مشروع منفصل ونشط، لكنه يحوي جداول QA أساسية فقط ولا يساوي مخطط Staging الكامل. لا تشغيل write E2E عليه أو على Staging حتى اعتماد baseline والـAPI المناسبين.
+- `web/maintrack/source-lock.json` يحتوي fingerprints من مرجع قديم؛ تغيّر `v6.css` يجعلها غير مطابقة من دون توليد provenance إصدار جديد. **لا نغير lock التاريخي ولا ندّعي جاهزية Native/Web packaging**. سيُعالج عند بوابة build التجريبية بشكل يحافظ على مصدر الإصدار.
+- الحالة: CP-01A PASS؛ CP-01B PARTIAL؛ CP-02 CODE PATCH ONLY؛ CP-03..CP-09 PENDING. لم يُنشَر أي تحديث ولم تُلمس Production أو Staging.
 
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
