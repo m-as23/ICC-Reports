@@ -30,7 +30,7 @@
 | CP-03 | MT-03 تكرار الإجازة | التحقق من الطلبات المتداخلة على السيرفر، رفض التكرار دون مضاعفة البيانات | SOURCE PATCHED + READ-ONLY SQL 6/6 PASS — AUTHENTICATED E2E PENDING |
 | CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | FIXED CANONICAL v6-core.js SIDEBAR ROLE TEXT; NEW STATIC CI PENDING |
 | CP-05 | MT-05 البريد والزمن الإجمالي | بريد QA صحيح مرة واحدة، قياس عبر منتصف الليل، مصدر وقت البداية والنهاية موثوق | WORKER SOURCE PREPARED — PURE DURATION TESTS PASS; RESEND SEND/DEPLOY PENDING |
-| CP-06 | MT-01 محرك البحث والدمج | آخر عنصر Side Menu، عرض حسب الدور، البحث العربي/الإنجليزي ووحدات 65A، رفع/مقارنة/اعتماد/أرشيف Owner، Reject غير المالك | NOT STARTED |
+| CP-06 | MT-01 محرك البحث والدمج | آخر عنصر Side Menu، عرض حسب الدور، البحث العربي/الإنجليزي ووحدات 65A، رفع/مقارنة/اعتماد/أرشيف Owner، Reject غير المالك | UI NAVIGATION + FAIL-CLOSED PREVIEW COMMITTED — INVENTORY SCHEMA/REAL SEARCH BLOCKED; NEW BROWSER QA PENDING |
 | CP-07 | Regression + security + performance | تغطية التغييرات وأثرها على الوظائف الأساسية دون تكرار اختبارات ثابتة بلا داع | INITIAL ISOLATED CI PASS (39814496034); SOURCE ATTESTATION + MOBILE QA LATEST COMMIT PENDING |
 | CP-08 | Web/APK/OTA upgrade + rollback | اختبارات إصدار وصلاحيات وبناء وتوقيع وترقية وبقاء بيانات وقدرة الرجوع موثقة | NOT STARTED |
 | CP-09 | موافقة المالك والنشر | لا يُنشر إلا بعد PASS واضح لكل بوابات الإصدار وموافقة صريحة | BLOCKED — APPROVAL REQUIRED |
@@ -87,6 +87,19 @@
 - GitHub Actions \`39816104121\` أنجز **PASS في الوظيفتين** (Static/Attestation وBrowser). خرجت قياسات Browser من log: عرض 360 → 79px؛ 390 → 79px؛ 412 → 79px؛ 600 → 74px بين نهاية حقل التصنيف وبداية زر الحفظ، مع تسجيل screenshots في Artifact؛ اختبار معزول لا يجرب حساب موظف حقيقي أو APK.
 - المصدر المرجعي للصلاحيات في Side Menu وجد فعليًا في \`web/maintrack/public/v6-core.js\` بنص \`Owner / المسؤول\` و\`Engineer / مهندس\` و\`Technician / فني\`. تم تعديل **تلك السلسلة وحدها** إلى \`المسؤول\` و\`مهندس\` و\`فني\` مع fallback، دون مساس بأي قائمة أو صلاحيات. تم إدراج الملف في allowlist لفحص بصمات v0.4.7 وإضافة اختبار ثابت لاختفاء المسميات المختلطة؛ نتيجة CI الجديدة قيد التحقق.
 - لا تزال نسخة \`v0.4.6\` معتمدة كنقطة رجوع للمصدر وممنوع النشر قبل CP-08/CP-09.
+
+
+### CP-06 / MT-01 — دمج واجهة مبدئي وتجهيز Backend معزول (22 أكتوبر 2026)
+- تم فحص \`SpareParts-Search-Lab\` عند \`07dbac0c2a63cf58336ae8a2df383cbcf9f283be\`. إجراءات Backend وQA المستقلة في ذلك المستودع ناجحة عند الـSHA المرجعي، لكنها ليست اختبار دمج حقيقي ببيانات MainTrack.
+- استعلام metadata **للقراءة فقط** في \`MainTrack-Staging\`: جلسات \`mt_users\` و\`mt_sessions\` موجودة (2/2)، \`maintrack-inventory-archive-staging\` Bucket خاصة صحيحة (1/1)، لكن \`inv_lab\` غير موجودة (0 schema, 0 tables). مشروع \`MainTrack-RBAC-QA-Isolated\` لا يحتوي \`inv_lab\` أو bucket مماثلة. لم يُنفذ \`001_inventory_core.sql\` على أي بيئة.
+- تعديلات الويب على فرع v0.4.7 فقط: \`web/maintrack/public/index.html\` زر \`tabInventory\` وحيد **في آخر القائمة** وصفحة \`inventory\`؛ \`v6.js\` يحافظ على ترتيب العناصر الثمانية القديمة ويضيف التاسع؛ \`v6-core.js\` أيقونة العنصر الجديد دون مساس بالأيقونات القديمة؛ \`secure-assets/index-inline-1.js\` تنقل يستعمل جلسة التطبيق الموجودة ويظهر العنصر للأدوار \`owner/engineer/technician\` فقط؛ \`inventory-047.css\` تصميم scoped لا يؤثر على بقية التطبيق.
+- **وضع Fail-closed:** يُظهر عنوان رصيد المخزن ومكان البحث/الرفع/الأرشيف، ولكن يُبقي البحث والرفع والاعتماد والاستعادة **معطلة** حتى تطبيق Backend موثق وفحص الجلسات والصلاحيات ومطابقة Excel. لا بيانات جرد أصلية في GitHub ولا بيانات أو أرقام وهمية في الواجهة. هذه ليست الصفحة النهائية لبحث V9؛ سيتم نقل التصميم والمزايا بعد تهيئة API ولقاء القبول البصري.
+- Owner يرى منطقة الإدارة (معطلة)؛ Engineer/Technician يستطيعان فتح القسم دون أدوات مالك. صلاحيات الخادم لم تُنفذ بعد لذلك لم نعلن هذا RBAC أمنيًا كاملًا.
+- أضيف اختبار Static عبر \`test_047_static.cjs\` للتحقق من ترتيب القائمة والثلاثة أدوار وحالة إيقاف البحث، وأضيف اختبار Chromium مستقل \`test_047_inventory.browser.mjs\` لواجهات 360/390/412/600px والتقاط screenshot ومنع أي اتصالات API في الاختبار.
+- التوقف التالي: مراجعة تصميم V9 بدون Excel المضمّن، عقد API واضح، تجربة PostgreSQL خاصة مع تصاريح دقيقة وRLS/REVOKE، وبعدها \`Staging\` Migration بموافقة صريحة وBackup ثم تنفيذ اختبارات Session/Owner-only/Search/Upload/Archive. لا اعتماد CP-06 كاملًا قبل ذلك.
+- آخر نتائج Vercel عند الفحص: صفر deployments للفرع v0.4.7 على مشروع \`maintrack-production\`. Resend connection: \`No domains found\`، لذا لا بريد فعلي من هذه الجلسة ولا تحديث لمرسل الرسالة. لا Live Supabase deploy أو نشر Vercel أو APK/OTA.
+- تم إغلاق CI رقم \`39816950302\` بنتيجتي **PASS** وأدلة screenshots+bom، قبل إضافة UI؛ البوابة الجديدة للدمج لا تعلن PASS إلى أن تؤكد Actions الجديدة نجاح نفس الـCommit.
+
 
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
