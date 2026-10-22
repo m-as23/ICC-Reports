@@ -1,0 +1,16 @@
+/* MainTrack 0.4.7 — spare-parts preview. All rules scoped; no changes to existing sections. */
+#inventory{max-width:1100px;margin:0 auto;padding:20px 14px 92px}
+#inventory .inv47-hero{background:linear-gradient(122deg,#102940,#193f58);border-radius:20px;color:#fff;padding:28px 24px;margin:10px 0 18px}
+#inventory .inv47-kicker{color:#93c7d4;letter-spacing:.09em;font:700 11px Arial,sans-serif}
+#inventory h2{margin:9px 0;color:#fff;font:800 26px Cairo,Tahoma,sans-serif}
+#inventory .inv47-hero p{margin:0;color:#d9e7ec;line-height:1.9}
+#inventory .inv47-panel{background:#fff;border:1px solid #e1e9ee;box-shadow:0 8px 28px #17394d0b;border-radius:17px;padding:20px;margin-bottom:16px;color:#19384a}
+#inventory .inv47-panel h3{font:800 18px Cairo;margin:0 0 12px}
+#inventory .inv47-search{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#inventory .inv47-search input{flex:1 1 240px;min-height:44px;border:1px solid #d6e3e7;border-radius:11px;padding:10px 13px}
+#inventory .inv47-search button,#inventory .inv47-owner button{border:0;border-radius:10px;padding:10px 17px;min-height:44px;background:#078d92;color:#fff;font:700 13px Cairo}
+#inventory button:disabled,#inventory input:disabled{opacity:.62;cursor:not-allowed}
+#inventory .inv47-state{border-right:4px solid #dba82f;background:#fff8e8;border-radius:8px;padding:12px 15px;line-height:1.9;margin:12px 0 0}
+#inventory .inv47-panel small{color:#62798a}
+#inventory .inv47-owner{border:1px dashed #b5d0d8;border-radius:12px;padding:12px 15px;margin-top:14px}
+@media(max-width:520px){#inventory{padding:12px 10px 92px}#inventory .inv47-hero{padding:20px 16px}#inventory h2{font-size:23px}}
