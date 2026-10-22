@@ -88,6 +88,9 @@ test('MT-07: canonical sidebar order, role visibility and phone/desktop navigati
     const shade=document.createElement('div');shade.id='v6Shade';document.body.append(shade);
     const toggle=document.createElement('button');toggle.type='button';toggle.id='v6Toggle';toggle.textContent='☰';toggle.setAttribute('aria-label','فتح القائمة');
     $('bar').prepend(toggle);
+    // Canonical CSS hides #bar until the authenticated application calls show().
+    // In this credentials-free fixture we explicitly simulate that authenticated visibility.
+    $('bar').style.display='flex';tabs.style.display='flex';
     const hide=()=>document.body.classList.remove('v6Drawer');
     toggle.onclick=()=>document.body.classList.toggle('v6Drawer');close.onclick=hide;shade.onclick=hide;
     let currentRole='owner';
