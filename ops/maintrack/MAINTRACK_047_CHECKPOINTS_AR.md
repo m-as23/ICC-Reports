@@ -101,6 +101,15 @@
 - تم إغلاق CI رقم \`39816950302\` بنتيجتي **PASS** وأدلة screenshots+bom، قبل إضافة UI؛ البوابة الجديدة للدمج لا تعلن PASS إلى أن تؤكد Actions الجديدة نجاح نفس الـCommit.
 
 
+
+### CP-06 / SQL review-only contract (22 أكتوبر 2026)
+- تم نقل مخطط قاعدة بيانات قطع الغيار \`inv_lab\` واختبار نسخ V1→V2→V3 إلى \`ops/maintrack/inventory/001_inventory_core.review.sql\` و\`ops/maintrack/inventory/test_inventory_disposable.sql\` دون أي Excel فعلي، من نسخة Lab المثبتة SHA \`07dbac0c2a63cf58336ae8a2df383cbcf9f283be\`.
+- الملفات خارج \`supabase/migrations/\` عمدًا. ليست migrations قابلة للتشغيل التلقائي أو منشورة، وهي للاختبار والمراجعة فقط.
+- تم تجهيز GitHub Actions Job \`qa-047-inventory-sql\` بقاعدة PostgreSQL 16 **مؤقتة**، لإنشاء نفس المخطط مرتين (Idempotency) ثم اختبار المقارنات والأرشفة ورفض النسخة المتقادمة والاستعادة وحماية Schema من PUBLIC. الاختبار SQL يستخدم معاملات تنتهي بـ ROLLBACK ولا يتصل بـ Supabase.
+- تم إضافة الملفات إلى بصمات مراجعة إصدار 0.4.7 المستقلة، **لا** إلى PIN التاريخي أو قائمة ملفات الإنتاج.
+- نجاح هذا الاختبار يثبت صحة بعض قواعد البيانات في عزل CI فقط؛ لا يثبت صلاحية API الحية أو Owner/Technician E2E. لا يُطبق المخطط على Staging حتى فحص النسخة الاحتياطية والموافقة على migration منفصل.
+
+
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
 - Source commit / PR:
