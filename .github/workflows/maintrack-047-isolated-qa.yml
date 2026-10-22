@@ -68,7 +68,7 @@ jobs:
       - name: Install Chromium
         run: npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
       - name: Verify four mobile viewport clearances without live API or login
-        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs ops/maintrack/tests/test_047_inventory.browser.mjs
+        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs ops/maintrack/tests/test_047_inventory.browser.mjs ops/maintrack/tests/test_047_menu_roles.browser.mjs
       - name: Save mobile QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
