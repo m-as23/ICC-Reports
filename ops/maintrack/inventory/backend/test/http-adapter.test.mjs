@@ -11,6 +11,7 @@ const service={async execute(input){
  recorded.push(input);
  if(input.session!==valid)throw Error('UNAUTHENTICATED');
  if(input.action==='inventoryPublish')throw Error('STALE_BASE_RECOMPARE_REQUIRED');
+ if(input.action==='inventorySearchPage'&&input.versionId==='stale')throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
  if(input.action==='inventoryDraft')return {count:input.bytes.length};
  return {action:input.action};
 }};
@@ -47,6 +48,11 @@ test('Maps stale conflicts to HTTP409 and suppresses backend stack/internal SQL'
  const out=await route(request({action:'inventoryPublish',confirmReviewed:true,reviewReceipt:'x'.repeat(64)}));
  assert.equal(out.status,409);
  assert.deepEqual(await out.json(),{ok:false,error:'STALE_BASE_RECOMPARE_REQUIRED'});
+});
+test('Concurrent inventory publication requires search restart (HTTP409)',async()=>{
+ const out=await route(request({action:'inventorySearchPage',query:'Parker',versionId:'stale',offset:50}));
+ assert.equal(out.status,409);
+ assert.deepEqual(await out.json(),{ok:false,error:'INVENTORY_VERSION_CHANGED_RESTART_SEARCH'});
 });
 test('Upload must be exact bounded base64, not a path or an oversized request',async()=>{
  const n=recorded.length;
