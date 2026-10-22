@@ -11,8 +11,8 @@ const synonyms=new Map([
  ['انفرتر','inverter'],['انفرتير','inverter'],['انفيرتر','inverter'],
  ['vfd','inverter'],['inverters','inverter']
 ]);
-export function inventoryTerms(input){
- if(typeof input!=='string'||input.length>120)throw Error('INVALID_QUERY');
+export function inventoryTerms(input,{maxLength=120}={}){
+ if(typeof input!=='string'||input.length>maxLength)throw Error('INVALID_QUERY');
  let s=input.normalize('NFKC').toLowerCase().replace(/[٠-٩۰-۹]/g,arabicDigit)
    .replace(/[\u064B-\u065F\u0670\u0640]/g,'')
    .replace(/[إأآٱ]/g,'ا').replace(/ى/g,'ي');
@@ -33,7 +33,7 @@ export function matchesInventoryItem(item,query){
  // Never introduce synthesized part numbers, counts or descriptions.
  const fields=[item.code,item.description,item.location,item.extra?.iccCode,item.extra?.brand,
   item.extra?.model].filter(x=>typeof x==='string');
- const available=new Set(fields.flatMap(x=>inventoryTerms(x.slice(0,120))));
+ const available=new Set(fields.flatMap(x=>inventoryTerms(x,{maxLength:10000})));
  return terms.every(term=>available.has(term));
 }
 export function filterConfirmedInventoryItems(items,query,{limit=50}={}){
