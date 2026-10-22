@@ -36,6 +36,8 @@ const allow=new Set([
  'ops/maintrack/inventory/backend/src/maintrack-session-adapter.mjs',
  'ops/maintrack/inventory/backend/src/search-normalizer.mjs',
  'ops/maintrack/inventory/backend/src/postgres-store.mjs',
+ 'ops/maintrack/inventory/backend/src/inventory-service.mjs',
+ 'ops/maintrack/inventory/backend/test/inventory-service.test.mjs',
  'ops/maintrack/inventory/backend/test/postgres-search.test.mjs',
  'ops/maintrack/inventory/backend/test/search-normalizer.test.mjs',
  'ops/maintrack/inventory/backend/test/domain.test.mjs',
