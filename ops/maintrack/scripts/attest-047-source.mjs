@@ -33,6 +33,8 @@ const allow=new Set([
  'ops/maintrack/inventory/backend/src/domain.mjs',
  'ops/maintrack/inventory/backend/src/http-adapter.mjs',
  'ops/maintrack/inventory/backend/src/maintrack-session-adapter.mjs',
+ 'ops/maintrack/inventory/backend/src/search-normalizer.mjs',
+ 'ops/maintrack/inventory/backend/test/search-normalizer.test.mjs',
  'ops/maintrack/inventory/backend/test/domain.test.mjs',
  'ops/maintrack/inventory/backend/test/http-adapter.test.mjs',
  'ops/maintrack/inventory/backend/test/session-adapter.test.mjs',
