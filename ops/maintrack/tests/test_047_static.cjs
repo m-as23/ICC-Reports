@@ -39,7 +39,7 @@ const marker='// v0.4.7 MT-05:';
 const from=worker.indexOf(marker);
 const to=worker.indexOf('async function send(',from);
 assert.ok(from>=0&&to>from,'Worker utility functions missing');
-const utility=new Function(worker.slice(from,to)+'\nreturn {maintrackDurationArabic,maintrackReportTiming,maintrackClockMinutes};')();
+const utility=new Function(worker.slice(from,to)+'\nreturn {maintrackDurationArabic,maintrackReportTiming,maintrackClockMinutes,maintrackClockAmPm};')();
 for(const [input,want] of [[125,'ساعتان و5 دقائق'],[61,'ساعة واحدة ودقيقة واحدة'],[2,'دقيقتان'],[185,'3 ساعات و5 دقائق'],[750,'12 ساعة و30 دقيقة']]){
  assert.equal(utility.maintrackDurationArabic(input),want);
 }
@@ -47,6 +47,13 @@ assert.deepEqual(utility.maintrackReportTiming({report_clock:'23:40',work_end_cl
 assert.deepEqual(utility.maintrackReportTiming({report_clock:'10:30',work_end_clock:'12:35'}),{duration:'ساعتان و5 دقائق',nextDay:false});
 assert.equal(utility.maintrackReportTiming({report_clock:'07:00',work_end_clock:'07:00'}).duration,'غير محددة (وقت البداية يساوي وقت النهاية)');
 assert.equal(utility.maintrackReportTiming({report_clock:'25:00',work_end_clock:'06:00'}).duration,'غير متاحة');
+for(const [clock,formatted] of [['00:05','12:05 AM'],['08:30','8:30 AM'],['12:45','12:45 PM'],['23:59','11:59 PM']]) {
+ assert.equal(utility.maintrackClockAmPm(clock),formatted);
+}
+assert.ok(worker.includes("const subject='إشعار تسجيل بلاغ جديد في MainTrack'"));
+assert.ok(worker.includes("'وقت بداية العطل: '+maintrackClockAmPm(x.report_clock)"));
+assert.ok(worker.includes("'المدة الإجمالية للعطل: '+timing.duration"));
+assert.ok(!worker.includes("'بداية الإصلاح: '"));
 assert.ok(!worker.includes("const subject='MainTrack Pilot"));
 assert.ok(!worker.includes('تجربة Pilot فقط'));
 assert.ok(worker.includes("'Idempotency-Key':j.event_key"));
