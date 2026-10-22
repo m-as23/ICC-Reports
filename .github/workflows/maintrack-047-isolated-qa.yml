@@ -116,6 +116,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/001_inventory_core.review.sql
       - name: Verify V1→V2→V3 compare, archive, stale denial and restore
         run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/test_inventory_disposable.sql
+      - name: Validate MainTrack opaque sessions against disposable PostgreSQL (no employee data)
+        run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/test_sessions_disposable.sql
       - name: Check synthetic test rolls back and inventory schema stays unexposed
         run: |
           psql -X -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN (SELECT count(*) FROM inv_lab.versions)=0 AND (SELECT count(*) FROM inv_lab.audit)=0 AND (SELECT count(*) FROM inv_lab.active)=1 THEN 'PASS_ROLLBACK' ELSE 'FAIL' END"
