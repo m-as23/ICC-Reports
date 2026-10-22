@@ -138,6 +138,18 @@
 - لا تنفيذ Schema/SQL أو Storage upload أو بريد Resend أو نشر Vercel أو توقيع OTA/APK في هذه الجولة.
 
 
+### CP-06 continued — real XLSX parser and exhaustive pagination (22 أكتوبر 2026)
+- تم نقل \`import-xlsx.mjs\` و\`private-bucket.mjs\` كما هما من مصدر SpareParts Lab المثبت \`07dbac0c2a63cf58336ae8a2df383cbcf9f283be\` إلى فرع 0.4.7 التجريبي. الرفع على Supabase **لم** يُنفذ، والكود لم يُنشر.
+- أضيفت \`create-review-runtime.mjs\` تربط حصريًا \`verifySession\` الموثّق على السيرفر، وPostgreSQL pool المقيّد، وPRIVATE storage bucket، وParser المكتبة الحقيقية. لا تعرض أي pool أو storage credentials للعملاء، ولا تنشئ HTTP endpoint عند استيرادها.
+- تمت إضافة \`package.json\` و\`package-lock.json\` مُقفلين مع \`exceljs@4.4.0\` و\`yauzl@3.2.0\`، وأصبحت CI تستخدم \`npm ci --ignore-scripts\`. Lockfile ولّدته بيئة GitHub Actions التجريبية ثم أُضيف للمستودع، وليس إلى Production.
+- نتيجة الاختبارات الأولية الحقيقية باستخدام ملفات Excel صناعية: 10 اختبارات Parser/Private Bucket/Owner import flow **PASS** في تشغيل \`39828313445\`، مع SHA لاطلاع Source Attestation. أُضيفت لاحقًا حالة 3920 صنف اصطناعي واختبارات Pagination؛ يلزم انتظار **نتيجة آخر Commit** قبل اعتمادها.
+- أضيفت \`inventorySearchPage\` لتقديم \`totalMatches\` ومؤشر \`nextOffset\`، إلى جانب \`inventorySearch\` القديمة للتوافق. البحث يقتصر على النسخة الحالية المعتمدة والمغلقة ويتأكد من عدم الاقتصاص الصامت؛ واجهة المستخدم تحتاج لاحقًا الاتصال بالعقد المُرقّم بدل الاعتماد على أول 50 نتيجة.
+- أضيفت صفحات \`inventoryDiff\` مع \`detailsTotal\` و\`offset\` و\`nextOffset\`، والـ\`reviewReceipt\` ثابت ومحسوب على الفروق الكاملة حتى إن تجاوزت 500 بند. يجب دعم التنقل في كل صفحات الـDiff داخل واجهة Owner قبل الإطلاق؛ لا تُعتبر الموافقة مكتملة في UI قبل عرض مسار مراجعة الكل.
+- إعادة تشغيل بوابة Legacy \`39824917180\` **PASS** في جميع وظائفها بما فيها اختبار محرر \`#v6Editor\` الذي فشل في تشغيل سابق. لا يُعتبر اختبارًا نهائيًا ضد عدم الاستقرار/Flakiness؛ نتائج تشغيل أحدث ملزمة عند إطلاق النسخة.
+- ما زالت \`inv_lab\` غير موجودة في Supabase Staging بناءً على آخر قراءة مؤكدة، والـPrivate Bucket التجريبية موجودة؛ لم يحصل أي SQL Migration حي ولا قنوات إرسال Resend ولا Vercel Preview ولا APK/OTA.
+- البوابة التالية تبقى **NOT READY** إلى أن يثبت Backup Restore شامل أو يُعتمد مسار Rollback مُراجع، ويكتمل عقد API الحقيقي مع Auth/RLS/Storage وتُختبر بيانات Excel صناعية واقعية الحجم وOwner review Pagination وPerformance وStaging. **لا تغيّر Production أو main تلقائيًا.**
+
+
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
 - Source commit / PR:
