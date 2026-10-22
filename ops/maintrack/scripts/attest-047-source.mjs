@@ -40,6 +40,8 @@ const allow=new Set([
  'ops/maintrack/inventory/backend/src/import-xlsx.mjs',
  'ops/maintrack/inventory/backend/src/private-bucket.mjs',
  'ops/maintrack/inventory/backend/src/create-review-runtime.mjs',
+ 'ops/maintrack/inventory/backend/src/create-review-http-handler.mjs',
+ 'ops/maintrack/inventory/backend/test/review-http-handler.test.mjs',
  'ops/maintrack/inventory/backend/package.json',
  'ops/maintrack/inventory/backend/package-lock.json',
  'ops/maintrack/inventory/backend/test/import-xlsx.test.mjs',
