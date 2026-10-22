@@ -59,3 +59,23 @@ test('Upload fails closed if parser not configured or session revoked',async()=>
  await assert.rejects(()=>revoked.execute({action:'inventorySearch',session}),/UNAUTHENTICATED/);
  assert.equal(f.seen.length,0);
 });
+
+
+test('Complete diffs are paged with stable full-diff receipt, no unseen rows omitted',async()=>{
+ const f=fixture();f.diff.details=Array.from({length:1203},(_,i)=>({code:'P-'+i,type:'CHANGED',after:{quantity:i}}));
+ const service=f.make(),all=[],receipts=new Set();let offset=0;
+ for(let i=0;i<4;i++){
+  const p=await service.execute({action:'inventoryDiff',session,draftId:'10',limit:400,offset});
+  assert.equal(p.detailsTotal,1203);
+  assert.equal(p.offset,offset);
+  all.push(...p.details);receipts.add(p.reviewReceipt);
+  if(!p.hasMore){assert.equal(p.nextOffset,null);break;}
+  assert.equal(p.truncated,true);
+  offset=p.nextOffset;
+ }
+ assert.equal(all.length,1203);
+ assert.equal(new Set(all.map(x=>x.code)).size,1203);
+ assert.equal(receipts.size,1,'Every page is tied to identical complete diff');
+ await assert.rejects(()=>service.execute({action:'inventoryDiff',session,draftId:'10',limit:501}),/INVALID_LIMIT/);
+ await assert.rejects(()=>service.execute({action:'inventoryDiff',session,draftId:'10',offset:-1}),/INVALID_OFFSET/);
+});
