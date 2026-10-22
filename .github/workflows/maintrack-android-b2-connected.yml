@@ -8,7 +8,7 @@ permissions:
   actions: read
 concurrency:
   group: maintrack-b2-connected
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   connected-ui:
     if: github.ref == 'refs/heads/qa/android-b2-isolated-20261022'
@@ -45,6 +45,8 @@ jobs:
           set -euo pipefail
           echo 'de188558dae33825e760dad154cf75b76372a8ef59fd6499bd9ecb10ab37f80c  .b2-native/apks/MainTrack-B2-NativeQA-Debug.apk' | sha256sum -c -
           npm --prefix tests-browser ci --no-audit --no-fund
+      - name: Enable emulator acceleration
+        run: if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - name: Android 35 UI to bounded real B2 transport
         uses: reactivecircus/android-emulator-runner@v2
         env:
