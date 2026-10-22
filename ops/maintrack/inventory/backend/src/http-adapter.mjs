@@ -2,8 +2,11 @@
 // No Supabase / Vercel changes, no inventory database operations executed by this module alone.
 // Framework-neutral Fetch API handler for a future trusted server/Edge integration.
 // Standalone test module only. No listening socket, deployment or route in MainTrack.
-const MAX_BODY=15*1024*1024;
-const MAX_XLSX_BYTES=10*1024*1024;
+// Vercel Function request cap is 4.5 MB; JSON + base64 inflates binary by ~33%.
+// This candidate allows only small spreadsheet JSON uploads. Larger files MUST
+// use a future reviewed direct/private upload flow, not an oversized Function.
+const MAX_BODY=4*1024*1024;
+const MAX_XLSX_BYTES=2*1024*1024;
 const jsonHeaders={'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
 const allowedMethods='POST, OPTIONS';
 const allowedHeaders='Authorization, Content-Type';
@@ -36,13 +39,16 @@ async function limitedJson(request){
  return {payload,bytesLength:size};
 }
 function decodeUpload(str){
- if(typeof str!=='string'||str.length<100||str.length>Math.ceil(MAX_XLSX_BYTES/3)*4+8
-     ||str.length%4!==0||!/^[A-Za-z0-9+/]+={0,2}$/.test(str))throw Error('INVALID_XLSX_ENCODING');
+ if(typeof str!=='string'||str.length<100||str.length%4!==0||!/^[A-Za-z0-9+/]+={0,2}$/.test(str))
+    throw Error('INVALID_XLSX_ENCODING');
+ if(str.length>Math.ceil(MAX_XLSX_BYTES/3)*4+8)throw Error('XLSX_DIRECT_UPLOAD_REQUIRED');
  const bytes=Buffer.from(str,'base64');
- if(!bytes.length||bytes.length>MAX_XLSX_BYTES||bytes.toString('base64')!==str)throw Error('INVALID_XLSX_ENCODING');
+ if(bytes.length>MAX_XLSX_BYTES)throw Error('XLSX_DIRECT_UPLOAD_REQUIRED');
+ if(!bytes.length||bytes.toString('base64')!==str)throw Error('INVALID_XLSX_ENCODING');
  return bytes;
 }
 const codeFor=(err)=>{
+ if(/REQUEST_TOO_LARGE|XLSX_DIRECT_UPLOAD_REQUIRED/.test(err))return 413;
  if(/UNAUTHENTICATED|VERIFIED_USER_ID_REQUIRED/.test(err))return 401;
  if(/FORBIDDEN/.test(err))return 403;
  if(/STALE_BASE|NOT_PENDING|REVIEW_RECEIPT_MISMATCH/.test(err))return 409;
