@@ -59,6 +59,7 @@ const allow=new Set([
  'ops/maintrack/inventory/backend/test/session-adapter.test.mjs',
  'ops/maintrack/tests/test_047_mobile.browser.mjs',
  'ops/maintrack/tests/test_047_inventory.browser.mjs',
+ 'ops/maintrack/tests/test_047_menu_roles.browser.mjs',
  'supabase/functions/maintrack-pilot-mail-worker/deno.json',
  'supabase/functions/maintrack-pilot-mail-worker/index.ts',
  'web/maintrack/public/index.html',
