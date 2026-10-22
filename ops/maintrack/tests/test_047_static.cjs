@@ -12,10 +12,14 @@ const index=read('index.html');
 const webIndex=read('web/maintrack/public/index.html');
 const webJs=read('web/maintrack/public/secure-assets/index-inline-1.js');
 const css=read('web/maintrack/public/v6.css');
+const menuCore=read('web/maintrack/public/v6-core.js');
 const api=read('supabase/functions/maintrack-stage9-security-api/index.ts');
 const worker=read('supabase/functions/maintrack-pilot-mail-worker/index.ts');
 
 new vm.Script(webJs,{filename:'index-inline-1.js'});
+new vm.Script(menuCore,{filename:'v6-core.js'});
+assert.ok(menuCore.includes("const role=S.role==='owner'?'المسؤول':S.role==='engineer'?'مهندس':S.role==='technician'?'فني':'غير معيّن';"),'Sidebar actual role label changed');
+assert.ok(!menuCore.includes('Owner / المسؤول')&&!menuCore.includes('Technician / فني'),'Mixed language role label restored');
 const scripts=[...index.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)]
  .filter(m=>!/\bsrc\s*=/.test(m[1])&&m[2].trim()&&!/application\/json/i.test(m[1]));
 assert.ok(scripts.length,'Standalone scripts not found');
