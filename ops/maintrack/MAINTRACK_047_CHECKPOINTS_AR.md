@@ -209,3 +209,12 @@
 - معاينة Vercel المصححة للعرض والتعليق فقط: https://maintrack-navigation-pilot-review-jncbk6mln.vercel.app/ ؛ مشروع \`maintrack-navigation-pilot-review\` = READY، وهدف النشر Preview وليس Production؛ التطبيق الحقيقي/Backend غير مشغلين داخل هذه المعاينة. حماية Vercel Authentication قد تتطلب الدخول بحساب Owner.
 - قاعدة Staging \`inv_lab\` لم يتم إنشاؤها، ونشر API مخزن/Excel غير مفعل، ولا يوجد إثبات Backend authenticated E2E أو كفاءة تحميل 20–30 مستخدمًا على بيانات واقعية. لم يُوقّع APK ولم يُحدّث OTA ولم يحدث إنتاج.
 - خطوة CP-08A: **PASS ISOLATED NAVIGATION QA**. خطوة CP-08B (Full restore/backups + Staging integration + live review) **BLOCKED**, وCP-09 **NO-GO**.
+
+
+### CP-08B preparation — actual inventory dump/restore gate (22 أكتوبر 2026)
+- تمت مراجعة سجل G1 الحالي (نسخة 20): تشغيل Web/API المحلي واستمرار البيانات نجحا بإقرار المالك؛ إعادة بناء وتوقيع وإعادة تثبيت نفس APK 406 نجحت؛ معمل OTA المنفصل أغلق PASS بما فيه إعادة الفتح. لا نعيد هذه الاختبارات، ولا ننسب نجاح المعمل إلى OTA التطبيق الأصلي.
+- أضيف اختبار `ops/maintrack/inventory/test_dump_restore_disposable.sh` إلى خدمة PostgreSQL المؤقتة في CI فقط. يرفض التشغيل خارج GitHub CI، ويربط أوامره مباشرة بحاوية الخدمة postgres:16 وبقاعدتين مسماتين ثابتتين، بلا اتصال إلى Supabase.
+- يعيد استعمال بيانات اختبار V1/V2/V3/النسخة المتقادمة/الرجوع الصناعية بعد الاحتفاظ بها داخل قاعدة CI؛ ثم ينفذ pg_dump custom واستعادة ذرية عبر pg_restore إلى قاعدة جديدة مع إبقاء ACLs. يقارن كل سجلات versions/items/active/audit، ويتحقق من الأرشيف وgeneration وصلاحية القيود ومنع تعديل الأصناف المغلقة وتسلسل الهوية ومنع صلاحيات الدور غير الموثوق. حذف صنف صناعي متعمد يجب أن يغيّر المقارنة.
+- فحص Bash syntax وJavaScript syntax محليًا PASS، وحاجز التشغيل خارج CI رفض التنفيذ كما هو متوقع. مراجعة مستقلة للمصدر لم تجد مانعًا؛ **اختبار PostgreSQL الفعلي على هذا التعديل PENDING حتى ظهور نتيجة CI لنفس SHA**.
+- هذا يجهز إثبات استعادة PostgreSQL الخاص بالمخزن فقط؛ لا ينسخ ملفات Bucket أو إعدادات Edge أو أسرارها أو خدمات Supabase كاملة. `FULL_BACKUP_VERIFIED=false` و`FULL_APP_RESTORE_VERIFIED=false` و`ORIGINAL_MAINTRACK_OTA_VERIFIED=false` باقية.
+- الحالة: CP-08B PREPARATION IN PROGRESS؛ لم ينفذ Migration أو نشر API/Web/APK/OTA، ولا تغيير main/Production.

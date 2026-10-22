@@ -32,6 +32,7 @@ const allow=new Set([
  'ops/maintrack/inventory/001_inventory_core.review.sql',
  'ops/maintrack/inventory/test_inventory_disposable.sql',
  'ops/maintrack/inventory/test_sessions_disposable.sql',
+ 'ops/maintrack/inventory/test_dump_restore_disposable.sh',
  'ops/maintrack/inventory/backend/src/domain.mjs',
  'ops/maintrack/inventory/backend/src/http-adapter.mjs',
  'ops/maintrack/inventory/backend/src/maintrack-session-adapter.mjs',
@@ -97,3 +98,4 @@ mkdirSync(dirname(out),{recursive:true});
 writeFileSync(out,JSON.stringify(attestation,null,2)+'\n');
 console.log('PASS MainTrack 0.4.7 source attested — baseline and historical source locks intact; changes='+changed.length);
 console.log('NO_DEPLOY / NO_APK / NO_OTA / NO_DATABASE_CHANGE');
+

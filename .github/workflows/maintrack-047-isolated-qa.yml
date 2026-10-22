@@ -134,5 +134,10 @@ jobs:
             exit 1
           fi
           echo "PASS: simulated client has no direct inventory SQL read or publish privileges"
+      - name: Verify actual pg_dump and pg_restore into a fresh disposable database
+        env:
+          MT047_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash ops/maintrack/inventory/test_dump_restore_disposable.sh
       - name: Confirm no cloud resources modified
         run: echo 'PASS disposable PostgreSQL CI only; no Supabase changes, no migrations deployed.' >> "$GITHUB_STEP_SUMMARY"
+
