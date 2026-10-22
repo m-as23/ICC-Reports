@@ -26,9 +26,9 @@
 | CP-00 | تحديد النطاق | MT-01..MT-05 موثقة مع المعلّقات الصريحة | PASS — Scope Recorded |
 | CP-01A | مصدر أساس غير قابل للخلط | أصل SHA مثبت، فرع تجريبي مستقل، سجل قرارات | PASS — Repository Preparation |
 | CP-01B | QA isolation preflight | هوية بيئة DB/API/host + rollback للبيانات الاختبارية + عدم توجيهها إلى Production | PARTIAL — QA isolated فيه mt_leave_requests ولكنه ليس نسخة كاملة من Staging؛ NO DEPLOY |
-| CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | CHROMIUM 4-VIEWPORT QA CONFIGURED — LATEST COMMIT RESULT PENDING |
+| CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | PASS — ISOLATED CHROMIUM 360/390/412/600 (74–79px GAP); APK/REAL DEVICE PENDING |
 | CP-03 | MT-03 تكرار الإجازة | التحقق من الطلبات المتداخلة على السيرفر، رفض التكرار دون مضاعفة البيانات | SOURCE PATCHED + READ-ONLY SQL 6/6 PASS — AUTHENTICATED E2E PENDING |
-| CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | CANONICAL WEB DISPLAY PATCHED — UI TEST PENDING |
+| CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | FIXED CANONICAL v6-core.js SIDEBAR ROLE TEXT; NEW STATIC CI PENDING |
 | CP-05 | MT-05 البريد والزمن الإجمالي | بريد QA صحيح مرة واحدة، قياس عبر منتصف الليل، مصدر وقت البداية والنهاية موثوق | WORKER SOURCE PREPARED — PURE DURATION TESTS PASS; RESEND SEND/DEPLOY PENDING |
 | CP-06 | MT-01 محرك البحث والدمج | آخر عنصر Side Menu، عرض حسب الدور، البحث العربي/الإنجليزي ووحدات 65A، رفع/مقارنة/اعتماد/أرشيف Owner، Reject غير المالك | NOT STARTED |
 | CP-07 | Regression + security + performance | تغطية التغييرات وأثرها على الوظائف الأساسية دون تكرار اختبارات ثابتة بلا داع | INITIAL ISOLATED CI PASS (39814496034); SOURCE ATTESTATION + MOBILE QA LATEST COMMIT PENDING |
@@ -81,6 +81,12 @@
 - عند تحرير قالب البريد للمراجعة النهائية، تم حصر محتواه في رقم البلاغ والقسم والماكينة والموظف والتاريخ ووقت بداية العطل (\`report_time\`) والمدة الكلية (\`report_time\` → \`work_end_time\`) والوصف والحل؛ إخفاء \`work_start_time\` و\`work_end_time\` المستقلين من البريد مع الاستمرار في استخدامهما كمصدر بيانات. تنسيق الوقت AM/PM واختبارات وحدة له. \`maintrack-pilot-mail-worker\` في Supabase لم يُنشر منه تحديث.
 - المنع الحاسم: Gate الخاص بـ0.4.5 ما زال PINNED وغير مناسب لتغييرات canonical JS الجديدة؛ فشله **لا يجوز تغييره إلى PASS** عبر تعديل البصمة القديمة. قبل Build/Preview لـv0.4.7 يلزم التحقق من قنوات الـAPI المنعزلة وتوليد سياسة source release جديدة مع اعتماد محدد للإصدار.
 - NOTE: المصدر الذي يجري اختباره لا يتيح فعليًا وصول مستخدم إلى «بلاغ جديد» إلا عبر جلسة؛ اختبار التداخل الحالي **بصري محلي معزول**، وليس E2E مُصادقًا ولا APK على Oppo.
+
+
+### نتائج Chromium مؤكدة للـMT-02 + إصلاح الـMT-04 الحقيقي
+- GitHub Actions \`39816104121\` أنجز **PASS في الوظيفتين** (Static/Attestation وBrowser). خرجت قياسات Browser من log: عرض 360 → 79px؛ 390 → 79px؛ 412 → 79px؛ 600 → 74px بين نهاية حقل التصنيف وبداية زر الحفظ، مع تسجيل screenshots في Artifact؛ اختبار معزول لا يجرب حساب موظف حقيقي أو APK.
+- المصدر المرجعي للصلاحيات في Side Menu وجد فعليًا في \`web/maintrack/public/v6-core.js\` بنص \`Owner / المسؤول\` و\`Engineer / مهندس\` و\`Technician / فني\`. تم تعديل **تلك السلسلة وحدها** إلى \`المسؤول\` و\`مهندس\` و\`فني\` مع fallback، دون مساس بأي قائمة أو صلاحيات. تم إدراج الملف في allowlist لفحص بصمات v0.4.7 وإضافة اختبار ثابت لاختفاء المسميات المختلطة؛ نتيجة CI الجديدة قيد التحقق.
+- لا تزال نسخة \`v0.4.6\` معتمدة كنقطة رجوع للمصدر وممنوع النشر قبل CP-08/CP-09.
 
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
