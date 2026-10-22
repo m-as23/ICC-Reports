@@ -23,6 +23,7 @@ export class PostgresInventoryStore {
   // Fail closed on oversized sets instead of hiding genuine matches.
   // Only CURRENT confirmed snapshot is eligible; all comparisons are
   // performed against the unchanged rows returned from that snapshot.
+  if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
   inventoryTerms(term);
   const n=limit===undefined?50:Number(limit);
   if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
