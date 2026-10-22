@@ -39,6 +39,14 @@ test('Truncated inventory <100 codes, duplicate code, negative amount and missin
  await assert.rejects(parseInventoryXlsx(await fixture({negative:true})),/INVALID_QUANTITY/);
  await assert.rejects(parseInventoryXlsx(await fixture({missingLocations:true})),/REQUIRED_SHEETS_MISSING/);
 });
+test('A 3,920-row synthetic stock export retains every code without silent clipping',async()=>{
+ const bytes=await fixture({count:3920});
+ const parsed=await parseInventoryXlsx(bytes,{filename:'synthetic-3920.xlsx'});
+ assert.equal(parsed.total,3920);
+ assert.equal(new Set(parsed.items.map(x=>x.code)).size,3920);
+ assert.equal(parsed.items.find(x=>x.code==='PART-03920').quantity,3920);
+ assert.equal(parsed.items.find(x=>x.code==='PART-00001').quantity,0);
+});
 test('Disguised file, unsafe filename and corrupted zip rejected',async()=>{
  const bytes=await fixture();
  await assert.rejects(parseInventoryXlsx(bytes,{filename:'../../evil.xlsx'}),/ONLY_XLSX_ALLOWED/);
