@@ -25,6 +25,7 @@ assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
  '.github/workflows/maintrack-047-isolated-qa.yml',
+ '.github/workflows/maintrack-change-qa.yml',
  'ops/maintrack/MAINTRACK_047_CHECKPOINTS_AR.md',
  'ops/maintrack/scripts/attest-047-source.mjs',
  'ops/maintrack/tests/test_047_static.cjs',
