@@ -9,7 +9,7 @@ function sandbox(role='technician'){
  const calls=[];
  const storage={
   async getBucket(bucket){calls.push(['bucket',bucket]);return {data:{public:false}};},
-  from(){throw Error('NO_STORAGE_ACCESS_EXPECTED')}
+  from(){return {upload(){throw Error('NO_STORAGE_UPLOAD_EXPECTED')},remove(){throw Error('NO_STORAGE_REMOVE_EXPECTED')},download(){throw Error('NO_STORAGE_DOWNLOAD_EXPECTED')}}}
  };
  const pool={
   async connect(){throw Error('NO_DB_WRITES_EXPECTED')},
