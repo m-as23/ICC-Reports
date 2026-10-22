@@ -7,7 +7,7 @@ const url=Deno.env.get('SUPABASE_URL');
 const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const pool=new pg.Pool({connectionString:Deno.env.get('SUPABASE_DB_URL'),max:2,idleTimeoutMillis:10000,connectionTimeoutMillis:7000});
 const bucket='maintrack-inventory-archive-staging';
-const allowedOrigins=['https://localhost','https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app'];
+const allowedOrigins=['https://localhost','https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app','https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app'];
 async function storageRequest(path,{method='GET',body,headers={}}={}){
  const response=await fetch(url+'/storage/v1/'+path,{method,headers:{Authorization:'Bearer '+key,apikey:key,...headers},body,signal:AbortSignal.timeout(30000)});
  if(!response.ok)return {error:{code:'PRIVATE_STORAGE_REQUEST_FAILED'}};
