@@ -28,6 +28,8 @@ const allow=new Set([
  'ops/maintrack/MAINTRACK_047_CHECKPOINTS_AR.md',
  'ops/maintrack/scripts/attest-047-source.mjs',
  'ops/maintrack/tests/test_047_static.cjs',
+ 'ops/maintrack/inventory/001_inventory_core.review.sql',
+ 'ops/maintrack/inventory/test_inventory_disposable.sql',
  'ops/maintrack/tests/test_047_mobile.browser.mjs',
  'ops/maintrack/tests/test_047_inventory.browser.mjs',
  'supabase/functions/maintrack-pilot-mail-worker/deno.json',
@@ -58,6 +60,7 @@ const attestation={
  baselineSourceLock:{sha256:sha256(oldLock)},
  changed,
  candidateCanonicalAssets:canonical.map(file=>({path:file,sha256:sha256(readFileSync(resolve(root,file)))})),
+ inventoryContractReviewOnly:['ops/maintrack/inventory/001_inventory_core.review.sql','ops/maintrack/inventory/test_inventory_disposable.sql'].map(file=>({path:file,sha256:sha256(readFileSync(resolve(root,file)))})),
  ownerApprovalRequired:true,baselineUntouched:true,
  deploymentAuthorized:false,apiDeploymentAuthorized:false,apkSigningAuthorized:false
 };
