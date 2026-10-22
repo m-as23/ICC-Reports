@@ -31,7 +31,7 @@ jobs:
           node ops/maintrack/tests/test_047_static.cjs
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)
         run: |
-          node --test ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs ops/maintrack/inventory/backend/test/search-normalizer.test.mjs ops/maintrack/inventory/backend/test/postgres-search.test.mjs ops/maintrack/inventory/backend/test/inventory-service.test.mjs
+          node --test ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs ops/maintrack/inventory/backend/test/review-http-handler.test.mjs ops/maintrack/inventory/backend/test/search-normalizer.test.mjs ops/maintrack/inventory/backend/test/postgres-search.test.mjs ops/maintrack/inventory/backend/test/inventory-service.test.mjs
       - name: Install locked XLSX dependencies (no install scripts; isolated runner only)
         run: npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
       - name: Verify actual synthetic XLSX parser, private bucket and Owner import review flow
