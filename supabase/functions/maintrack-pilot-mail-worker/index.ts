@@ -61,6 +61,13 @@ function maintrackDurationArabic(value){
  const minute=m===0?'':m===1?'دقيقة واحدة':m===2?'دقيقتان':m<=10?m+' دقائق':m+' دقيقة';
  return [hour,minute].filter(Boolean).join(' و')||'0 دقيقة';
 }
+function maintrackClockAmPm(value){
+ const time=maintrackClockMinutes(value);
+ if(time===null)return 'غير متاح';
+ const hours=Math.floor(time/60);
+ const minute=String(time%60).padStart(2,'0');
+ return String(hours%12||12)+':'+minute+' '+(hours<12?'AM':'PM');
+}
 function maintrackReportTiming(row){
  const start=maintrackClockMinutes(row.report_clock),end=maintrackClockMinutes(row.work_end_clock);
  if(start===null||end===null)return {duration:'غير متاحة',nextDay:false};
@@ -86,18 +93,16 @@ async function send(j,to,from,key){
  if(!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(sender)){await fail(j,0,'INVALID_SENDER_EMAIL',true);return false;}
  const label='WO-'+String(x.wo_number).padStart(2,'0');
  const timing=maintrackReportTiming(x);
- const subject='MainTrack | بلاغ صيانة '+label;
+ const subject='إشعار تسجيل بلاغ جديد في MainTrack';
  const message=[
-  'تم تسجيل بلاغ صيانة جديد في MainTrack',
+  'إشعار تسجيل بلاغ جديد في MainTrack',
   'رقم البلاغ: '+label,
   'القسم: '+safe(x.section),
   'الماكينة: '+safe(x.machine),
   'الموظف: '+safe(x.technician),
   'التاريخ: '+safe(x.day),
-  'وقت الإبلاغ / بداية العطل المسجلة: '+safe(x.report_clock),
-  'بداية الإصلاح: '+safe(x.work_start_clock),
-  'نهاية الإصلاح: '+safe(x.work_end_clock)+(timing.nextDay?' (اليوم التالي)':''),
-  'المدة الإجمالية من الإبلاغ لنهاية الإصلاح: '+timing.duration,
+  'وقت بداية العطل: '+maintrackClockAmPm(x.report_clock),
+  'المدة الإجمالية للعطل: '+timing.duration,
   'وصف العطل: '+safe(x.description,1900),
   'خطوات الحل: '+safe(x.solution,1900)
  ].join('\n');
