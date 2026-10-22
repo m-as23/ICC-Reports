@@ -178,3 +178,12 @@
 - إثبات القراءة فقط من Supabase-Staging في هذه الجولة: `inv_lab` غير موجودة؛ `mt_users` و`mt_sessions` موجودتان. كشف Vercel للفرع v0.4.7: لا Deployments. **لم يُجرَ أي SQL DDL/DML، ولا نشر API، ولا إرسال بريد، ولا توقيع APK أو OTA.**
 - GitHub Actions المرجعية **39828313445 = PASS/3 jobs**، وLegacy Actions **39824917180 = PASS/4 jobs**؛ كلاهما قبل هذا التعديل الأخير. **CI للـHEAD الحالي: PENDING INDEPENDENT VERIFICATION**؛ لا إعلان PASS نهائي حتى فحص نتائج نفس الـSHA.
 - الموانع قبل CP-08/CP-09: مسار رفع ملفات Excel الكبيرة مع JWT غير قياسي (MainTrack opaque sessions)، `inv_lab` ومراجعة Migration وBackup، UI كامل يعرض كل صفحات Diff قبل قبول Owner، Staging E2E وPerformance، Web Preview، اختبارات APK/OTA/rollback، ثم موافقة المالك. تبقى بوابة النشر **NO-GO**.
+
+### CP-06 / CP-07 — Complete Owner diff review gate (22 أكتوبر 2026)
+- أُضيف `ops/maintrack/inventory/backend/src/owner-review-pagination.mjs` كـpure portable module تجريبي لتجميع **كل** صفحات فروق Excel قبل إمكانية إظهار خيار التأكيد في واجهة Owner المستقبلية. لا تتضمن الوحدة تشغيل API أو اعتماد بيانات أو اتصالًا بخدمات.
+- يتحقق من ثبات `reviewReceipt` و`baseVersionId` و`currentVersionId` و`detailsTotal` في كل صفحة، ورفض: الفجوات في الصفحات، `nextOffset` خاطئ، التكرار في الأكواد، التداخل أثناء الموافقة، ونسخ `isStale`.
+- أُضيفت 6 اختبارات صناعية للوحدة في `owner-review-pagination.test.mjs` تشمل 1203 صنفًا موزعًا على 4 صفحات؛ تُنفّذ داخل CI المعزول، وتُسجّل ملفات الوحدة والاختبار في `attest-047-source.mjs` بدل تعطيل source lock التاريخي.
+- النجاح المستهدف: `complete=true` يعني **اكتمل تنزيل الفروق فقط** ولا يعني أن Owner راجعها بصريًا أو وافق عليها؛ موافقة Owner البشرية و`confirmReviewed` و`reviewReceipt` ما زالت منفصلة. ربط UI الفعلي لم يُنفذ بعد.
+- أُضيف في GitHub Actions اختبار سلبي لدور PostgreSQL غير موثوق للتأكد من رفض الوصول إلى `inv_lab.items` و`inv_lab.publish_version` في PostgreSQL مؤقت. **النتيجة على HEAD الحالي لم تُؤكد بعد**.
+- تم فحص GitHub Compare مقابل أساس 0.4.6: 42 ملفًا تغيّر على فرع 0.4.7، ولا تغيير في `index.html` الجذر القديم أو `web/maintrack/source-lock.json` أو مجلد `android/`؛ المصدر v0.4.6 باقٍ كما هو. لا يُفسَّر ذلك على أنه إثبات نسخ APK/OTA.
+- قرار المرحلة: **SOURCE PREPARED / ISOLATED CI VERIFICATION PENDING / RELEASE NO-GO**.
