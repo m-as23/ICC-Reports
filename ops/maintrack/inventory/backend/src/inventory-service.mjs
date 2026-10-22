@@ -22,7 +22,7 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
    // Only trusted server-side verification may supply userId/role.
    const identity=await verifySession(input.session);
    const permission={
-    inventoryVersion:'search',inventorySearch:'search',inventoryItem:'details',
+    inventoryVersion:'search',inventorySearch:'search',inventorySearchPage:'search',inventoryItem:'details',
     inventoryDraft:'upload',inventoryDiff:'diff',inventoryPublish:'publish',
     inventoryHistory:'versions:list',inventoryRestore:'restore'
    }[action];
@@ -33,6 +33,7 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
    switch(action){
     case 'inventoryVersion':return store.current();
     case 'inventorySearch':return store.search(input.query,input.limit);
+    case 'inventorySearchPage':return store.searchPage(input.query,{limit:input.limit,offset:input.offset});
     case 'inventoryItem':return store.item(input.code);
     case 'inventoryDraft':{
       if(typeof parseXlsx!=='function')throw Error('XLSX_PARSER_NOT_CONFIGURED');
@@ -45,13 +46,21 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
     }
     case 'inventoryDiff':{
       const diff=await store.diff(input.draftId);
+      // Every changed row remains reviewable, even for a 30,000-item snapshot.
+      // The receipt always hashes the COMPLETE diff, not just this page.
+      const limit=input.limit===undefined?100:Number(input.limit);
+      const offset=input.offset===undefined?0:Number(input.offset);
+      if(!Number.isInteger(limit)||limit<1||limit>500)throw Error('INVALID_LIMIT');
+      if(!Number.isInteger(offset)||offset<0||offset>30000)throw Error('INVALID_OFFSET');
+      const details=diff.details.slice(offset,offset+limit);
+      const hasMore=offset+details.length<diff.details.length;
       return {draftId:diff.draftId,baseVersionId:diff.baseVersionId,
         currentVersionId:diff.currentVersionId,isStale:diff.baseVersionId!==diff.currentVersionId,
         filename:diff.filename,counts:diff.counts,total:diff.total,
         requiresExplicitReview:diff.requiresExplicitReview,
         reviewReceipt:receipt(diff),
-        details:diff.details.slice(0,Math.min(Math.max(Number(input.limit)||100,1),500)),
-        truncated:diff.details.length>(Number(input.limit)||100)};
+        details,offset,limit,detailsTotal:diff.details.length,hasMore,
+        nextOffset:hasMore?offset+details.length:null,truncated:hasMore};
     }
     case 'inventoryPublish':{
       if(input.confirmReviewed!==true)throw Error('OWNER_REVIEW_REQUIRED');
