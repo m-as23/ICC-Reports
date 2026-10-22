@@ -20,10 +20,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # The historical gate is source-pinned to legacy QA assumptions.
+      # For v0.4.7 ONLY, run these historic tests against the immutable
+      # 0.4.6 baseline; the separate 047 workflow tests the actual candidate.
+      # No legacy source hash/lock or release check is relaxed.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
           persist-credentials: false
           fetch-depth: 0
+      - name: Fail closed if legacy test checkout differs from the pinned 0.4.6 source
+        if: github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'
+        run: test "$(git rev-parse HEAD)" = '1248211b662981e3e7db27ac0a61ca4d23862ca1'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -96,9 +104,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # The historical gate is source-pinned to legacy QA assumptions.
+      # For v0.4.7 ONLY, run these historic tests against the immutable
+      # 0.4.6 baseline; the separate 047 workflow tests the actual candidate.
+      # No legacy source hash/lock or release check is relaxed.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
           persist-credentials: false
+      - name: Fail closed if legacy test checkout differs from the pinned 0.4.6 source
+        if: github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'
+        run: test "$(git rev-parse HEAD)" = '1248211b662981e3e7db27ac0a61ca4d23862ca1'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -116,9 +132,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # The historical gate is source-pinned to legacy QA assumptions.
+      # For v0.4.7 ONLY, run these historic tests against the immutable
+      # 0.4.6 baseline; the separate 047 workflow tests the actual candidate.
+      # No legacy source hash/lock or release check is relaxed.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
           persist-credentials: false
+      - name: Fail closed if legacy test checkout differs from the pinned 0.4.6 source
+        if: github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'
+        run: test "$(git rev-parse HEAD)" = '1248211b662981e3e7db27ac0a61ca4d23862ca1'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
