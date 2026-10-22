@@ -1,0 +1,14 @@
+{
+  "name": "@maintrack/inventory-047-candidate",
+  "version": "0.0.0-review",
+  "private": true,
+  "type": "module",
+  "description": "Isolated MainTrack 0.4.7 inventory importer QA; never deployed",
+  "scripts": {
+    "test:parser": "node --test test/import-xlsx.test.mjs test/private-bucket.test.mjs test/import-service.test.mjs"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "yauzl": "3.2.0"
+  }
+}
