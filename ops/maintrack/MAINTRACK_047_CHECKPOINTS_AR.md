@@ -25,13 +25,13 @@
 |---|---|---|---|
 | CP-00 | تحديد النطاق | MT-01..MT-05 موثقة مع المعلّقات الصريحة | PASS — Scope Recorded |
 | CP-01A | مصدر أساس غير قابل للخلط | أصل SHA مثبت، فرع تجريبي مستقل، سجل قرارات | PASS — Repository Preparation |
-| CP-01B | QA isolation preflight | هوية بيئة DB/API/host + rollback للبيانات الاختبارية + عدم توجيهها إلى Production | PARTIAL — مشروع QA منفصل موجود، لكنه لا يضم كل جداول Staging؛ NO DEPLOY |
+| CP-01B | QA isolation preflight | هوية بيئة DB/API/host + rollback للبيانات الاختبارية + عدم توجيهها إلى Production | PARTIAL — QA isolated فيه mt_leave_requests ولكنه ليس نسخة كاملة من Staging؛ NO DEPLOY |
 | CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | CSS PATCH COMMITTED — VISUAL/REGRESSION TEST PENDING |
-| CP-03 | MT-03 تكرار الإجازة | التحقق من الطلبات المتداخلة على السيرفر، رفض التكرار دون مضاعفة البيانات | NOT STARTED |
-| CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | NOT STARTED |
-| CP-05 | MT-05 البريد والزمن الإجمالي | بريد QA صحيح مرة واحدة، قياس عبر منتصف الليل، مصدر وقت البداية والنهاية موثوق | NOT STARTED |
+| CP-03 | MT-03 تكرار الإجازة | التحقق من الطلبات المتداخلة على السيرفر، رفض التكرار دون مضاعفة البيانات | SOURCE PATCHED + READ-ONLY SQL 6/6 PASS — AUTHENTICATED E2E PENDING |
+| CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | CANONICAL WEB DISPLAY PATCHED — UI TEST PENDING |
+| CP-05 | MT-05 البريد والزمن الإجمالي | بريد QA صحيح مرة واحدة، قياس عبر منتصف الليل، مصدر وقت البداية والنهاية موثوق | WORKER SOURCE PREPARED — PURE DURATION TESTS PASS; RESEND SEND/DEPLOY PENDING |
 | CP-06 | MT-01 محرك البحث والدمج | آخر عنصر Side Menu، عرض حسب الدور، البحث العربي/الإنجليزي ووحدات 65A، رفع/مقارنة/اعتماد/أرشيف Owner، Reject غير المالك | NOT STARTED |
-| CP-07 | Regression + security + performance | تغطية التغييرات وأثرها على الوظائف الأساسية دون تكرار اختبارات ثابتة بلا داع | NOT STARTED |
+| CP-07 | Regression + security + performance | تغطية التغييرات وأثرها على الوظائف الأساسية دون تكرار اختبارات ثابتة بلا داع | ISOLATED QA WORKFLOW QUEUED — LEGACY PINNED GATE FAILS CLOSED AS EXPECTED |
 | CP-08 | Web/APK/OTA upgrade + rollback | اختبارات إصدار وصلاحيات وبناء وتوقيع وترقية وبقاء بيانات وقدرة الرجوع موثقة | NOT STARTED |
 | CP-09 | موافقة المالك والنشر | لا يُنشر إلا بعد PASS واضح لكل بوابات الإصدار وموافقة صريحة | BLOCKED — APPROVAL REQUIRED |
 
@@ -51,6 +51,26 @@
 - فحص Supabase للقراءة فقط: `MainTrack-RBAC-QA-Isolated` مشروع منفصل ونشط، لكنه يحوي جداول QA أساسية فقط ولا يساوي مخطط Staging الكامل. لا تشغيل write E2E عليه أو على Staging حتى اعتماد baseline والـAPI المناسبين.
 - `web/maintrack/source-lock.json` يحتوي fingerprints من مرجع قديم؛ تغيّر `v6.css` يجعلها غير مطابقة من دون توليد provenance إصدار جديد. **لا نغير lock التاريخي ولا ندّعي جاهزية Native/Web packaging**. سيُعالج عند بوابة build التجريبية بشكل يحافظ على مصدر الإصدار.
 - الحالة: CP-01A PASS؛ CP-01B PARTIAL؛ CP-02 CODE PATCH ONLY؛ CP-03..CP-09 PENDING. لم يُنشَر أي تحديث ولم تُلمس Production أو Staging.
+
+
+## تحديث تنفيذي — 22 أكتوبر 2026 (متابعة)
+
+### تغييرات المصدر المؤكدة على فرع 0.4.7 فقط
+1. **MT-02**: مساحة أسفل نموذج البلاغ في CSS canonical web؛ المعاينة على الهاتف لم تُثبت بعد. لا تغييرات على submit JS.
+2. **MT-03**: فحص stage9 API source ومنشور Staging أكد وجود قفل row بـ \`SELECT ... mt_users FOR UPDATE\` ورفض تداخل \`PENDING\` أو \`APPROVED\` عبر \`OVERLAPPING_LEAVE_REQUEST\` منذ أساس v0.4.6؛ لم نكرر هذا المنطق. أصلحنا رسالة الخطأ في \`web/maintrack/public/secure-assets/index-inline-1.js\` داخل \`leaveFeedback\` مع إبقاء idempotency. اختبار PostgreSQL read-only على مشروع QA منفصل (CTE VALUES فقط، بلا INSERT/UPDATE) = **6/6 PASS** لحالات نفس التاريخ والتداخل والرفض وعدم التداخل. اختبار E2E المصادق باستخدام الحسابات ما زال مطلوبًا.
+3. **MT-04**: عرض \`owner=المسؤول\`، \`engineer=مهندس\`، \`technician=فني\` في طبقة واجهة Web (جدول تسميات فقط)، دون تغيير backend role أو authorization. الاختبار المرئي للأدوار الثلاثة معلق.
+4. **MT-05**: جلبنا كود Mail Worker المنشور للقراءة فقط كخط أساس، وأنشأنا مصدرًا جديدًا **غير منشور** عند \`supabase/functions/maintrack-pilot-mail-worker/index.ts\` + \`deno.json\`. عنوان الرسالة دون Pilot أو تجريبي، اسم العرض \`MainTrack Notifications\` مع الحفاظ على \`sender_email\` المعتمد؛ أضفنا أوقات \`report_time\` و\`work_start_time\` و\`work_end_time\` من تقرير السيرفر مع نص عربي لمدة الإبلاغ إلى انتهاء الإصلاح، وعبور منتصف الليل. الحفاظ على \`mt_outbox\` وIdempotency-Key ومعالجة الإخفاق. اختبارات helper النقية **9/9 PASS** وفحص syntax للمصدر بعد إزالة أسطر imports PASS. لا إرسال بريد ولا تغيير Resend أو Supabase deploy.
+5. اختبار Syntax/Static للواجهة ومسار backend/email: **11/11 فحص مصدر PASS** ضمن هذا التنفيذ؛ ليس بديلًا عن اختبار المتصفح الحقيقي. تمت إضافة \`ops/maintrack/tests/test_047_static.cjs\` واختبار CI جديد \`.github/workflows/maintrack-047-isolated-qa.yml\`، للقراءة فقط، بدون أسرار أو نشر. أول تشغيل للـCI الجديد ظهر **QUEUED** عند المراجعة، وليس PASS.
+6. إعادة \`index.html\` القديم في جذر المستودع إلى نفس Git Blob SHA لإصدار v0.4.6 = \`cce9a8ac3f6b25c98d921810eea5166a45d359e7\`. ملف الجذر ليس canonical Web الحالي. تعديل الجذر سابقًا سبّب \`UNKNOWN_UPDATE_SURFACE_REQUIRES_REVIEW\` وفشل QA؛ أصلحناه دون مساس بأساس v0.4.6. Git diff للفرع الآن لا يتضمن \`index.html\`.
+7. بوابة \`MainTrack — Change QA Gate\` القديمة مثبتة على \`PINNED_SOURCE_GIT_BLOB=25f37b928eba7857d7ddff08362f575ee1224971\` خاص بـQA عميل 0.4.5 وتُفشل التحديث المقصود للـcanonical JS برسالة \`UNREVIEWED_CANONICAL_WEB_JS_CHANGED\`. **لم نعطّل القفل ولم نغيّر الـpin القديم**، وأعددنا بوابة منفصلة مصغّرة للإصدار الجديد. يلزم مصدر/بصمة معتمدان للإصدار الجديد قبل بناء Web/APK/OTA.
+8. **Vercel**: كشف المشاريع للقراءة فقط؛ لا Preview Deployment موجود لهذا الفرع وقت الفحص. **Resend**: التطبيق المتصل أعاد \`No domains found\`؛ هذا لا ينفي صلاحية دومين إرسال تابع لاعتماد مختلف. بيانات البريد الموجودة على Staging أظهرت (قراءة أعلام فقط) \`enabled=true\`, \`provider=resend\`, وsender address valid format، لكن لا إثبات ارسال 0.4.7 عبر الاتصال الحالي.
+9. لا تعديلات SQL أو RLS أو Supabase Functions المنشورة أو Vercel production/preview أو Resend، ولا إيميلات فعلية أو APK/OTA.
+
+### الأدلة وروابط المتابعة
+- Branch GitHub: https://github.com/m-as23/ICC-Reports/tree/feature/maintrack-047-integration-20261022
+- New isolated v0.4.7 CI queued run: https://github.com/m-as23/ICC-Reports/actions/runs/39814496034
+- Historical 0.4.5 gate failed (expected due to new JS fingerprint): https://github.com/m-as23/ICC-Reports/actions/runs/39812997073
+- لا نعتبر CP-02 أو CP-03 أو CP-04 أو CP-05 «PASS نهائيًا» قبل التحقق على Preview آمن ومعاينة الوظائف؛ CP-09 ما زال BLOCKED.
 
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
