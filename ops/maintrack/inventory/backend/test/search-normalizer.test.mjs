@@ -8,7 +8,12 @@ const bearing={code:'BRG-A-065',description:'Bearing type A size 65',quantity:10
 const oversize={code:'DRV-M7000',description:'Parker inverter 165A 190L',quantity:1,location:'RACK-9'};
 const stock=Object.freeze([valid,bearing,oversize]);
 test('Arabic and English aliases are conservative, all tokens required',()=>{
- for(const q of ['انفرتر باركر','inverter parker','vfd Parker','انفرتير باركر M700','باركر ٦٥ أمبير']){
+ // Broad queries must preserve every confirmed match — not hide valid inventory.
+ for(const q of ['انفرتر باركر','inverter parker','vfd Parker']){
+  assert.deepEqual(filterConfirmedInventoryItems(stock,q),[valid,oversize],q);
+ }
+ // Specific model or rating must narrow results, without partial-number false positives.
+ for(const q of ['انفرتير باركر M700','باركر ٦٥ أمبير']){
   assert.deepEqual(filterConfirmedInventoryItems(stock,q),[valid],q);
  }
  assert.deepEqual(inventoryTerms('٦٥ أمبير'),['65amp']);
