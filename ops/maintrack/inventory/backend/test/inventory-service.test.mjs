@@ -12,7 +12,7 @@ function fixture(user=owner){
  const seen=[],diff={...baseDiff};
  const store={
  current:async()=>({versionId:'9'}),search:async(q,limit)=>{seen.push(['search',q,limit]);return [];},
- item:async code=>({code}),stage:async input=>{seen.push(['stage',input]);return {draftId:'10',baseVersionId:'9'};},
+ item:async code=>({code}),searchPage:async(q,o)=>{seen.push(['searchPage',q,o]);return {versionId:'9',items:[]};},stage:async input=>{seen.push(['stage',input]);return {draftId:'10',baseVersionId:'9'};},
  diff:async()=>diff,
  publish:async (...args)=>{seen.push(['publish',args]);return {versionId:'10'};},
  history:async()=>[],stageRestore:async()=>({draftId:'10',baseVersionId:'9'})
@@ -28,6 +28,11 @@ test('Technician reads confirmed inventory only; spoofing body role never grants
   await assert.rejects(()=>service.execute({action,role:'owner',userId:'fake-owner',session}),/FORBIDDEN/);
  }
  assert.equal(f.seen.length,1);
+});
+test('Paged query forwards pinned approved version to store, not caller role',async()=>{
+ const f=fixture(technician),service=f.make();
+ assert.deepEqual(await service.execute({action:'inventorySearchPage',query:'Parker',offset:50,limit:25,versionId:'9',role:'owner',session}),{versionId:'9',items:[]});
+ assert.deepEqual(f.seen,[['searchPage','Parker',{limit:25,offset:50,versionId:'9'}]]);
 });
 test('Owner upload stays pending, receipt binds complete current diff and requires explicit review',async()=>{
  const f=fixture(),service=f.make();
