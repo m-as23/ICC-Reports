@@ -29,5 +29,43 @@ jobs:
           node --check web/maintrack/public/secure-assets/index-inline-1.js
           node --check ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/tests/test_047_static.cjs
+      - name: Attest reviewed 0.4.7 source without modifying legacy release pins
+        run: |
+          node --check ops/maintrack/scripts/attest-047-source.mjs
+          node ops/maintrack/scripts/attest-047-source.mjs
+      - name: Save audit source fingerprints (review-only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-047-Source-Attestation
+          path: audit-output/maintrack-047-source-attestation.json
+          retention-days: 5
       - name: Record QA-only result
         run: echo 'v0.4.7 static checks only — NO DEPLOY, NO MAIL, NO DATABASE WRITE, NO APK SIGNING.' >> "$GITHUB_STEP_SUMMARY"
+
+  qa-047-mobile:
+    name: v0.4.7 — mobile Chromium form collision QA (offline backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/tests-browser/package-lock.json
+      - name: Install locked browser dependencies
+        run: npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
+      - name: Verify four mobile viewport clearances without live API or login
+        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs
+      - name: Save mobile QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MainTrack-047-MT02-Mobile-Screenshots
+          path: audit-output/maintrack-047-mobile/*.png
+          if-no-files-found: warn
+          retention-days: 5
