@@ -33,7 +33,7 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
    switch(action){
     case 'inventoryVersion':return store.current();
     case 'inventorySearch':return store.search(input.query,input.limit);
-    case 'inventorySearchPage':return store.searchPage(input.query,{limit:input.limit,offset:input.offset});
+    case 'inventorySearchPage':return store.searchPage(input.query,{limit:input.limit,offset:input.offset,versionId:input.versionId});
     case 'inventoryItem':return store.item(input.code);
     case 'inventoryDraft':{
       if(typeof parseXlsx!=='function')throw Error('XLSX_PARSER_NOT_CONFIGURED');
