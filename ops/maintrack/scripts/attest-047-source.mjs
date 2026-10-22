@@ -29,6 +29,7 @@ const allow=new Set([
  'ops/maintrack/scripts/attest-047-source.mjs',
  'ops/maintrack/tests/test_047_static.cjs',
  'ops/maintrack/tests/test_047_mobile.browser.mjs',
+ 'ops/maintrack/tests/test_047_inventory.browser.mjs',
  'supabase/functions/maintrack-pilot-mail-worker/deno.json',
  'supabase/functions/maintrack-pilot-mail-worker/index.ts',
  'web/maintrack/public/index.html',
