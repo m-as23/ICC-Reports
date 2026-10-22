@@ -111,6 +111,6 @@ jobs:
       - name: Check synthetic test rolls back and inventory schema stays unexposed
         run: |
           psql -X -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN (SELECT count(*) FROM inv_lab.versions)=0 AND (SELECT count(*) FROM inv_lab.audit)=0 AND (SELECT count(*) FROM inv_lab.active)=1 THEN 'PASS_ROLLBACK' ELSE 'FAIL' END"
-          psql -X -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN has_schema_privilege('public','inv_lab','USAGE') THEN 'FAIL_PUBLIC_PRIVILEGE' ELSE 'PASS_PRIVATE_SCHEMA' END"
+          psql -X -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN EXISTS(SELECT 1 FROM pg_namespace n,CROSS JOIN LATERAL aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) a WHERE n.nspname='inv_lab' AND a.grantee=0 AND a.privilege_type='USAGE') THEN 'FAIL_PUBLIC_PRIVILEGE' ELSE 'PASS_PRIVATE_SCHEMA' END"
       - name: Confirm no cloud resources modified
         run: echo 'PASS disposable PostgreSQL CI only; no Supabase changes, no migrations deployed.' >> "$GITHUB_STEP_SUMMARY"
