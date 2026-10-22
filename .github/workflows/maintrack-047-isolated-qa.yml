@@ -31,7 +31,7 @@ jobs:
           node ops/maintrack/tests/test_047_static.cjs
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)
         run: |
-          node --test ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs
+          node --test ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs ops/maintrack/inventory/backend/test/search-normalizer.test.mjs
       - name: Attest reviewed 0.4.7 source without modifying legacy release pins
         run: |
           node --check ops/maintrack/scripts/attest-047-source.mjs
