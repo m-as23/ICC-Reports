@@ -34,7 +34,7 @@ if(!active)hide();
 if(active&&typeof S!=='undefined'&&S){
 const name=S.displayName||S.name||'مستخدم';
 if($id('v6Identity').textContent!==name)$id('v6Identity').textContent=name;
-const role=S.role==='owner'?'Owner / المسؤول':S.role==='engineer'?'Engineer / مهندس':'Technician / فني';
+const role=S.role==='owner'?'المسؤول':S.role==='engineer'?'مهندس':S.role==='technician'?'فني':'غير معيّن';
 if($id('v6Role').textContent!==role)$id('v6Role').textContent=role;
 const init=Array.from(name.trim())[0]||'◉';if($id('v6Initial').textContent!==init)$id('v6Initial').textContent=init;
 }
