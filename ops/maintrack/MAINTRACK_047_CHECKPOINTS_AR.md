@@ -169,3 +169,12 @@
 - Owner review (when required):
 
 **هذه الوثيقة تسجل خطة التنفيذ ولا تعني اعتمادًا تشغيليًا لأي نقطة لم تُختبر.**
+
+
+### CP-07 continuation — pinned inventory search pagination (22 أكتوبر 2026)
+- تمت مراجعة Backend في الفرع التجريبي فقط، وأضيفت حماية ضد خلط نتائج البحث من نسختين مخزون عند نشر Owner لنسخة جديدة أثناء تصفح صفحات النتائج.
+- `PostgresInventoryStore.searchPage` يتحقق من نسخة `inv_lab.active` و`generation` قبل قراءة العناصر وبعدها؛ يرد `versionId` للعميل. كل صفحة لاحقة ترسل `versionId` السابق. عند الاختلاف يفشل برسالة `INVENTORY_VERSION_CHANGED_RESTART_SEARCH` ويستدعي HTTP 409 لإعادة البحث من الصفحة الأولى. لا تُخمن النتائج أو تُدمج بين نسختين.
+- عدّلت وحدة الخدمة لتمرير رقم نسخة البحث الموثوقة، واختبارات `postgres-search` و`inventory-service` و`http-adapter` و`search-load.synthetic` لتغطية تغيير النسخة، ورفض مؤشرات الصفحات القديمة، واستمرار قياس 3920 صنفًا صناعيًا.
+- إثبات القراءة فقط من Supabase-Staging في هذه الجولة: `inv_lab` غير موجودة؛ `mt_users` و`mt_sessions` موجودتان. كشف Vercel للفرع v0.4.7: لا Deployments. **لم يُجرَ أي SQL DDL/DML، ولا نشر API، ولا إرسال بريد، ولا توقيع APK أو OTA.**
+- GitHub Actions المرجعية **39828313445 = PASS/3 jobs**، وLegacy Actions **39824917180 = PASS/4 jobs**؛ كلاهما قبل هذا التعديل الأخير. **CI للـHEAD الحالي: PENDING INDEPENDENT VERIFICATION**؛ لا إعلان PASS نهائي حتى فحص نتائج نفس الـSHA.
+- الموانع قبل CP-08/CP-09: مسار رفع ملفات Excel الكبيرة مع JWT غير قياسي (MainTrack opaque sessions)، `inv_lab` ومراجعة Migration وBackup، UI كامل يعرض كل صفحات Diff قبل قبول Owner، Staging E2E وPerformance، Web Preview، اختبارات APK/OTA/rollback، ثم موافقة المالك. تبقى بوابة النشر **NO-GO**.
