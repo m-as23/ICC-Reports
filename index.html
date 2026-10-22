@@ -112,8 +112,6 @@ body{background:#f2f5f8}
 .approval-list{display:grid;gap:10px}.approval-card{border:1px solid #dce5eb;background:#fbfdfe;padding:14px;border-radius:12px}.approval-card strong{color:#18394d}.approval-card p{margin:8px 0;color:#66798b;font-size:13px}.approval-actions{display:flex;gap:10px;justify-content:flex-start;margin-top:10px}.approval-actions button{min-width:90px}
 #leave .admin-grid input,#leave .admin-grid select{width:100%;min-width:0}#leave .section-card{margin-top:14px}
 @media(max-width:700px){.analytics-pair{grid-template-columns:1fr}.approval-card{padding:12px}.approval-actions button{flex:1}}
-/* MT-02 (v0.4.7 experimental): mobile category field scroll clearance beneath fixed Save button. */
-@media (max-width:700px){main#form{padding-bottom:calc(120px + env(safe-area-inset-bottom));}}
 </style>
 </head>
 <body>
@@ -235,7 +233,7 @@ async function api(action,params={}){
   if(!S||S.token!==token)return {error:'STALE_SESSION'};
   return verdict==='invalid'?result:{error:'AUTH_UNCONFIRMED'};
 }
-const roles = {owner:'المسؤول',engineer:'مهندس',technician:'فني',legacy_viewer:'صلاحية قديمة موقوفة',unassigned:'غير معيّن'};
+const roles = {owner:'Owner',engineer:'Engineer',technician:'Technician',legacy_viewer:'صلاحية قديمة موقوفة',unassigned:'غير معيّن'};
 const canReport = () => S&&['owner','engineer','technician'].includes(S.role);
 function setSync(text,state){ const el=$('syncStatus'); if(!el)return; el.innerHTML='';const dot=document.createElement('i');el.append(dot,document.createTextNode(' '+text));el.dataset.state=state||'ok'; }
 
@@ -464,10 +462,10 @@ $('sendLeave').onclick=async()=>{
  if(!S||!canReport())return;
  const start=$('leaveStart').value,end=$('leaveEnd').value,type=$('leaveType').value,reason=$('leaveReason').value;
  if(!start||!end||end<start){$('leaveFeedback').textContent='اختار فترة صحيحة للإجازة';return;}
- if(!confirm('تأكيد إرسال طلب الإجازة إلى المسؤول؟'))return;
+ if(!confirm('تأكيد إرسال طلب الإجازة إلى Owner؟'))return;
  const btn=$('sendLeave');btn.disabled=true;btn.textContent='جارٍ إرسال الطلب…';
  try{const fingerprint=[start,end,type,reason].join('|');let pending={};try{pending=JSON.parse(sessionStorage.getItem('pendingLeave')||'{}');}catch(e){}const cid=pending.fingerprint===fingerprint?pending.cid:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());sessionStorage.setItem('pendingLeave',JSON.stringify({cid,fingerprint}));const d=await api('leaveRequest',{start,end,type,reason,cid});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);$('leaveFeedback').textContent='تم إرسال طلب الإجازة للمالك • '+d.id+' • في انتظار القرار';sessionStorage.removeItem('pendingLeave');$('leaveReason').value='';await showLeave();loadNotices(true);}
- catch(e){const reason=String(e.message||'');$('leaveFeedback').textContent=reason.includes('OVERLAPPING_LEAVE_REQUEST')?'يوجد طلب إجازة معلق أو معتمد لنفس اليوم أو لفترة متداخلة. اختر تاريخًا مختلفًا.':'لم يتم تسجيل الطلب: '+(reason||'خطأ اتصال');}
+ catch(e){$('leaveFeedback').textContent='لم يتم تسجيل الطلب: '+(e.message||'خطأ اتصال');}
  finally{btn.disabled=false;btn.textContent='إرسال طلب الإجازة';}
 };
 async function showApprovals(){
