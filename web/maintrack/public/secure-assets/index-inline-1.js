@@ -88,7 +88,7 @@ async function api(action,params={}){
   if(!S||S.token!==token)return {error:'STALE_SESSION'};
   return verdict==='invalid'?result:{error:'AUTH_UNCONFIRMED'};
 }
-const roles = {owner:'Owner',engineer:'Engineer',technician:'Technician',legacy_viewer:'صلاحية قديمة موقوفة',unassigned:'غير معيّن'};
+const roles = {owner:'المسؤول',engineer:'مهندس',technician:'فني',legacy_viewer:'صلاحية قديمة موقوفة',unassigned:'غير معيّن'};
 const canReport = () => S&&['owner','engineer','technician'].includes(S.role);
 function setSync(text,state){ const el=$('syncStatus'); if(!el)return; el.innerHTML='';const dot=document.createElement('i');el.append(dot,document.createTextNode(' '+text));el.dataset.state=state||'ok'; }
 
@@ -452,10 +452,10 @@ $('sendLeave').onclick=async()=>{
  const durationKind=$('leaveDuration').value;
  if(durationKind==='HALF_DAY'&&(start!==end||!['annual','compensatory'].includes(type))){$('leaveFeedback').textContent='نصف اليوم متاح فقط للسنوية والبدلات، بتاريخ واحد.';return;}
  if(type==='compensatory'&&start!==end){$('leaveFeedback').textContent='إجازة البدل متاحة ليوم واحد: نصف يوم 4 ساعات أو يوم كامل 8 ساعات.';return;}
- if(!confirm('تأكيد إرسال طلب الإجازة إلى Owner؟'))return;
+ if(!confirm('تأكيد إرسال طلب الإجازة إلى المسؤول؟'))return;
  const btn=$('sendLeave');btn.disabled=true;btn.textContent='جارٍ إرسال الطلب…';
  try{const fingerprint=[start,end,type,reason,...(durationKind==='HALF_DAY'?[durationKind]:[])].join('|');let pending={};try{pending=JSON.parse(sessionStorage.getItem('pendingLeave')||'{}');}catch(e){}const cid=pending.fingerprint===fingerprint?pending.cid:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());sessionStorage.setItem('pendingLeave',JSON.stringify({cid,fingerprint}));const d=await api('leaveRequest',{start,end,type,reason,cid,...(durationKind==='HALF_DAY'?{durationKind}:{})});if(d.error==='AUTH')return logout();if(d.error)throw new Error(d.error);$('leaveFeedback').textContent='تم إرسال طلب الإجازة للمالك • '+d.id+' • في انتظار القرار';sessionStorage.removeItem('pendingLeave');$('leaveReason').value='';await showProfile();setAccountHistoryFilter('leave');loadNotices(true);}
- catch(e){$('leaveFeedback').textContent='لم يتم تسجيل الطلب: '+(e.message||'خطأ اتصال');}
+ catch(e){const reason=String(e.message||'');$('leaveFeedback').textContent=reason.includes('OVERLAPPING_LEAVE_REQUEST')?'يوجد طلب إجازة معلق أو معتمد لنفس اليوم أو لفترة متداخلة. اختر تاريخًا مختلفًا.':'لم يتم تسجيل الطلب: '+localizedError(reason||'خطأ اتصال');}
  finally{btn.disabled=false;btn.textContent='إرسال طلب الإجازة';}
 };
 
