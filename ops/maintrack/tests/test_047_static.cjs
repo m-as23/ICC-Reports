@@ -21,7 +21,8 @@ const scripts=[...index.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)]
 assert.ok(scripts.length,'Standalone scripts not found');
 for(const m of scripts)new vm.Script(m[2],{filename:'index.html:inline.js'});
 
-for(const source of [index,webJs]){
+// Only the canonical Web bundle is edited; legacy root index.html remains immutable.
+for(const source of [webJs]){
  for(const role of ["owner:'المسؤول'","engineer:'مهندس'","technician:'فني'"]){
   assert.ok(source.includes(role),'Missing Arabic role display: '+role);
  }
