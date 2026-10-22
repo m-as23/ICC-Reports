@@ -26,12 +26,12 @@
 | CP-00 | تحديد النطاق | MT-01..MT-05 موثقة مع المعلّقات الصريحة | PASS — Scope Recorded |
 | CP-01A | مصدر أساس غير قابل للخلط | أصل SHA مثبت، فرع تجريبي مستقل، سجل قرارات | PASS — Repository Preparation |
 | CP-01B | QA isolation preflight | هوية بيئة DB/API/host + rollback للبيانات الاختبارية + عدم توجيهها إلى Production | PARTIAL — QA isolated فيه mt_leave_requests ولكنه ليس نسخة كاملة من Staging؛ NO DEPLOY |
-| CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | CSS PATCH COMMITTED — VISUAL/REGRESSION TEST PENDING |
+| CP-02 | MT-02 واجهة البلاغ | Screenshots قبل/بعد + mobile viewport + اختيار التصنيف والحفظ بدون تداخل | CHROMIUM 4-VIEWPORT QA CONFIGURED — LATEST COMMIT RESULT PENDING |
 | CP-03 | MT-03 تكرار الإجازة | التحقق من الطلبات المتداخلة على السيرفر، رفض التكرار دون مضاعفة البيانات | SOURCE PATCHED + READ-ONLY SQL 6/6 PASS — AUTHENTICATED E2E PENDING |
 | CP-04 | MT-04 مسميات الأدوار | عرض عربي موحد لجميع الأدوار بدون تغيير الصلاحيات | CANONICAL WEB DISPLAY PATCHED — UI TEST PENDING |
 | CP-05 | MT-05 البريد والزمن الإجمالي | بريد QA صحيح مرة واحدة، قياس عبر منتصف الليل، مصدر وقت البداية والنهاية موثوق | WORKER SOURCE PREPARED — PURE DURATION TESTS PASS; RESEND SEND/DEPLOY PENDING |
 | CP-06 | MT-01 محرك البحث والدمج | آخر عنصر Side Menu، عرض حسب الدور، البحث العربي/الإنجليزي ووحدات 65A، رفع/مقارنة/اعتماد/أرشيف Owner، Reject غير المالك | NOT STARTED |
-| CP-07 | Regression + security + performance | تغطية التغييرات وأثرها على الوظائف الأساسية دون تكرار اختبارات ثابتة بلا داع | ISOLATED QA WORKFLOW QUEUED — LEGACY PINNED GATE FAILS CLOSED AS EXPECTED |
+| CP-07 | Regression + security + performance | تغطية التغييرات وأثرها على الوظائف الأساسية دون تكرار اختبارات ثابتة بلا داع | INITIAL ISOLATED CI PASS (39814496034); SOURCE ATTESTATION + MOBILE QA LATEST COMMIT PENDING |
 | CP-08 | Web/APK/OTA upgrade + rollback | اختبارات إصدار وصلاحيات وبناء وتوقيع وترقية وبقاء بيانات وقدرة الرجوع موثقة | NOT STARTED |
 | CP-09 | موافقة المالك والنشر | لا يُنشر إلا بعد PASS واضح لكل بوابات الإصدار وموافقة صريحة | BLOCKED — APPROVAL REQUIRED |
 
@@ -71,6 +71,16 @@
 - New isolated v0.4.7 CI queued run: https://github.com/m-as23/ICC-Reports/actions/runs/39814496034
 - Historical 0.4.5 gate failed (expected due to new JS fingerprint): https://github.com/m-as23/ICC-Reports/actions/runs/39812997073
 - لا نعتبر CP-02 أو CP-03 أو CP-04 أو CP-05 «PASS نهائيًا» قبل التحقق على Preview آمن ومعاينة الوظائف؛ CP-09 ما زال BLOCKED.
+
+
+### CP-02 / Attestation — بوابة التحقق الإضافية
+- تنفيذ \`ops/maintrack/scripts/attest-047-source.mjs\`: يتحقق من parent SHA الموافق للإصدار v0.4.6، ويبقي \`index.html\` القديم و\`web/maintrack/source-lock.json\` بلا تغيير. يتحقق من PIN السابق للـJS (0.4.5 = \`25f37b9...\`)؛ يُنشئ ملف audit للبصمات الجديدة دون تغيير القفل التاريخي أو السماح بالنشر.
+- تنفيذ \`ops/maintrack/tests/test_047_mobile.browser.mjs\`: اختبار Chromium بواجهة محلية **بلا JavaScript للتطبيق أو تسجيل دخول أو Supabase** عند عروض 360/390/412/600px؛ يقيس موضع \`#cat\` مقابل \`#send\` بعد التمرير، ويحفظ screenshots كأدلة CI.
+- تحديث \`.github/workflows/maintrack-047-isolated-qa.yml\` لإضافة source attestation + mobile Chromium job؛ الاختبارات لا تصدر Web أو APK ولا تستدعي خدمات تشغيلية.
+- أول بوابة source/static منفصلة كانت **PASS** في GitHub run \`39814496034\`. البوابة المحدثة ذات Chromium وبصمات المصدر تحتاج إثبات PASS على **آخر Commit** بعد استقرار CI.
+- عند تحرير قالب البريد للمراجعة النهائية، تم حصر محتواه في رقم البلاغ والقسم والماكينة والموظف والتاريخ ووقت بداية العطل (\`report_time\`) والمدة الكلية (\`report_time\` → \`work_end_time\`) والوصف والحل؛ إخفاء \`work_start_time\` و\`work_end_time\` المستقلين من البريد مع الاستمرار في استخدامهما كمصدر بيانات. تنسيق الوقت AM/PM واختبارات وحدة له. \`maintrack-pilot-mail-worker\` في Supabase لم يُنشر منه تحديث.
+- المنع الحاسم: Gate الخاص بـ0.4.5 ما زال PINNED وغير مناسب لتغييرات canonical JS الجديدة؛ فشله **لا يجوز تغييره إلى PASS** عبر تعديل البصمة القديمة. قبل Build/Preview لـv0.4.7 يلزم التحقق من قنوات الـAPI المنعزلة وتوليد سياسة source release جديدة مع اعتماد محدد للإصدار.
+- NOTE: المصدر الذي يجري اختباره لا يتيح فعليًا وصول مستخدم إلى «بلاغ جديد» إلا عبر جلسة؛ اختبار التداخل الحالي **بصري محلي معزول**، وليس E2E مُصادقًا ولا APK على Oppo.
 
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
