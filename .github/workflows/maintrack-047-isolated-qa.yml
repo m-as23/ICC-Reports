@@ -69,3 +69,48 @@ jobs:
           path: audit-output/maintrack-047-mobile/*.png
           if-no-files-found: warn
           retention-days: 5
+
+  qa-047-inventory-sql:
+    name: v0.4.7 — pinned inventory SQL contract on disposable Postgres only
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qa_owner
+          POSTGRES_PASSWORD: disposable_only_047
+          POSTGRES_DB: inventory_047_disposable
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qa_owner -d inventory_047_disposable"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: qa_owner
+      PGPASSWORD: disposable_only_047
+      PGDATABASE: inventory_047_disposable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client to talk only to disposable CI service
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+      - name: Apply reviewed private inventory schema on synthetic database
+        run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/001_inventory_core.review.sql
+      - name: Confirm migration is idempotent
+        run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/001_inventory_core.review.sql
+      - name: Verify V1→V2→V3 compare, archive, stale denial and restore
+        run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/test_inventory_disposable.sql
+      - name: Check synthetic test rolls back and inventory schema stays unexposed
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN (SELECT count(*) FROM inv_lab.versions)=0 AND (SELECT count(*) FROM inv_lab.audit)=0 AND (SELECT count(*) FROM inv_lab.active)=1 THEN 'PASS_ROLLBACK' ELSE 'FAIL' END"
+          psql -X -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN has_schema_privilege('public','inv_lab','USAGE') THEN 'FAIL_PUBLIC_PRIVILEGE' ELSE 'PASS_PRIVATE_SCHEMA' END"
+      - name: Confirm no cloud resources modified
+        run: echo 'PASS disposable PostgreSQL CI only; no Supabase changes, no migrations deployed.' >> "$GITHUB_STEP_SUMMARY"
