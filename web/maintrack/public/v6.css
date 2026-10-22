@@ -11,3 +11,8 @@ body.v6On #tabs button[id^="tab"]{direction:rtl!important;text-align:right!impor
 .v7-form-status button{padding:7px 12px;border:1px solid #9bcdd1;border-radius:8px;background:white;color:#087887}
 .v7-delete{background:#fff2ef!important;border:1px solid #edc0b8!important;color:#a82f23!important;border-radius:9px;padding:10px 12px;font:800 13px Cairo,Tahoma,sans-serif;cursor:pointer}
 .v7-delete[hidden]{display:none!important}.v7-delete:disabled{opacity:.5;cursor:wait}
+
+/* MT-02 (v0.4.7 experimental): keep last fault-category field clear of the fixed Save button. */
+@media (max-width:700px){
+  main#form{padding-bottom:calc(120px + env(safe-area-inset-bottom));}
+}
