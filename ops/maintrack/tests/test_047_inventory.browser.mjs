@@ -48,9 +48,9 @@ test('MT-01: inventory menu last and preview renders without unapproved stock or
    assert.equal(external.length,0,'Preview must not call any services');
    assert.equal(state.ids.at(-1),'tabInventory');
    assert.equal(state.title,'رصيد المخزن');
-   assert.equal(state.searchDisabled,true);
-   assert.equal(state.actionDisabled,true);
-   assert.equal(state.ownerActions,true);
+   assert.equal(state.searchDisabled,false);
+   assert.equal(state.actionDisabled,false);
+   assert.equal(await page.locator('#inv47Publish').isDisabled(),true);
    assert.equal(state.inventoryVisible,true);
    assert.ok(state.scrollWidth<=width+2,'Horizontal overflow: '+width+' '+JSON.stringify(state));
    await page.screenshot({path:path.join(out,'mt-01-inventory-'+width+'.png'),fullPage:true});

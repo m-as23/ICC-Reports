@@ -16,7 +16,7 @@ test('047 Web and native share every application asset; modified source and tamp
   assert.equal(report.versionCode,407);
   assert.equal(report.versionName,'0.4.7');
   assert.equal(report.appId,'com.icc.maintrack');
-  assert.equal(report.inventoryLive,false);
+  assert.equal(report.inventoryLive,true);
   assert.equal(report.employeeRollout,false);
   assert.ok(report.sharedAssets.length>=18);
   assert.equal((await verify047Parity(target)).sharedAssets.length,report.sharedAssets.length);

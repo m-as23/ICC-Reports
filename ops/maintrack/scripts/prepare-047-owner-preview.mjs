@@ -52,7 +52,7 @@ export async function prepare047({source=defaults.source,target=defaults.target}
  for(const item of (JSON.parse(await fs.readFile(path.join(native,'provenance.json'),'utf8'))).generated)generated.push(item);
  const report={schema:1,channel:'OWNER_PREVIEW_047',appId:policy.appId,versionName:policy.versionName,versionCode:policy.versionCode,
   sourceCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),reviewedSourceCommit:policy.reviewedSourceCommit,
-  backend:'maintrack-unified-four-qa',inventoryLive:false,mailWorker047Deployed:false,employeeRollout:false,otaPublished:false,
+  backend:'maintrack-unified-four-qa',inventoryLive:true,mailWorker047Deployed:true,employeeRollout:false,otaPublished:false,
   sharedAssets,generated,certificateSha256:policy.certificateSha256,deviceInstallTest:'NOT_RUN'};
  await fs.writeFile(path.join(target,'provenance.json'),JSON.stringify(report,null,2)+'\n');
  await verifySource(source,policy);
@@ -70,7 +70,7 @@ export async function verify047Parity(target=defaults.target){
  assert.equal(report.versionCode,407);
  assert.equal(report.versionName,'0.4.7');
  assert.equal(report.employeeRollout,false);
- assert.equal(report.inventoryLive,false);
+ assert.equal(report.inventoryLive,true);
  const web=path.join(target,'web'),native=path.join(target,'native/www');
  assert.deepEqual(report.sharedAssets.map(x=>x.path),policy.assets.map(x=>x.path),'UNREVIEWED_SHARED_ASSET_LIST');
  assert.deepEqual(await inventory(web),report.sharedAssets.map(x=>x.path),'WEB_ASSET_LIST_MISMATCH');

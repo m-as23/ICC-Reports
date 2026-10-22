@@ -135,27 +135,29 @@
 <div class="v6-actions"><button id="v6Edit" class="v6-mainbtn" type="button">تعديل</button><button id="v6Close" type="button">إغلاق</button><button id="v6Reopen" type="button" hidden>إعادة فتح</button><button id="v6Audit" type="button">سجل التعديلات</button></div>
 <form id="v6Editor" hidden class="v6-editor"><label for="v6Desc">وصف العطل</label><textarea id="v6Desc" maxlength="2000" required></textarea><label for="v6Solution">الحل</label><textarea id="v6Solution" maxlength="4000"></textarea><label for="v6Spare">قطع الغيار</label><input id="v6Spare" maxlength="500"><div class="v6-grid"><div><label for="v6Status">الحالة</label><select id="v6Status"></select></div><div><label for="v6Category">التصنيف</label><select id="v6Category"></select></div></div><label for="v6Reason">سبب التعديل (إلزامي)</label><textarea id="v6Reason" minlength="3" maxlength="500" required></textarea><div class="v6-actions"><button id="v6Save" type="submit" class="v6-mainbtn">حفظ التعديل</button><button id="v6Cancel" type="button">إلغاء</button></div></form>
 <div id="v6AuditList" class="v6-editor" hidden></div><p id="v6WOMsg" class="v6-msg" role="status"></p></div></section>
-<!-- MT-01 / CP-06: inventory preview must never ship legacy Excel data or invent stock. -->
+<!-- Inventory reads the current MainTrack session; all permissions enforced server-side. -->
 <section id="inventory" style="display:none" aria-label="رصيد المخزن">
- <div class="inv47-hero">
-  <span class="inv47-kicker">MAINTRACK / SPARE PARTS</span>
-  <h2>رصيد المخزن</h2>
-  <p>البحث عن قطع الغيار بالعربي أو الإنجليزي، ومعرفة الكود والكمية والوصف والموقع.</p>
- </div>
+ <div class="inv47-hero"><span class="inv47-kicker">MAINTRACK / SPARE PARTS</span><h2>رصيد المخزن</h2><p>ابحث عن الكود أو الوصف أو الموديل بالعربي والإنجليزي.</p></div>
  <div class="inv47-panel">
-  <h3>البحث عن قطعة غيار</h3>
-  <div class="inv47-search"><input id="inv47Query" aria-describedby="inv47State" type="search" placeholder="اسم القطعة أو الكود أو الموديل…" disabled><button id="inv47Find" type="button" disabled>بحث</button></div>
-  <p id="inv47State" role="status" class="inv47-state">وضع معاينة الدمج: لم يتم تفعيل قاعدة بيانات المخزن أو اعتماد نسخة Excel على السيرفر بعد. لا تظهر هنا أي أرصدة غير مؤكدة.</p>
-  <small>سيتم تفعيل البحث بعد اختبار API والصلاحيات وربط أحدث نسخة جرد معتمدة.</small>
+  <h3>البحث عن قطعة غيار</h3><p id="inv47Version"></p>
+  <div class="inv47-search"><input id="inv47Query" aria-describedby="inv47State" type="search" placeholder="اسم القطعة أو الكود أو الموديل…"><button id="inv47Find" type="button">بحث</button></div>
+  <p id="inv47State" role="status" aria-live="polite" class="inv47-state">تُعرض بيانات آخر نسخة Excel معتمدة فقط.</p>
+  <div id="inv47Results"></div><button id="inv47More" type="button" disabled>عرض المزيد من النتائج</button>
   <div id="inv47Owner" class="inv47-owner" hidden>
    <h3>إدارة الرصيد — المسؤول فقط</h3>
-   <button type="button" disabled title="يُفعّل بعد مراجعة واعتماد Backend">رفع Excel ومراجعة الفروقات</button>
-   <button type="button" disabled title="يُفعّل بعد مراجعة واعتماد Backend">سجل النسخ المعتمدة</button>
-   <p><small>الرفع والاعتماد والاستعادة معطلة إلى حين اكتمال صلاحيات الخادم والأرشيف الخاص.</small></p>
+   <label for="inv47File">ملف الرصيد Excel — xlsx، بحد 2 ميجابايت حاليًا</label><input id="inv47File" type="file" accept=".xlsx">
+   <button id="inv47Upload" type="button">رفع الملف ومراجعة الفروقات</button><button id="inv47HistoryButton" type="button">سجل النسخ المعتمدة</button>
+   <div id="inv47Review" hidden><h3>مراجعة الفروقات قبل الاعتماد</h3><p id="inv47ReviewSummary"></p><div id="inv47Diff"></div>
+    <div class="inv47-pagination"><button id="inv47ReviewPrev" type="button">السابق</button><span id="inv47ReviewPage"></span><button id="inv47ReviewNext" type="button">التالي</button></div>
+    <label><input id="inv47Confirm" type="checkbox" disabled> راجعت الفروقات وأوافق على اعتماد هذه النسخة بدل النسخة الحالية.</label>
+    <label id="inv47AbsenceLabel" hidden><input id="inv47Absence" type="checkbox"> أؤكد مراجعة الأصناف الغائبة من الملف الجديد (أكثر من 10%).</label>
+    <button id="inv47Publish" type="button" disabled>اعتماد الرصيد</button>
+   </div><div id="inv47History"></div>
   </div>
  </div>
 </section>
 <script src="secure-assets/index-inline-1.js"></script>
 <script src="secure-assets/index-inline-2.js"></script>
-<script src="v6.js"></script></body>
+<script src="v6.js"></script>
+<script src="inventory-047.js"></script></body>
 </html>
