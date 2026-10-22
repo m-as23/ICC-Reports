@@ -187,3 +187,12 @@
 - أُضيف في GitHub Actions اختبار سلبي لدور PostgreSQL غير موثوق للتأكد من رفض الوصول إلى `inv_lab.items` و`inv_lab.publish_version` في PostgreSQL مؤقت. **النتيجة على HEAD الحالي لم تُؤكد بعد**.
 - تم فحص GitHub Compare مقابل أساس 0.4.6: 42 ملفًا تغيّر على فرع 0.4.7، ولا تغيير في `index.html` الجذر القديم أو `web/maintrack/source-lock.json` أو مجلد `android/`؛ المصدر v0.4.6 باقٍ كما هو. لا يُفسَّر ذلك على أنه إثبات نسخ APK/OTA.
 - قرار المرحلة: **SOURCE PREPARED / ISOLATED CI VERIFICATION PENDING / RELEASE NO-GO**.
+
+
+### CP-07 CLOSED / CP-08 Preflight — تحقق CI حقيقي وتجهيز جلسات PostgreSQL (22 أكتوبر 2026)
+- تحقّق مباشر من GitHub Actions عن **نفس HEAD `c6f4d7afb340677b7b1d70c1af34addea0ea2393`**: isolated v0.4.7 workflow `39839369152` = **3/3 jobs PASS**؛ Legacy Staging-only QA workflow `39839369245` = **4/4 jobs PASS**. النتيجتان مسجلتان عن تنفيذ معزول بدون نشر.
+- بعدها بدأ CP-08 Preflight: فحص MainTrack-Staging SQL للقراءة فقط أثبت `public.mt_users.id uuid` و`public.mt_sessions.user_id uuid`, `token_hash text`, `token_version integer`, `expires_at timestamptz`, `mt_role` ومنطق `active/must_change`. **لم تُقرأ قيم جلسات أو حسابات حقيقية**.
+- أضيف ملف `ops/maintrack/inventory/test_sessions_disposable.sql` لاختبار سيناريوهات هوية MainTrack على PostgreSQL مؤقت: Owner/Engineer/Technician، توقف الحساب، انتهاء الجلسة، تغير token_version، اشتراط تغيير كلمة المرور، وإلغاء جلسة المالك بمجرد زيادة إصدار التوكن. المعاملة تنتهي بـ`ROLLBACK` ولا تتصل بـSupabase.
+- رُبط الاختبار في GitHub Actions داخل `qa-047-inventory-sql` وأضيف إلى مصدر بصمات الأمان المستقل `attest-047-source.mjs`. نتائج **آخر HEAD بعد هذه الإضافة تحتاج CI PASS خاصًا بها**؛ لا ننقل نجاح commit سابق إلى الجديد.
+- G1 مؤكد سابقًا: نسخة age encrypted / checksum والتحقق المحدود للـRestore نجح، لكن `FULL_BACKUP_VERIFIED=false`, `FULL_APP_RESTORE_VERIFIED=false`. لذلك لا يمكن اعتماد Migration على Staging أو وصف النظام قابلًا للاسترجاع الكامل؛ بيانات التشغيل لا تُلمس دون استكمال الإثبات واعتماد Owner المنفصل.
+- وضع الإصدار: **CP-07 PASS at c6f4d7a; CP-08 PREPARATION ONLY; STAGING MIGRATION NO-GO; Web/APK/OTA NOT RELEASED**.
