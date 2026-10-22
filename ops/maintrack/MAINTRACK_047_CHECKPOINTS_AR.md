@@ -110,6 +110,20 @@
 - نجاح هذا الاختبار يثبت صحة بعض قواعد البيانات في عزل CI فقط؛ لا يثبت صلاحية API الحية أو Owner/Technician E2E. لا يُطبق المخطط على Staging حتى فحص النسخة الاحتياطية والموافقة على migration منفصل.
 
 
+
+### CP-06 — نتيجة فحص API + مصادقة + البحث التجريبي (22 أكتوبر 2026)
+- الأدلة المنفذة في GitHub Actions: SQL معزول PASS بتاريخ تشغيل \`39819963498\`؛ واجهة mobile/Owner-only/session contract PASS بتاريخ تشغيل \`39821409481\`. كلاهما Offline أو PostgreSQL disposable فقط وليس Production/E2E.
+- جرى نقل وحدات \`domain.mjs\`, \`http-adapter.mjs\`, \`maintrack-session-adapter.mjs\` من SpareParts Lab SHA \`07dbac0c2a63cf58336ae8a2df383cbcf9f283be\` إلى \`ops/maintrack/inventory/backend/src/\` للمراجعة والاختبارات فقط، مع تأهيل استعلامات المصادقة لاستهداف \`public.mt_sessions\` و\`public.mt_users\` صراحة.
+- أضيف اختبار \`session-adapter.test.mjs\`: تأكيد SHA-256 للجلسة، انتفاء تمرير رمزها للنص SQL، انتهاء صلاحية الحساب وإعادة كلمة المرور، منع انتحال Owner بالـJSON، الفصل بين Owner وEngineer وTechnician. جلسات وهمية فقط.
+- اكتُشف فرق وظيفي مؤثر: \`PostgresInventoryStore.search\` في الـLab الحالي يطابق جزءًا حرفيًا من كود/وصف فقط؛ **لا يحقق بمفرده** \`65A↔65 أمبير\` و\`Parker↔باركر\` ومتطلبات البحث الدقيقة. لم يُنسخ كمسار بحث إنتاجي ولم يُفعّل.
+- أضيف Pure matcher مستقل \`search-normalizer.mjs\` يفهم بعض المرادفات والوحدات والنماذج، مع اختبار أمثلة صناعية \`Parker M700 / انفرتر باركر / 65A / 65 أمبير / 90L\` واختبارات رفض \`165A\` و\`190L\` وBearing حرف A. **ليس متصلاً بالبحث الحي**؛ لا تُعتبر دقة المخزن النهائية معتمدة قبل تطبيقه على أحدث Snapshot فعلي وفحص Precision/Recall لكل الحالات.
+- حالة Staging الفعلية: \`inv_lab=0\`؛ Bucket خاصة = 1؛ وظائف Supabase الحالية تشمل جسر \`inventory-session-storage-staging\` الذي يجرب الجلسة والـBucket فقط، ولا يقدم \`inventorySearch\` أو \`inventoryDraft\` أو \`inventoryPublish\` حتى الآن.
+- Gate \`MainTrack — Change QA Gate (Staging Only, No Deployment)\` القديم أظهر **FAIL** عند الفحص على SHA \`fe975bd\` بسبب اختلافات مصدر v0.4.7 عن توقعات اختبار قديم؛ لا يعني نجاح Workflow v0.4.7 الجديد إغلاق هذا الحاجز. **Release: NOT READY** حتى توثيق الاستثناء المقصود أو إصلاح CI دون كسر الحماية التاريخية.
+- **P1 مانع إصدار:** عدم وجود \`inv_lab\` على Staging، ولا API مخزن تنفذ العقد الفعلي، ولا اختبارات E2E Auth/Owner approval/Excel، مع \`FULL_APP_RESTORE_VERIFIED=false\`. لا إجراء تلقائي على Staging بدون اعتماد Backup/موافقة مستقلة.
+- Vercel: استعلام القائمة لم يُظهر Preview Deployment للفرع؛ لذلك لم يُختبر URL منشور. Resend: الاتصال الحالي لم يُظهر نطاق إرسال، ولم يُرسل أي بريد.
+- الخطوة التالية: تفعيل API مراجَعة فقط بعد تثبيت Backend Store، ثم تجربة Postgres + Excel صناعي + session RBAC في عزل، ومراجعة الـRate Limits وعقد API ثم Migration على Staging بموافقة صريحة، وأخيرًا اختبار QA browser/APK وتشغيل Canary آمن.
+
+
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
 - Source commit / PR:
