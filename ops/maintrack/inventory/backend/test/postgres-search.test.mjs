@@ -41,3 +41,17 @@ test('Never silently truncate confirmed inventory scan; never query DB on invali
  await assert.rejects(()=>large.store.search('Parker'),/INVENTORY_SCAN_TOO_LARGE/);
  assert.equal(large.calls.length,1);
 });
+
+
+test('Approved-only paged search reports every matching row without hidden cutoff',async()=>{
+ const {store,calls}=storeFor([good,also,bearing]);
+ const first=await store.searchPage('Parker M700',{limit:1,offset:0});
+ assert.deepEqual(first,{items:[good],totalMatches:2,offset:0,limit:1,hasMore:true,nextOffset:1});
+ const second=await store.searchPage('Parker M700',{limit:1,offset:1});
+ assert.deepEqual(second,{items:[also],totalMatches:2,offset:1,limit:1,hasMore:false,nextOffset:null});
+ const empty=await store.searchPage('Parker 900A',{limit:5});
+ assert.equal(empty.totalMatches,0);
+ await assert.rejects(()=>store.searchPage('Parker',{offset:-1}),/INVALID_OFFSET/);
+ await assert.rejects(()=>store.searchPage('Parker',{limit:101}),/INVALID_LIMIT/);
+ assert.equal(calls.length,3,'Invalid pagination rejected without DB query');
+});
