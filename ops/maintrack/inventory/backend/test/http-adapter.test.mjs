@@ -61,3 +61,19 @@ test('HTTP constructor fails closed if HTTPS allowed origins are not configured'
  assert.throws(()=>createInventoryHttpHandler({service,allowedOrigins:[]}),/EXPLICIT_HTTPS/);
  assert.throws(()=>createInventoryHttpHandler({service,allowedOrigins:['http://site.invalid']}),/EXPLICIT_HTTPS/);
 });
+
+
+test('Vercel-safe small-XLSX boundary returns 413 for oversized upload BEFORE touching storage',async()=>{
+ const n=recorded.length;
+ const oversized=Buffer.alloc(2*1024*1024+64,0x41).toString('base64');
+ const response=await route(request({action:'inventoryDraft',filename:'large.xlsx',fileBase64:oversized}));
+ assert.equal(response.status,413);
+ assert.deepEqual(await response.json(),{ok:false,error:'XLSX_DIRECT_UPLOAD_REQUIRED'});
+ assert.equal(recorded.length,n,'Oversized upload must not reach service, database or bucket');
+});
+test('Rejects oversized JSON request with HTTP413, no backend call',async()=>{
+ const n=recorded.length;
+ const response=await route(request({action:'inventoryVersion',junk:'x'.repeat(4*1024*1024)}));
+ assert.equal(response.status,413);
+ assert.equal(recorded.length,n);
+});
