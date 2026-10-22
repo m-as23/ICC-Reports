@@ -8,7 +8,7 @@ if(window.__MainTrackV7Fix)return;window.__MainTrackV7Fix=true;
 const $=id=>document.getElementById(id),tabs=$('tabs'),formTab=$('tabForm'),form=$('form'),section=$('section');
 if(!tabs||!formTab||!form||!section){console.warn('MainTrack v7: required elements not found');return;}
 // Exact, consistent RTL menu order for all roles; permission visibility stays in original show().
-const order=['tabDash','tabForm','tabCmms','tabCatalog','tabProfile','tabLeave','tabApprove','tabAdmin'];
+const order=['tabDash','tabForm','tabCmms','tabCatalog','tabProfile','tabLeave','tabApprove','tabAdmin','tabInventory'];
 const userCard=tabs.querySelector('.v6User'),frag=document.createDocumentFragment();
 order.forEach(id=>{const b=$(id);if(b&&tabs.contains(b))frag.append(b);});
 tabs.insertBefore(frag,userCard||null);
