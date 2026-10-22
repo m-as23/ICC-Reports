@@ -196,3 +196,16 @@
 - رُبط الاختبار في GitHub Actions داخل `qa-047-inventory-sql` وأضيف إلى مصدر بصمات الأمان المستقل `attest-047-source.mjs`. نتائج **آخر HEAD بعد هذه الإضافة تحتاج CI PASS خاصًا بها**؛ لا ننقل نجاح commit سابق إلى الجديد.
 - G1 مؤكد سابقًا: نسخة age encrypted / checksum والتحقق المحدود للـRestore نجح، لكن `FULL_BACKUP_VERIFIED=false`, `FULL_APP_RESTORE_VERIFIED=false`. لذلك لا يمكن اعتماد Migration على Staging أو وصف النظام قابلًا للاسترجاع الكامل؛ بيانات التشغيل لا تُلمس دون استكمال الإثبات واعتماد Owner المنفصل.
 - وضع الإصدار: **CP-07 PASS at c6f4d7a; CP-08 PREPARATION ONLY; STAGING MIGRATION NO-GO; Web/APK/OTA NOT RELEASED**.
+
+
+### CP-08A — Sidebar mobile / role QA closure (22 أكتوبر 2026)
+- مصدر فرع المراجعة: \`feature/maintrack-047-integration-20261022\`؛ آخر commit مُختبر: \`d4d66f6402971275ca6b7676856251719dedac66\`.
+- GitHub Actions isolated QA run \`39847365392\`: **PASS 3/3 jobs** على نفس SHA؛ وStaging-only/Legacy QA run \`39847366341\`: **PASS 4/4 jobs** على نفس SHA. الروابط:
+  - https://github.com/m-as23/ICC-Reports/actions/runs/39847365392
+  - https://github.com/m-as23/ICC-Reports/actions/runs/39847366341
+- أضيف \`ops/maintrack/tests/test_047_menu_roles.browser.mjs\` إلى job الـChromium الموجودة؛ الاختبار لا يسجّل دخولًا، ولا يحمل JavaScript التطبيق الشبكي، ويستخدم HTML/CSS وترتيب عناصر القائمة الفعلي من المصدر المقترح. يتحقق من إزالة صف الإجازات المستقل الحالي (موجود داخل «حسابي»)، إخفاء عناصر Owner-only عن Engineer/Technician، بقاء «قطع الغيار» أخيرًا، فتح/إغلاق القائمة، التنقل إلى المخزن، غياب تجاوز عرض الشاشة في 360/390/412/600/1280px.
+- السجلات تؤكد **15 PASS** لوضع (Owner/Engineer/Technician × 5 viewports)، بالإضافة إلى MT-01 preview وMT-02 حفظ البلاغ من دون تداخل. لا يُستدل من الاختبار على جودة وصول رابط Vercel المحمي لكل جهاز، أو صحة جلسات المستخدمين الفعلية؛ اختبار Browser مع fixture صناعية فقط.
+- صور الأدلة في GitHub Actions artifact \`MainTrack-047-MT02-Mobile-Screenshots\` (اسم الـArtifact تاريخي ويضم صور MT-07 الجديدة؛ حفظ لمدة 5 أيام). \`MainTrack-047-Source-Attestation\` يحتوي بصمات مصدر المرشح بعد الاختبارات.
+- معاينة Vercel المصححة للعرض والتعليق فقط: https://maintrack-navigation-pilot-review-jncbk6mln.vercel.app/ ؛ مشروع \`maintrack-navigation-pilot-review\` = READY، وهدف النشر Preview وليس Production؛ التطبيق الحقيقي/Backend غير مشغلين داخل هذه المعاينة. حماية Vercel Authentication قد تتطلب الدخول بحساب Owner.
+- قاعدة Staging \`inv_lab\` لم يتم إنشاؤها، ونشر API مخزن/Excel غير مفعل، ولا يوجد إثبات Backend authenticated E2E أو كفاءة تحميل 20–30 مستخدمًا على بيانات واقعية. لم يُوقّع APK ولم يُحدّث OTA ولم يحدث إنتاج.
+- خطوة CP-08A: **PASS ISOLATED NAVIGATION QA**. خطوة CP-08B (Full restore/backups + Staging integration + live review) **BLOCKED**, وCP-09 **NO-GO**.
