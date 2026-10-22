@@ -1,0 +1,33 @@
+name: MainTrack 0.4.7 — isolated QA, no deployment
+on:
+  push:
+    branches:
+      - feature/maintrack-047-integration-20261022
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-047-static-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  qa-047-static:
+    name: v0.4.7 — syntax, leave overlap, roles, mail duration, immutable legacy root
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Protect v0.4.6 legacy root unchanged
+        run: git diff --exit-code 1248211b662981e3e7db27ac0a61ca4d23862ca1 HEAD -- index.html
+      - name: Validate syntax and focused regression without secrets or network
+        run: |
+          node --check web/maintrack/public/secure-assets/index-inline-1.js
+          node --check ops/maintrack/tests/test_047_static.cjs
+          node ops/maintrack/tests/test_047_static.cjs
+      - name: Record QA-only result
+        run: echo 'v0.4.7 static checks only — NO DEPLOY, NO MAIL, NO DATABASE WRITE, NO APK SIGNING.' >> "$GITHUB_STEP_SUMMARY"
