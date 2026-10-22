@@ -112,6 +112,8 @@ body{background:#f2f5f8}
 .approval-list{display:grid;gap:10px}.approval-card{border:1px solid #dce5eb;background:#fbfdfe;padding:14px;border-radius:12px}.approval-card strong{color:#18394d}.approval-card p{margin:8px 0;color:#66798b;font-size:13px}.approval-actions{display:flex;gap:10px;justify-content:flex-start;margin-top:10px}.approval-actions button{min-width:90px}
 #leave .admin-grid input,#leave .admin-grid select{width:100%;min-width:0}#leave .section-card{margin-top:14px}
 @media(max-width:700px){.analytics-pair{grid-template-columns:1fr}.approval-card{padding:12px}.approval-actions button{flex:1}}
+/* MT-02 (v0.4.7 experimental): mobile category field scroll clearance beneath fixed Save button. */
+@media (max-width:700px){main#form{padding-bottom:calc(120px + env(safe-area-inset-bottom));}}
 </style>
 </head>
 <body>
