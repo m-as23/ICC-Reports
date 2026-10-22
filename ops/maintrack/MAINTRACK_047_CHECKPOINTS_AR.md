@@ -150,6 +150,15 @@
 - البوابة التالية تبقى **NOT READY** إلى أن يثبت Backup Restore شامل أو يُعتمد مسار Rollback مُراجع، ويكتمل عقد API الحقيقي مع Auth/RLS/Storage وتُختبر بيانات Excel صناعية واقعية الحجم وOwner review Pagination وPerformance وStaging. **لا تغيّر Production أو main تلقائيًا.**
 
 
+### متابعة CP-06 / CP-07 — حماية الـAPI وفحص الضغط التركيبي (22 أكتوبر 2026)
+- فرع ومجال العمل: \`feature/maintrack-047-integration-20261022\` فقط. لم يتم دمج \`main\` أو تغيير Production أو Supabase Staging، ولم يُنشأ Vercel Preview أو يُرسل بريد Resend أو يُوقّع APK.
+- Supabase Staging **قراءة فقط**: تأكد وجود \`public.mt_sessions.token_hash,expires_at,token_version,user_id\` و\`public.mt_users.id,role,active,must_change,token_version\`؛ قيم enum: \`owner/engineer/technician\`. \`inv_lab\` **غير موجود** حتى هذه المراجعة؛ Bucket \`maintrack-inventory-archive-staging\` موجودة \`public=false\`.
+- \`create-review-http-handler.mjs\` يربط Session verifier الفعلي بــOwner RBAC ثم Parser + PostgreSQL + PRIVATE Bucket من خلال HTTP handler مع CORS allowlist. موديول مستقل **غير منشور** ولا يستمع لأي عنوان ولا يأخذ role أو userId من العميل. اختبارات \`review-http-handler.test.mjs\` تراجع Session hash ورفض owner spoof/عدم وجود جلسة وسرية مخزن البيانات؛ **تتطلب CI PASS على آخر SHA**.
+- أضيف اختبار ضغط مختبري \`search-load.synthetic.test.mjs\` بـ3920 صنف صناعي، و30 طلب بحث متكرر عربي/إنجليزي، ويقيس p95 داخل runner؛ هو **ليس** قياس زمن استجابة Supabase أو الإنترنت أو APK ولا يُثبت تحمل 30 مستخدمًا على الهاتف.
+- قيد تشغيل حاسم اكتُشف من توثيق Vercel: الحد الأقصى لحجم body هو **4.5 MB** (https://vercel.com/docs/functions/limitations). إرسال ملف Excel بحجم 10MB بصيغة Base64 يتجاوز هذا الحد. تم تقليل الحد التجريبي مؤقتًا إلى **2 MiB خام / 4 MiB JSON** وإرجاع HTTP 413 بوضوح قبل الكتابة. هذا لا ينهي مسار الرفع الكبير؛ يلزم تصميم رفع مباشر خاص مُقيّد بصلاحية Owner أو Resumable/TUS مع جلسة موثقة وحدود حقيقية على bucket، ثم مراجعة الفرق ونشره بعد الموافقة، مع منع أي مسار تخزين عام.
+- فحص Supabase Advisors للقراءة فقط: 23 تنبيه \`INFO: RLS Enabled No Policy\` على جداول MainTrack الحالية، و12 تنبيه \`INFO: Unused Index\`؛ لم نحذف Index أو نغيّر RLS تلقائيًا، لأن التطبيق يستخدم جلسات مخصصة وخدمة API server-only ويحتاج تقييم سياقي قبل أي تغيير في صلاحيات القاعدة.
+- بوابة ما قبل الإصدار: **NOT READY** حتى تثبت جميع اختبارات GitHub للـSHA الأخير، واستعادة G1 الكاملة أو Rollback موثّق كافي، ومسار الرفع الكبير، وUI Owner review Pagination فعلي، وStaging Authenticated E2E، وPreview، وAndroid APK/OTA. الاعتماد النهائي من المالك مطلوب صراحة.
+
 ## نموذج إقفال كل نقطة
 - Timestamp (Cairo):
 - Source commit / PR:
