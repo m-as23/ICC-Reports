@@ -32,6 +32,7 @@ const allow=new Set([
  'supabase/functions/maintrack-pilot-mail-worker/deno.json',
  'supabase/functions/maintrack-pilot-mail-worker/index.ts',
  'web/maintrack/public/secure-assets/index-inline-1.js',
+ 'web/maintrack/public/v6-core.js',
  'web/maintrack/public/v6.css'
 ]);
 const unexpected=changed.filter(f=>!allow.has(f));
@@ -41,6 +42,7 @@ const canonical=[
  'web/maintrack/public/secure-assets/index-inline-1.js',
  'web/maintrack/public/secure-assets/index-inline-1.css',
  'web/maintrack/public/v6.css',
+ 'web/maintrack/public/v6-core.js',
  'web/maintrack/public/v6-core.css'
 ];
 const attestation={
