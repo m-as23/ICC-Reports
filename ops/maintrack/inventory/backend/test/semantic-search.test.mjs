@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createSemanticSearch,documentForItem,allowsSemanticItem} from '../src/semantic-search.mjs';
 import {createEmbeddingProvider} from '../src/embedding-provider.mjs';
+import {createIndexWorker} from '../src/index-worker.mjs';
 const vector=(a=1,b=0)=>[a,b,...Array(254).fill(0)];
 const items=[{code:'T-J',description:'THERMOCOUPLE TYPE J',quantity:4},{code:'T-K',description:'THERMOCOUPLE TYPE K',quantity:2},{code:'PT100',description:'RTD PT100',quantity:3},{code:'L-1',description:'MECHANICAL LIMIT SWITCH',quantity:1},{code:'D-65',description:'DRIVE M700 65A',quantity:1},{code:'D-165',description:'DRIVE M700 165A',quantity:1}];
 function fixture({ready=true,fail=false}={}){
@@ -23,6 +24,14 @@ test('all explicit model, type and unit constraints survive semantic interpretat
  assert.equal(allowsSemanticItem(items[0],'حساس حرارة type K'),false);assert.equal(allowsSemanticItem(items[1],'حساس حرارة type K'),true);
  assert.equal(allowsSemanticItem(items[5],'درايف M700 ٦٥ أمبير'),false);assert.equal(allowsSemanticItem(items[4],'درايف M700 ٦٥ أمبير'),true);
  assert.equal(allowsSemanticItem(items[2],'PT100'),true);assert.equal(allowsSemanticItem(items[1],'PT100'),false);
+ for(const query of ['sensor normally open','حساس نورمال اوبن'])assert.equal(allowsSemanticItem({description:'INDUCTIVE SENSOR NC'},query),false);
+ assert.equal(allowsSemanticItem({description:'MODEL XYZ 700'},'model ABC 700'),false);
+});
+test('multi-slice indexing schedules bounded continuation until all documents are ready',async()=>{
+ let count=0,ready=false,clock=0;const scheduled=[];
+ const index={claim:async()=> 'lease',prepare:async()=>{},pending:async()=>count<2?[documentForItem(items[count])]:[],save:async()=>count++,finish:async()=>ready=true,release:async()=>{}};
+ let assist;assist=createSemanticSearch({store:{snapshot:async()=>({versionId:'2',items}),current:async()=>({versionId:'2'})},index,embed:Object.assign(async t=>t.map(()=>vector()),{model:'test-model'}),now:()=>{const t=clock;clock+=20000;return t;},schedule:p=>scheduled.push(p),continueIndex:async()=>assist.warm()});
+ await assist.warm();for(let i=0;i<scheduled.length&&i<10;i++)await scheduled[i];assert.equal(count,2);assert.equal(ready,true);
 });
 test('unfinished index never pretends semantic success; warm schedules real indexing and reuses progress',async()=>{
  const f=fixture({ready:false});const r=await f.assist.search({query:'مفتاح مشوار',versionId:'2',actor:'u'});
@@ -46,6 +55,15 @@ test('documents exclude quantities, location and employee metadata, but cover ev
 test('missing credentials stay local and never schedule a network call',async()=>{
  let calls=0;const a=createSemanticSearch({store:{snapshot:async()=>({versionId:'2',items})},schedule:()=>calls++});
  assert.deepEqual(a.capabilities(),{cloud:false,semantic:false});assert.equal((await a.search({query:'حرارة',versionId:'2',actor:'u'})).reason,'NOT_CONFIGURED');assert.equal(calls,0);
+});
+test('private index continuation accepts only internal server authentication and schedules one slice',async()=>{
+ let initialized=0,warmed=0;const tasks=[];const handler=createIndexWorker({secret:'s'.repeat(64),initialize:async()=>{initialized++;return {warmIndex:async()=>warmed++};},schedule:p=>tasks.push(p)});
+ assert.equal((await handler(new Request('https://service/index-worker',{method:'POST'}))).status,401);
+ assert.equal((await handler(new Request('https://service/index-worker',{method:'POST',headers:{Authorization:'Bearer '+'s'.repeat(64),Origin:'https://localhost'}}))).status,403);
+ assert.equal(initialized,0);assert.equal((await handler(new Request('https://service/index-worker',{method:'POST',headers:{Authorization:'Bearer '+'s'.repeat(64)}}))).status,202);await Promise.all(tasks);assert.equal(warmed,1);
+});
+test('recorded embedding outage is unavailable, rather than perpetual indexing',async()=>{
+ const f=fixture({ready:false});f.index.status=async()=>({ready:false,error:'PROVIDER_UNAVAILABLE',indexed:0,total:6});assert.equal((await f.assist.search({query:'قطعة',versionId:'2',actor:'u'})).reason,'PROVIDER_UNAVAILABLE');await Promise.all(f.scheduled);
 });
 test('fixed embedding endpoint orders indexes and rejects malformed/nonfinite/wrong-sized vectors',async()=>{
  let sent;const embed=createEmbeddingProvider({apiKey:'server-test',fetchImpl:async(url,init)=>{sent={url,body:JSON.parse(init.body)};return {ok:true,json:async()=>({data:[{index:1,embedding:vector(0,1)},{index:0,embedding:vector()}]})};}});

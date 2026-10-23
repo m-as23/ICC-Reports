@@ -16,7 +16,7 @@ test('private pgvector index: leases, partial readiness, current-only nearest, r
   const vector=(a,b)=>[a,b,...Array(254).fill(0)];
   await idx.save(v,model,token,[{...docs[0],vector:vector(1,0)}]);assert.equal(await idx.finish(v,model,token),false);
   await idx.save(v,model,token,[{...docs[1],vector:vector(0,1)}]);assert.equal(await idx.finish(v,model,token),true);
-  assert.deepEqual(await idx.status(v,model),{ready:true,total:2,indexed:2});
+  assert.deepEqual(await idx.status(v,model),{ready:true,error:null,total:2,indexed:2});
   assert.equal((await idx.nearest(v,model,vector(1,0),10))[0].code,'A');
   await idx.release(v,model,token);
   const v2=await make(v),t2=await idx.claim(v2,model);await idx.prepare(v2,model,t2,docs);

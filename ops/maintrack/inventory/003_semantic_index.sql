@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS inv_lab.semantic_documents(
 CREATE TABLE IF NOT EXISTS inv_lab.semantic_versions(
  version_id bigint NOT NULL REFERENCES inv_lab.versions(id),model text NOT NULL,
  token uuid,lease_until timestamptz,ready boolean NOT NULL DEFAULT false,
+ failures integer NOT NULL DEFAULT 0,retry_after timestamptz,last_error text,
  PRIMARY KEY(version_id,model)
 );
 CREATE TABLE IF NOT EXISTS inv_lab.semantic_items(

@@ -6,14 +6,14 @@ import {createReviewInventoryRuntime} from './create-review-runtime.mjs';
 import {createInventoryHttpHandler} from './http-adapter.mjs';
 
 export async function createReviewInventoryHttpHandler({
-  pool,storage,bucket,allowedOrigins,embed,schedule
+  pool,storage,bucket,allowedOrigins,embed,schedule,continueIndex
 }={}){
   if(!pool?.query||!pool?.connect)throw Error('PRIVATE_POSTGRES_POOL_REQUIRED');
   // Sessions always resolved from MainTrack's actual, server-side
   // mt_sessions/mt_users tables. No caller-supplied authorization callback.
   const verifySession=createMainTrackOpaqueSessionVerifier({pool});
   const runtime=await createReviewInventoryRuntime({
-    verifySession,pool,storage,bucket,embed,schedule
+    verifySession,pool,storage,bucket,embed,schedule,continueIndex
   });
-  return createInventoryHttpHandler({service:runtime.service,allowedOrigins});
+  return Object.assign(createInventoryHttpHandler({service:runtime.service,allowedOrigins}),{warmIndex:runtime.warmIndex});
 }

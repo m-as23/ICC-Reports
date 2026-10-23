@@ -24,3 +24,12 @@ test('semantic success adds without replacing literal rows and missing provider 
  await c.mt6EnrichAsync('literal',{},[],1);assert.deepEqual(Array.from(c.state.base,x=>x.c),['L','S']);assert.equal(c.mode,'augmented');
  delete c.window.MainTrackAI;c.state.base=[];await c.mt6EnrichAsync('literal',{},[],1);assert.deepEqual(Array.from(c.state.base,x=>x.c),['L']);
 });
+test('new literal rows respect numeric boundaries and semantic rows respect contacts and separated models',()=>{
+ const c=load();c.mt6MeasurementMatch=x=>!x.d.includes('165');
+ const bad={c:'BAD',d:'DRIVE 165 A',text:'drive 165 a'};
+ assert.equal(c.window.MainTrackHybrid.merge({raw:'65 A',index:[bad],local:[],parsed:{measures:[{}]}}).length,0);
+ const nc={c:'NC',d:'INDUCTIVE SENSOR NC',text:'inductive sensor nc'};
+ for(const raw of ['sensor normally open','حساس نورمال اوبن'])assert.equal(c.window.MainTrackHybrid.merge({raw,index:[nc],local:[],codes:['NC'],parsed:{con:'NO'}}).length,0);
+ const xyz={c:'XYZ',d:'MODEL XYZ 700',text:'model xyz 700'};
+ assert.equal(c.window.MainTrackHybrid.merge({raw:'model ABC 700',index:[xyz],local:[],codes:['XYZ'],parsed:{}}).length,0);
+});

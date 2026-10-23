@@ -43,3 +43,7 @@ Files: source asset lock/allowlist, QA/APK workflows and this ledger.
 ## Execution ledger
 - User explicitly requested execution twice after approving chat design; no further design approval round. Reuse existing linked isolated worktree; baseline 4 search-assist tests pass. Source base 70cf6fa.
 - Pre-flight: semantic-search consumes index adapter's version/model-scoped methods; runtime passes fixed embed+background scheduler. Browser consumes only authenticated codes/mode/reason; vector data never crosses client boundary.
+
+- Task 1/2 unit verification: 99/99 passed after fresh review fixes. Original static/hash guards and packaging parity passed. Initial CI real pgvector migration/adapter/dump-restore passed; 7/8 browser tests passed, new hybrid browser case failed awaiting first exact-code card (investigation ongoing).
+- Final review: four Important findings accepted: new literal numeric boundaries; semantic contact synonyms; separated model identity; bounded index continuation. Regression tests watched RED then GREEN. Added internally authenticated inventory-only worker continuation, bounded retry/backoff, persisted error state. No shared API changes.
+- Review declined live relevance/threshold/latency/device certification: retained as explicit pending verification; missing provider key prevents live relevance certification. No claim that synthetic vectors establish actual Arabic recall.

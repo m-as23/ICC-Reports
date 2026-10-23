@@ -7,7 +7,13 @@
  function literal(row,raw){const q=norm(raw).trim(),text=norm(row.c+' '+(row.d||'')+' '+(row.i||'')),tokens=q.split(/[^\p{L}\p{N}.]+/u).filter(Boolean);return tokens.length>0&&tokens.every(t=>text.includes(t));}
  function allowed(row,raw,p){
   if(!(p.measures||[]).every(m=>mt6MeasurementMatch(row,m))||!(p.genericUnits||[]).every(k=>mt7HasConcept(row,k)))return false;
-  const text=norm(row.d),type=norm(raw).match(/(?:\btype|تايب|طيب|نوع)\s*[:\-]?\s*([a-z])\b/i);
+  const text=norm(row.d);
+  const required=p.con||(/normally\s*open|نورمال\s*اوبن|طبيعي\s*مفتوح/.test(norm(raw))?'NO':/normally\s*closed|نورمال\s*كلوز|طبيعي\s*مغلق/.test(norm(raw))?'NC':'');
+  if(required&&!new RegExp('\\b'+required+'\\b|normally\\s*'+(required==='NO'?'open':'closed'),'i').test(text))return false;
+  if(p.signal&&!new RegExp('\\b'+p.signal+'\\b','i').test(text))return false;
+  const generic=new Set(['type','model','drive','motor','sensor','switch','inverter','relay','amp','amps','mm','kw']);
+  for(const match of norm(raw).matchAll(/\b([a-z]{1,8})[\s-]+(\d[\w.-]*)\b/g))if(!generic.has(match[1])&&!key(row.c+' '+row.d+' '+(row.i||'')).includes(key(match[1]+match[2])))return false;
+  const type=norm(raw).match(/(?:\btype|تايب|طيب|نوع)\s*[:\-]?\s*([a-z])\b/i);
   if(type&&!new RegExp('\\btype[\\s:\\-]*'+type[1]+'\\b','i').test(text))return false;
   const models=norm(raw).match(/\b[a-z]+[\w.-]*\d[\w.-]*\b/g)||[];
   const rowTokens=new Set(norm(row.c+' '+row.d+' '+(row.i||'')).split(/[^\p{L}\p{N}.\/-]+/u));
@@ -18,7 +24,7 @@
  function merge({raw,index,local,codes=[],parsed={}}){
   const rows=new Map(),q=key(raw);
   for(const x of local)rows.set(x.c,{...x,_mt6AI:false,_score:100000+Math.min(Math.max(x._score||0,0),9999)});
-  for(const x of index){const code=key(x.c);if(q&&code===q)rows.set(x.c,{...x,_mt6AI:false,_score:1000000});else if(literal(x,raw)||(q.length>=3&&code.includes(q)))rows.set(x.c,{...x,_mt6AI:false,_score:500000+(code.includes(q)?1000:0)});}
+  for(const x of index){const code=key(x.c);if(q&&code===q)rows.set(x.c,{...x,_mt6AI:false,_score:1000000});else if(allowed(x,raw,parsed)&&(literal(x,raw)||(q.length>=3&&code.includes(q))))rows.set(x.c,{...x,_mt6AI:false,_score:500000+(code.includes(q)?1000:0)});}
   const byCode=new Map(index.map(x=>[x.c,x]));
   for(const [position,code] of codes.slice(0,50).entries()){const x=byCode.get(code);if(!x||rows.has(code)||!allowed(x,raw,parsed))continue;rows.set(code,{...x,_mt6AI:true,_score:1000-position});}
   return [...rows.values()].sort((a,b)=>b._score-a._score||a.c.localeCompare(b.c));

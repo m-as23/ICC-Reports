@@ -44,7 +44,8 @@ test('Server-only runtime reads private bucket, real XLSX remains pending until 
  const f=environment(),owner={authenticated:true,active:true,role:'owner',userId:'owner-qa'};
  const runtime=await createReviewInventoryRuntime({verifySession:async()=>owner,pool:f.pool,storage:f.storage,bucket:'maintrack-inventory-archive-staging'});
  assert.equal(f.events.length,1,'Initialization only validates private bucket');
- assert.equal(Object.keys(runtime).join(','),'service');
+ assert.equal(Object.keys(runtime).join(','),'service,warmIndex');
+ assert.equal(typeof runtime.warmIndex,'function','Server-only worker exposes no database or storage object');
  const bytes=await fixture();
  const {createHash}=await import('node:crypto');
  f.setSha(createHash('sha256').update(bytes).digest('hex'));
