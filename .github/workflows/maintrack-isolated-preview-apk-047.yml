@@ -1,5 +1,5 @@
 name: MainTrack 0.4.7 isolated installable Preview APK
-# Inventory reference: accessible mobile filter sheet and desktop filter panel.
+# Inventory reference: mobile sort + filter sheet; version-pinned result heading.
 on:
   push:
     branches: [feature/maintrack-047-integration-20261022]

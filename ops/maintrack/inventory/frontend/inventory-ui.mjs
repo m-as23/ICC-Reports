@@ -66,7 +66,8 @@ function renderResults(){
 async function search(){
  const query=$('inv47Query').value.trim();if(!query){resetResults();state('اكتب اسم القطعة أو الكود أو الموديل للبحث.');return;}
  resetResults();currentQuery=query;const epoch=searchEpoch;const token=readSession()?.token;state('جارٍ البحث في الرصيد المعتمد…');
- allItems=await collectSearchResults((q,args)=>client.search(q,args),query,{isCurrent:()=>epoch===searchEpoch&&readSession()?.token===token,onProgress:(n,total)=>state('جارٍ تجميع نتائج البحث: '+nf.format(n)+' من '+nf.format(total))});
+ const snapshot=await collectSearchResults((q,args)=>client.search(q,args),query,{isCurrent:()=>epoch===searchEpoch&&readSession()?.token===token,onProgress:(n,total)=>state('جارٍ تجميع نتائج البحث: '+nf.format(n)+' من '+nf.format(total))});
+ allItems=snapshot.items;$('inv47Version').textContent='نسخة نتائج البحث المعتمدة: '+(snapshot.versionId||'لا يوجد رصيد معتمد');
  prepareFilters();$('inv47Welcome').hidden=true;$('inv47SearchArea').hidden=false;renderResults();
 }
 function renderReview(){

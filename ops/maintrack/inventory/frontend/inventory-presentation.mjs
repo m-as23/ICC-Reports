@@ -24,7 +24,7 @@ export async function collectSearchResults(search,query,{onProgress=()=>{},isCur
   if(!Number.isInteger(total)||total<0||total>maxItems||data.totalMatches!==total||data.offset!==offset||!Array.isArray(data.items))throw Error('INCOMPLETE_SEARCH');
   for(const item of data.items){if(!item||!item.code||codes.has(item.code))throw Error('INCOMPLETE_SEARCH');codes.add(item.code);rows.push(item);}
   if(rows.length>total)throw Error('INCOMPLETE_SEARCH');onProgress(rows.length,total);
-  if(data.nextOffset===null){if(rows.length!==total)throw Error('INCOMPLETE_SEARCH');return rows;}
+  if(data.nextOffset===null){if(rows.length!==total)throw Error('INCOMPLETE_SEARCH');return {items:rows,versionId:version};}
   if(data.nextOffset!==offset+data.items.length||data.nextOffset<=offset)throw Error('INCOMPLETE_SEARCH');
   offset=data.nextOffset;
  }
