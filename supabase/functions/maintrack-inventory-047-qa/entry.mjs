@@ -1,5 +1,5 @@
 // MainTrack inventory only. Existing MainTrack functions and data are untouched.
-import {createQueryExpander} from '../../../ops/maintrack/inventory/backend/src/search-assist.mjs';
+import {createEmbeddingProvider} from '../../../ops/maintrack/inventory/backend/src/embedding-provider.mjs';
 import pg from 'npm:pg@8.13.3';
 import {Buffer} from 'node:buffer';
 import {createReviewInventoryHttpHandler} from '../../../ops/maintrack/inventory/backend/src/create-review-http-handler.mjs';
@@ -7,7 +7,8 @@ globalThis.Buffer??=Buffer;
 const url=Deno.env.get('SUPABASE_URL');
 const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const pool=new pg.Pool({connectionString:Deno.env.get('SUPABASE_DB_URL'),max:2,idleTimeoutMillis:10000,connectionTimeoutMillis:7000});
-const expandQuery=createQueryExpander({apiKey:Deno.env.get('OPENAI_API_KEY'),model:Deno.env.get('MAINTRACK_SEARCH_MODEL')||'gpt-4.1-mini'});
+const embed=createEmbeddingProvider({apiKey:Deno.env.get('OPENAI_API_KEY')});
+const schedule=promise=>EdgeRuntime.waitUntil(promise);
 const bucket='maintrack-inventory-archive-staging';
 const allowedOrigins=['https://maintrack-final-security-jb82mdyun-mohamedashrefsrag-5918.vercel.app','https://maintrack-final-security-6oskca75z-mohamedashrefsrag-5918.vercel.app','https://maintrack-final-security-5c2j4jzn0-mohamedashrefsrag-5918.vercel.app','https://localhost','https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app','https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app'];
 async function storageRequest(path,{method='GET',body,headers={}}={}){
@@ -27,11 +28,11 @@ let ready;
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 Deno.serve(async request=>{
  const path=new URL(request.url).pathname;
- if(request.method==='GET'&&path.endsWith('/healthz'))return response({service:'maintrack-inventory-047-qa',status:'up',cloudSearchConfigured:!!expandQuery});
+ if(request.method==='GET'&&path.endsWith('/healthz'))return response({service:'maintrack-inventory-047-qa',status:'up',cloudSearchConfigured:!!embed,semanticSearchConfigured:!!embed});
  if(!['POST','OPTIONS'].includes(request.method))return response({ok:false,error:'METHOD_NOT_ALLOWED'},405);
  try{
   if(!url||!key||!Deno.env.get('SUPABASE_DB_URL'))throw Error('INVENTORY_NOT_CONFIGURED');
-  ready??=createReviewInventoryHttpHandler({pool,storage,bucket,allowedOrigins,expandQuery}).catch(e=>{ready=null;throw e;});
+  ready??=createReviewInventoryHttpHandler({pool,storage,bucket,allowedOrigins,embed,schedule}).catch(e=>{ready=null;throw e;});
   return await (await ready)(request);
  }catch{
   const origin=request.headers.get('origin');

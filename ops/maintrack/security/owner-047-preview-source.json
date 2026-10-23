@@ -34,11 +34,15 @@
     },
     {
       "path": "inventory-approved.js",
-      "sha256": "e6e6872246d557ac680da9fe96b0ae298f9585215f22d865aaa7d2df312c86f5"
+      "sha256": "2f5aba7ae5fcdbedfc02ec6a714b2f71b578b26a3a1a193f8a703fa9a853eb0a"
+    },
+    {
+      "path": "inventory-hybrid.js",
+      "sha256": "6b7a25be3531d0d126b95d1f02a2ae5f54be17d8b5b38feda47471dcf1004c8d"
     },
     {
       "path": "inventory-reference-integration.js",
-      "sha256": "3385e21d9b8e12e342e81215906748074d760f3c8977b9299996ce48277f0357"
+      "sha256": "248ae77a427e336484e45fd8161280505e560e0eb56fa04efabf982167034f27"
     },
     {
       "path": "inventory-reference.css",
@@ -46,7 +50,7 @@
     },
     {
       "path": "inventory-reference.html",
-      "sha256": "d26bd1fde317ce5d32cfa1b86f8ff53e79eb4220d1b1302adf659bd274010c32"
+      "sha256": "8c50717de507766e85e090018e0dde50b7b2a64da895204fa459024db9a10190"
     },
     {
       "path": "inventory-reference.js",

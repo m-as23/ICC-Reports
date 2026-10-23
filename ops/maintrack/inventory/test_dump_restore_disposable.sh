@@ -5,7 +5,7 @@ set -euo pipefail
 [[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || { echo 'REFUSED: GitHub disposable CI only'; exit 2; }
 [[ "${MT047_POSTGRES_CONTAINER:-}" =~ ^[0-9a-f]{64}$ ]] || { echo 'REFUSED: missing CI service container'; exit 2; }
 container="$MT047_POSTGRES_CONTAINER"
-[[ "$(docker inspect --format '{{.Config.Image}}' "$container")" == 'postgres:16' ]] || { echo 'REFUSED: unexpected service image'; exit 2; }
+[[ "$(docker inspect --format '{{.Config.Image}}' "$container")" == 'pgvector/pgvector:pg16' ]] || { echo 'REFUSED: unexpected service image'; exit 2; }
 source_db=inventory_047_disposable
 restored_db=inventory_047_restored
 pg() { docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U qa_owner -d "$1"; }
@@ -38,6 +38,12 @@ snapshot "$source_db" > "$scratch_dir/before.json"
 docker exec "$container" pg_dump -U qa_owner -d "$source_db" --schema=inv_lab --format=custom > "$scratch_dir/inventory.dump"
 test -s "$scratch_dir/inventory.dump"
 docker exec "$container" createdb -U qa_owner "$restored_db"
+# The private schema dump references the extension type, so provision its
+# reviewed dependency in the new disposable database before restoring.
+pg "$restored_db" <<'SQL'
+CREATE SCHEMA extensions;
+CREATE EXTENSION vector WITH SCHEMA extensions;
+SQL
 # Keep ACLs; do NOT pass --no-acl. Roles are shared within this disposable cluster.
 docker exec -i "$container" pg_restore -U qa_owner -d "$restored_db" --exit-on-error --single-transaction < "$scratch_dir/inventory.dump"
 snapshot "$restored_db" > "$scratch_dir/after.json"

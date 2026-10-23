@@ -101,3 +101,33 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('App
   assert.deepEqual(errors,[]);
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 });
+
+test('Hybrid search retains literal matches, appends labelled meaning matches across families, and clears stale responses',async()=>{
+ const rows=[{code:'SENSOR-1',description:'MOUNTING BRACKET',quantity:1},{code:'TEMP-K',description:'THERMOCOUPLE TYPE K',quantity:2},{code:'RTD-1',description:'PT100',quantity:3},{code:'LIMIT-1',description:'MECHANICAL LIMIT SWITCH',quantity:4}];
+ const index=await fs.readFile(path.join(assets,'index.html'),'utf8');const section=index.match(/<section id="inventory"[\s\S]*?<\/section>/)[0];
+ const server=createServer(async(req,res)=>{try{const name=new URL(req.url,'http://local').pathname.slice(1);if(name==='harness.html'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><html dir="rtl"><body>'+section+'<script src="inventory-047.js"></script></body></html>');return;}if(!/^[a-z0-9.-]+$/i.test(name))throw Error('PATH');res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(path.join(assets,name)));}catch{res.writeHead(404);res.end();}});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>window.S={token:'a'.repeat(64),role:'technician'});
+  let held,resolveHeld,requests=0;
+  await page.route('https://tdnkeskczcsukcujwinu.supabase.co/**',async route=>{
+   if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'access-control-allow-origin':base,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, content-type'}});return;}
+   const x=route.request().postDataJSON();let data;
+   if(x.action==='inventorySnapshot')data={versionId:'1',generation:1,approvedAt:'2026-10-23T07:03:00Z',items:rows};
+   else if(x.action==='inventorySearchCapabilities')data={cloud:true,semantic:true};
+   else if(x.action==='inventoryVersion')data={versionId:'1'};
+   else if(x.action==='inventorySearchAssist'){
+    requests++;if(x.query==='انتظار'){resolveHeld?.();await new Promise(r=>held=r);}
+    data={mode:'semantic',versionId:'1',codes:x.query.includes('مشوار')?['LIMIT-1']:['TEMP-K','RTD-1']};
+   }else throw Error('UNEXPECTED_ACTION '+x.action);
+   await route.fulfill({status:200,headers:{'access-control-allow-origin':base},contentType:'application/json',body:JSON.stringify({ok:true,data})});
+  });
+  await page.goto(base+'/harness.html');await page.evaluate(()=>document.getElementById('inventory').style.display='block');const frame=page.frameLocator('#inv47Frame');await frame.locator('#query:enabled').waitFor();
+  await frame.locator('#query').fill('SENSOR-1');await frame.locator('#searchButton').click();await frame.locator('.part-card').first().waitFor();assert.equal(await frame.locator('.part-card .item-id').first().textContent(),'SENSOR-1');
+  await frame.locator('#query').fill('حساس حرارة');await frame.locator('#searchButton').click();await frame.locator('.mt6-assisted').first().waitFor();assert.equal(await frame.locator('.mt6-assisted').count(),2);assert.match(await frame.locator('#results').textContent(),/PT100/);
+  await frame.locator('#query').fill('THERMOCOUPLE');await frame.locator('#searchButton').click();await frame.locator('#mt6Explain').filter({hasText:'التطابقات أولًا'}).waitFor();assert.equal(await frame.locator('.item-id').first().textContent(),'TEMP-K');assert.equal(await frame.locator('.part-card').first().locator('.mt6-assisted').count(),0);assert.equal(await frame.locator('.part-card').nth(1).locator('.mt6-assisted').textContent(),'مرتبط بالمعنى');
+  await frame.locator('#query').fill('مفتاح نهاية مشوار');await frame.locator('#searchButton').click();await frame.locator('.item-id').filter({hasText:'LIMIT-1'}).waitFor();
+  const requested=new Promise(r=>resolveHeld=r);await frame.locator('#query').fill('انتظار');await frame.locator('#searchButton').click();await requested;await frame.locator('#clearSearch').click();held();await frame.locator('#welcome').waitFor({state:'visible'});assert.equal(await frame.locator('#resultSection').isVisible(),false);assert.ok(requests>=4);assert.deepEqual(errors,[]);
+ }finally{await browser.close();await new Promise(r=>server.close(r));}
+});

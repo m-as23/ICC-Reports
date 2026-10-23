@@ -33,7 +33,7 @@ export function createInventoryService({verifySession,store,parseXlsx,assist}={}
    switch(action){
     case 'inventorySearchCapabilities':return assist?.capabilities()||{cloud:false};
     case 'inventorySearchAssist':return assist?assist.search({query:input.query,versionId:input.versionId,actor}):{codes:[],mode:'local'};
-    case 'inventorySnapshot':return store.snapshot();
+    case 'inventorySnapshot':{const snapshot=await store.snapshot();assist?.kick?.();return snapshot;}
     case 'inventoryVersion':return store.current();
     case 'inventorySearch':return store.search(input.query,input.limit);
     case 'inventorySearchPage':return store.searchPage(input.query,{limit:input.limit,offset:input.offset,versionId:input.versionId});
@@ -72,7 +72,7 @@ export function createInventoryService({verifySession,store,parseXlsx,assist}={}
       if(!identical(input.reviewReceipt,receipt(diff)))throw Error('REVIEW_RECEIPT_MISMATCH');
       if(diff.requiresExplicitReview&&input.acknowledgeLargeAbsence!==true)
         throw Error('LARGE_ABSENCE_NEEDS_EXPLICIT_APPROVAL');
-      return store.publish(diff.draftId,diff.baseVersionId,actor);
+      const published=await store.publish(diff.draftId,diff.baseVersionId,actor);assist?.kick?.();return published;
     }
     case 'inventoryHistory':return store.history(input.limit);
     case 'inventoryVersions':return store.versionsPage({limit:input.limit,offset:input.offset,includeExcluded:input.includeExcluded===true});

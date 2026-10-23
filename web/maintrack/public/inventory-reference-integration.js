@@ -14,7 +14,7 @@ function setImportError(message){$('importError').textContent=message;$('importE
 function setImportBusy(value){importBusy=value;document.querySelectorAll('[data-version-action]').forEach(b=>b.disabled=value);$('inventoryFile').disabled=value;$('cancelImport').disabled=value;updateApproval();}
 function updateApproval(){$('approveImport').disabled=importBusy||!pendingImport?.complete||!$('reviewConfirm').checked||(pendingImport?.requiresExplicitReview&&!$('largeAbsenceConfirm').checked);}
 async function loadInventory(){
- const epoch=++loadEpoch;closeDetail();closeFilters();$('retryInventory').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
+ const epoch=++loadEpoch;++mt6Generation;if(mt6Pending){mt6Pending.abort();mt6Pending=null;}closeDetail();closeFilters();$('retryInventory').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
  try{
   if(!inventoryHost)throw Error('UNAUTHENTICATED');
   const data=await inventoryHost.snapshot();if(epoch!==loadEpoch)return;
@@ -127,7 +127,7 @@ loadInventory();
 
 let cloudConfigured=false;
 function updateCloudMessage(){$('storageStatus').textContent='متصل بخدمة المخزن. الاعتماد يحدّث النسخة لجميع المستخدمين.'+(canManage&&!cloudConfigured?' البحث السحابي غير مفعّل؛ يلزم إعداد مفتاح الخدمة على السيرفر.':'');}
-function showSearchMode(){const mode=$('mt6Explain').dataset.mode;const badge=$('searchMode');badge.dataset.mode=!navigator.onLine?'offline':mode||'local';badge.textContent=!navigator.onLine?'بحث فني محلي':mode==='pending'?'تحسين البحث…':mode==='augmented'?'بحث سحابي مساعد':cloudConfigured?'بحث تلقائي':'بحث فني';}
+function showSearchMode(){const mode=$('mt6Explain').dataset.mode;const badge=$('searchMode');badge.dataset.mode=!navigator.onLine?'offline':mode||'local';badge.textContent=!navigator.onLine?'بحث فني محلي':mode==='pending'?'تحسين البحث…':mode==='augmented'?'بحث بالمعنى':cloudConfigured?'بحث تلقائي':'بحث فني';}
 new MutationObserver(showSearchMode).observe($('mt6Explain'),{attributes:true,childList:true,subtree:true});
 window.addEventListener('online',showSearchMode);window.addEventListener('offline',showSearchMode);
-(async()=>{try{const c=await inventoryHost.capabilities();cloudConfigured=c.cloud===true;if(cloudConfigured)window.MainTrackAI={search:async({query,signal})=>{const versionId=currentVersion?.versionId;const result=await inventoryHost.assist({query,versionId});if(signal.aborted||versionId!==currentVersion?.versionId)throw Error('SEARCH_SUPERSEDED');return result.mode==='cloud'?{codes:result.codes}:{codes:[]};}};updateCloudMessage();showSearchMode();}catch{showSearchMode();}})();
+(async()=>{try{const c=await inventoryHost.capabilities();cloudConfigured=c.cloud===true;if(cloudConfigured)window.MainTrackAI={search:async({query,signal})=>{const versionId=currentVersion?.versionId;const result=await inventoryHost.assist({query,versionId});if(signal.aborted||versionId!==currentVersion?.versionId)throw Error('SEARCH_SUPERSEDED');return result;}};updateCloudMessage();showSearchMode();}catch{showSearchMode();}})();

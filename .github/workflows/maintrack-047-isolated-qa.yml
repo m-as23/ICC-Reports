@@ -29,12 +29,12 @@ jobs:
           node --check web/maintrack/public/secure-assets/index-inline-1.js
           node --check ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/tests/test_047_static.cjs
-          node --test ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
+          node --test ops/maintrack/tests/test_047_hybrid_search.test.mjs ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
       - name: Install locked XLSX dependencies (no install scripts; isolated runner only)
         run: npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)
         run: |
-          node --test ops/maintrack/inventory/backend/test/search-assist.test.mjs ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs ops/maintrack/inventory/backend/test/review-http-handler.test.mjs ops/maintrack/inventory/backend/test/search-normalizer.test.mjs ops/maintrack/inventory/backend/test/postgres-search.test.mjs ops/maintrack/inventory/backend/test/search-load.synthetic.test.mjs ops/maintrack/inventory/backend/test/inventory-service.test.mjs ops/maintrack/inventory/backend/test/owner-review-pagination.test.mjs
+          node --test ops/maintrack/inventory/backend/test/semantic-search.test.mjs ops/maintrack/inventory/backend/test/search-assist.test.mjs ops/maintrack/inventory/backend/test/domain.test.mjs ops/maintrack/inventory/backend/test/http-adapter.test.mjs ops/maintrack/inventory/backend/test/session-adapter.test.mjs ops/maintrack/inventory/backend/test/review-http-handler.test.mjs ops/maintrack/inventory/backend/test/search-normalizer.test.mjs ops/maintrack/inventory/backend/test/postgres-search.test.mjs ops/maintrack/inventory/backend/test/search-load.synthetic.test.mjs ops/maintrack/inventory/backend/test/inventory-service.test.mjs ops/maintrack/inventory/backend/test/owner-review-pagination.test.mjs
       - name: Verify actual synthetic XLSX parser, private bucket and Owner import review flow
         run: |
           node --test ops/maintrack/inventory/backend/test/import-xlsx.test.mjs ops/maintrack/inventory/backend/test/private-bucket.test.mjs ops/maintrack/inventory/backend/test/import-service.test.mjs
@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: 25
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: qa_owner
           POSTGRES_PASSWORD: disposable_only_047
@@ -119,6 +119,17 @@ jobs:
         run: |
           psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/002_owner_versions.sql
           psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/002_owner_versions.sql
+      - name: Apply private semantic index twice
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/003_semantic_index.sql
+          psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/003_semantic_index.sql
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test real versioned pgvector adapter on disposable PostgreSQL
+        run: |
+          npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
+          SEMANTIC_DB_TEST=1 node --test ops/maintrack/inventory/backend/test/semantic-postgres.integration.mjs
       - name: Verify V1→V2→V3 compare, archive, stale denial and restore
         run: psql -X -v ON_ERROR_STOP=1 -f ops/maintrack/inventory/test_inventory_disposable.sql
       - name: Validate MainTrack opaque sessions against disposable PostgreSQL (no employee data)

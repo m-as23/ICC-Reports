@@ -24,6 +24,17 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'docs/superpowers/specs/2026-10-23-hybrid-search-design.md',
+ 'docs/superpowers/plans/2026-10-23-hybrid-search.md',
+ 'web/maintrack/public/inventory-hybrid.js',
+ 'ops/maintrack/inventory/003_semantic_index.sql',
+ 'ops/maintrack/inventory/backend/src/embedding-provider.mjs',
+ 'ops/maintrack/inventory/backend/src/semantic-search.mjs',
+ 'ops/maintrack/inventory/backend/src/postgres-semantic-store.mjs',
+ 'ops/maintrack/inventory/backend/test/semantic-search.test.mjs',
+ 'ops/maintrack/inventory/backend/test/semantic-postgres.integration.mjs',
+ 'ops/maintrack/tests/test_047_hybrid_search.test.mjs',
+
  'DESIGN.md',
  'UX-CONTRACT.md',
  'ops/maintrack/inventory/frontend/inventory-presentation.mjs',
