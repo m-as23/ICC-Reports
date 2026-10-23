@@ -1,3 +1,89 @@
+// ops/maintrack/inventory/backend/src/search-normalizer.mjs
+var arabicDigit = (c) => {
+  const eastern = "\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669", persian = "\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9";
+  const e = eastern.indexOf(c), p = persian.indexOf(c);
+  return e >= 0 ? String(e) : p >= 0 ? String(p) : c;
+};
+var synonyms = /* @__PURE__ */ new Map([
+  ["\u0628\u0627\u0631\u0643\u0631", "parker"],
+  ["\u0628\u0627\u0631\u0643\u064A\u0631", "parker"],
+  ["\u0627\u0646\u0641\u0631\u062A\u0631", "inverter"],
+  ["\u0627\u0646\u0641\u0631\u062A\u064A\u0631", "inverter"],
+  ["\u0627\u0646\u0641\u064A\u0631\u062A\u0631", "inverter"],
+  ["vfd", "inverter"],
+  ["inverters", "inverter"]
+]);
+function inventoryTerms(input, { maxLength = 120 } = {}) {
+  if (typeof input !== "string" || input.length > maxLength) throw Error("INVALID_QUERY");
+  let s = input.normalize("NFKC").toLowerCase().replace(/[٠-٩۰-۹]/g, arabicDigit).replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/[إأآٱ]/g, "\u0627").replace(/ى/g, "\u064A");
+  s = s.replace(/(\d+(?:\.\d+)?)\s*(?:امبير|amperes?|amps?|a)(?=$|[^\p{L}\p{N}])/gu, (_, n) => " " + n + "amp ");
+  s = s.replace(/(\d+(?:\.\d+)?)\s*(?:litres?|liters?|l)(?=$|[^\p{L}\p{N}])/gu, (_, n) => " " + n + "l ");
+  s = s.replace(/(^|[^\p{L}\p{N}])m[\s-]+(\d+)(?=$|[^\p{L}\p{N}])/gu, (_, prefix, n) => prefix + "m" + n);
+  const terms = s.replace(/[^\p{L}\p{N}.]+/gu, " ").trim().split(/\s+/).filter(Boolean);
+  return terms.map((x) => synonyms.get(x) || x);
+}
+function matchesInventoryItem(item, query) {
+  if (!item || typeof item !== "object") return false;
+  const terms = Array.isArray(query) ? query : inventoryTerms(query);
+  if (!terms.length) return false;
+  const fields = [
+    item.code,
+    item.description,
+    item.location,
+    item.extra?.iccCode,
+    item.extra?.brand,
+    item.extra?.model
+  ].filter((x) => typeof x === "string");
+  const available = new Set(fields.flatMap((x) => inventoryTerms(x, { maxLength: 1e4 })));
+  return terms.every((term) => available.has(term));
+}
+function filterConfirmedInventoryItems(items, query, { limit = 50 } = {}) {
+  if (!Array.isArray(items)) throw Error("CONFIRMED_ITEMS_REQUIRED");
+  const terms = inventoryTerms(query);
+  if (!terms.length) return [];
+  const n = Number(limit);
+  if (!Number.isInteger(n) || n < 1 || n > 100) throw Error("INVALID_LIMIT");
+  const result = [];
+  for (const item of items) if (matchesInventoryItem(item, terms)) {
+    result.push(item);
+    if (result.length === n) break;
+  }
+  return result;
+}
+
+// ops/maintrack/inventory/backend/src/search-assist.mjs
+function createSearchAssist({ store, expand, claim = async () => true } = {}) {
+  return { capabilities: () => ({ cloud: typeof expand === "function" }), async search({ query, versionId, actor } = {}) {
+    if (typeof query !== "string" || !query.trim() || query.length > 120) throw Error("INVALID_QUERY");
+    const snapshot = await store.snapshot();
+    if (snapshot.versionId !== versionId) throw Error("INVENTORY_VERSION_CHANGED_RESTART_SEARCH");
+    const fallback = (reason) => ({ codes: [], mode: "local", reason, versionId });
+    if (typeof expand !== "function") return fallback("NOT_CONFIGURED");
+    if (!await claim(actor)) return fallback("DAILY_LIMIT");
+    try {
+      const queries = await expand(query);
+      const numeric = inventoryTerms(query).filter((t) => /\d/.test(t));
+      const terms = (Array.isArray(queries) ? queries : []).filter((q) => typeof q === "string" && q.trim() && q.length <= 100).slice(0, 3);
+      const codes = snapshot.items.filter((item) => (!numeric.length || matchesInventoryItem(item, numeric)) && terms.some((q) => matchesInventoryItem(item, q))).slice(0, 25).map((x) => x.code);
+      const after = await store.current?.();
+      if (after && after.versionId !== versionId) throw Error("INVENTORY_VERSION_CHANGED_RESTART_SEARCH");
+      return { codes, mode: "cloud", versionId };
+    } catch (e) {
+      if (e.message === "INVENTORY_VERSION_CHANGED_RESTART_SEARCH") throw e;
+      return fallback("PROVIDER_UNAVAILABLE");
+    }
+  } };
+}
+function createQueryExpander({ apiKey, model = "gpt-4.1-mini", fetchImpl = globalThis.fetch } = {}) {
+  if (!apiKey) return void 0;
+  return async (query) => {
+    const response2 = await fetchImpl("https://api.openai.com/v1/chat/completions", { method: "POST", signal: AbortSignal.timeout(2e3), headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" }, body: JSON.stringify({ model, temperature: 0, max_completion_tokens: 160, response_format: { type: "json_object" }, messages: [{ role: "system", content: 'Convert an Arabic/English industrial spare-parts query into up to 3 concise English catalog search phrases. Return JSON {"queries":[...]}. Preserve every model number and numeric unit exactly. Do not invent part numbers or quantities. No instructions or prose.' }, { role: "user", content: query }] }) });
+    if (!response2.ok) throw Error("PROVIDER_UNAVAILABLE");
+    const data = await response2.json();
+    return JSON.parse(data.choices?.[0]?.message?.content || "{}").queries;
+  };
+}
+
 // supabase/functions/maintrack-inventory-047-qa/entry.mjs
 import pg from "npm:pg@8.13.3";
 import { Buffer as Buffer2 } from "node:buffer";
@@ -242,61 +328,6 @@ async function createPrivateBucketArchive({ storage: storage2, bucket: bucket2 }
 
 // ops/maintrack/inventory/backend/src/postgres-store.mjs
 import { randomUUID } from "node:crypto";
-
-// ops/maintrack/inventory/backend/src/search-normalizer.mjs
-var arabicDigit = (c) => {
-  const eastern = "\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669", persian = "\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9";
-  const e = eastern.indexOf(c), p = persian.indexOf(c);
-  return e >= 0 ? String(e) : p >= 0 ? String(p) : c;
-};
-var synonyms = /* @__PURE__ */ new Map([
-  ["\u0628\u0627\u0631\u0643\u0631", "parker"],
-  ["\u0628\u0627\u0631\u0643\u064A\u0631", "parker"],
-  ["\u0627\u0646\u0641\u0631\u062A\u0631", "inverter"],
-  ["\u0627\u0646\u0641\u0631\u062A\u064A\u0631", "inverter"],
-  ["\u0627\u0646\u0641\u064A\u0631\u062A\u0631", "inverter"],
-  ["vfd", "inverter"],
-  ["inverters", "inverter"]
-]);
-function inventoryTerms(input, { maxLength = 120 } = {}) {
-  if (typeof input !== "string" || input.length > maxLength) throw Error("INVALID_QUERY");
-  let s = input.normalize("NFKC").toLowerCase().replace(/[٠-٩۰-۹]/g, arabicDigit).replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/[إأآٱ]/g, "\u0627").replace(/ى/g, "\u064A");
-  s = s.replace(/(\d+(?:\.\d+)?)\s*(?:امبير|amperes?|amps?|a)(?=$|[^\p{L}\p{N}])/gu, (_, n) => " " + n + "amp ");
-  s = s.replace(/(\d+(?:\.\d+)?)\s*(?:litres?|liters?|l)(?=$|[^\p{L}\p{N}])/gu, (_, n) => " " + n + "l ");
-  s = s.replace(/(^|[^\p{L}\p{N}])m[\s-]+(\d+)(?=$|[^\p{L}\p{N}])/gu, (_, prefix, n) => prefix + "m" + n);
-  const terms = s.replace(/[^\p{L}\p{N}.]+/gu, " ").trim().split(/\s+/).filter(Boolean);
-  return terms.map((x) => synonyms.get(x) || x);
-}
-function matchesInventoryItem(item, query) {
-  if (!item || typeof item !== "object") return false;
-  const terms = Array.isArray(query) ? query : inventoryTerms(query);
-  if (!terms.length) return false;
-  const fields = [
-    item.code,
-    item.description,
-    item.location,
-    item.extra?.iccCode,
-    item.extra?.brand,
-    item.extra?.model
-  ].filter((x) => typeof x === "string");
-  const available = new Set(fields.flatMap((x) => inventoryTerms(x, { maxLength: 1e4 })));
-  return terms.every((term) => available.has(term));
-}
-function filterConfirmedInventoryItems(items, query, { limit = 50 } = {}) {
-  if (!Array.isArray(items)) throw Error("CONFIRMED_ITEMS_REQUIRED");
-  const terms = inventoryTerms(query);
-  if (!terms.length) return [];
-  const n = Number(limit);
-  if (!Number.isInteger(n) || n < 1 || n > 100) throw Error("INVALID_LIMIT");
-  const result = [];
-  for (const item of items) if (matchesInventoryItem(item, terms)) {
-    result.push(item);
-    if (result.length === n) break;
-  }
-  return result;
-}
-
-// ops/maintrack/inventory/backend/src/postgres-store.mjs
 var PostgresInventoryStore = class {
   constructor({ pool: pool2, privateFiles }) {
     if (!pool2?.connect || !privateFiles?.putObject || !privateFiles?.deleteObject)
@@ -436,8 +467,13 @@ var PostgresInventoryStore = class {
   }
   async publish(draftId, baseVersionId, actor) {
     try {
-      const q = await this.pool.query("SELECT inv_lab.publish_version($1,$2,$3)::text AS id", [draftId, baseVersionId, actor]);
-      return { versionId: q.rows[0].id };
+      return await this.transaction(async (db) => {
+        await db.query("SELECT current_version_id FROM inv_lab.active WHERE singleton=true FOR UPDATE");
+        const source = await db.query("SELECT source.excluded_at FROM inv_lab.versions draft JOIN inv_lab.versions source ON source.id=draft.source_version_id WHERE draft.id=$1", [draftId]);
+        if (source.rows[0]?.excluded_at) throw Error("VERSION_IS_EXCLUDED");
+        const q = await db.query("SELECT inv_lab.publish_version($1,$2,$3)::text AS id", [draftId, baseVersionId, actor]);
+        return { versionId: q.rows[0].id };
+      });
     } catch (e) {
       if (e.code === "40001") throw Error("STALE_BASE_RECOMPARE_REQUIRED");
       throw e;
@@ -447,11 +483,44 @@ var PostgresInventoryStore = class {
     const q = await this.pool.query(`SELECT id::text,parent_version_id::text AS "parentVersionId",source_version_id::text AS "sourceVersionId",filename,item_count AS "itemCount",status,approved_at AS "approvedAt",archived_at AS "archivedAt" FROM inv_lab.versions WHERE status IN ('current','archived') ORDER BY approved_at DESC LIMIT $1`, [Math.max(1, Math.min(Number(limit) || 100, 500))]);
     return q.rows;
   }
+  pageArgs({ limit = 50, offset = 0 } = {}) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw Error("INVALID_LIMIT");
+    if (!Number.isInteger(offset) || offset < 0 || offset > 1e5) throw Error("INVALID_OFFSET");
+    return { limit, offset };
+  }
+  async versionsPage(input = {}) {
+    const { limit, offset } = this.pageArgs(input);
+    const q = await this.pool.query(`SELECT v.id::text,v.filename,v.item_count AS "itemCount",v.status,v.approved_at AS "approvedAt",v.excluded_at AS "excludedAt",COALESCE(u.name,'\u062D\u0633\u0627\u0628 \u0633\u0627\u0628\u0642') AS "approvedBy" FROM inv_lab.versions v LEFT JOIN public.mt_users u ON u.id::text=v.approved_by WHERE v.status IN ('current','archived') AND ($1::boolean OR v.excluded_at IS NULL) ORDER BY v.approved_at DESC,v.id DESC LIMIT $2 OFFSET $3`, [input.includeExcluded === true, limit + 1, offset]);
+    return { items: q.rows.slice(0, limit), hasMore: q.rows.length > limit, nextOffset: q.rows.length > limit ? offset + limit : null };
+  }
+  async claimSearchBudget(actor) {
+    const q = await this.pool.query("INSERT INTO inv_lab.search_budget(actor,day,requests) VALUES($1,CURRENT_DATE,1) ON CONFLICT(actor,day) DO UPDATE SET requests=inv_lab.search_budget.requests+1 WHERE inv_lab.search_budget.requests<60 RETURNING requests", [actor]);
+    return q.rows.length > 0;
+  }
+  async activity(input = {}) {
+    const { limit, offset } = this.pageArgs(input);
+    const q = await this.pool.query(`SELECT a.id::text,a.event,a.version_id::text AS "versionId",a.occurred_at AS "occurredAt",COALESCE(u.name,'\u062D\u0633\u0627\u0628 \u0633\u0627\u0628\u0642') AS "actorName",v.filename FROM inv_lab.audit a LEFT JOIN public.mt_users u ON u.id::text=a.actor LEFT JOIN inv_lab.versions v ON v.id=a.version_id ORDER BY a.id DESC LIMIT $1 OFFSET $2`, [limit + 1, offset]);
+    return { items: q.rows.slice(0, limit), hasMore: q.rows.length > limit, nextOffset: q.rows.length > limit ? offset + limit : null };
+  }
+  async setExcluded(versionId, expectedCurrentId, actor, excluded) {
+    return this.transaction(async (db) => {
+      const active = await db.query("SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true FOR UPDATE");
+      if (active.rows[0]?.id !== expectedCurrentId) throw Error("VERSION_CHANGED_RELOAD_REQUIRED");
+      if (versionId === expectedCurrentId) throw Error("CURRENT_VERSION_CANNOT_BE_EXCLUDED");
+      const v = await db.query("SELECT status,excluded_at FROM inv_lab.versions WHERE id=$1 FOR UPDATE", [versionId]);
+      if (v.rows[0]?.status !== "archived") throw Error("VERSION_NOT_ARCHIVED");
+      if (Boolean(v.rows[0].excluded_at) === excluded) return { updated: false };
+      await db.query("UPDATE inv_lab.versions SET excluded_at=CASE WHEN $2::boolean THEN now() ELSE NULL END,excluded_by=CASE WHEN $2::boolean THEN $3 ELSE NULL END WHERE id=$1", [versionId, excluded, actor]);
+      await db.query("INSERT INTO inv_lab.audit(event,version_id,base_version_id,actor) VALUES($1,$2,$3,$4)", [excluded ? "VERSION_EXCLUDED" : "VERSION_REINSTATED", versionId, expectedCurrentId, actor]);
+      return { updated: true };
+    });
+  }
   async stageRestore(sourceId, actor) {
     return this.transaction(async (db) => {
-      const a = await db.query("SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true");
+      const a = await db.query("SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true FOR UPDATE");
       const baseId = a.rows[0]?.id ?? null;
-      const s = await db.query("SELECT file_sha256,file_storage_key,status FROM inv_lab.versions WHERE id=$1", [sourceId]);
+      const s = await db.query("SELECT file_sha256,file_storage_key,status,excluded_at FROM inv_lab.versions WHERE id=$1 FOR SHARE", [sourceId]);
+      if (s.rows[0]?.excluded_at) throw Error("VERSION_IS_EXCLUDED");
       if (s.rows[0]?.status !== "archived") throw Error("ONLY_ARCHIVED_VERSION_CAN_BE_RESTORED");
       const src = s.rows[0];
       const v = await db.query("INSERT INTO inv_lab.versions(parent_version_id,source_version_id,filename,file_sha256,file_storage_key,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING id::text AS id", [baseId, sourceId, "restore-v" + sourceId + ".xlsx", src.file_sha256, src.file_storage_key, actor]);
@@ -480,13 +549,15 @@ function identical(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || !/^[0-9a-f]{64}$/i.test(a) || !/^[0-9a-f]{64}$/i.test(b)) return false;
   return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
 }
-function createInventoryService({ verifySession, store, parseXlsx } = {}) {
+function createInventoryService({ verifySession, store, parseXlsx, assist } = {}) {
   if (typeof verifySession !== "function" || !store) throw Error("TRUSTED_SESSION_ADAPTER_REQUIRED");
   return {
     async execute(input = {}) {
       const action = String(input.action || "");
       const identity = await verifySession(input.session);
       const permission = {
+        inventorySearchCapabilities: "search",
+        inventorySearchAssist: "search",
         inventorySnapshot: "search",
         inventoryVersion: "search",
         inventorySearch: "search",
@@ -496,6 +567,10 @@ function createInventoryService({ verifySession, store, parseXlsx } = {}) {
         inventoryDiff: "diff",
         inventoryPublish: "publish",
         inventoryHistory: "versions:list",
+        inventoryVersions: "versions:list",
+        inventoryActivity: "audit",
+        inventoryExcludeVersion: "restore",
+        inventoryReinstateVersion: "restore",
         inventoryRestore: "restore"
       }[action];
       if (!permission) throw Error("UNKNOWN_ACTION");
@@ -503,6 +578,10 @@ function createInventoryService({ verifySession, store, parseXlsx } = {}) {
       const actor = String(authorized.userId || "").trim();
       if (!actor) throw Error("VERIFIED_USER_ID_REQUIRED");
       switch (action) {
+        case "inventorySearchCapabilities":
+          return assist?.capabilities() || { cloud: false };
+        case "inventorySearchAssist":
+          return assist ? assist.search({ query: input.query, versionId: input.versionId, actor }) : { codes: [], mode: "local" };
         case "inventorySnapshot":
           return store.snapshot();
         case "inventoryVersion":
@@ -563,6 +642,16 @@ function createInventoryService({ verifySession, store, parseXlsx } = {}) {
         }
         case "inventoryHistory":
           return store.history(input.limit);
+        case "inventoryVersions":
+          return store.versionsPage({ limit: input.limit, offset: input.offset, includeExcluded: input.includeExcluded === true });
+        case "inventoryActivity":
+          return store.activity({ limit: input.limit, offset: input.offset });
+        case "inventoryExcludeVersion":
+        case "inventoryReinstateVersion": {
+          if (input.confirm !== true) throw Error("VERSION_ACTION_CONFIRM_REQUIRED");
+          for (const id of [input.versionId, input.expectedCurrentId]) if (typeof id !== "string" || !/^\d{1,19}$/.test(id) || BigInt(id) < 1n || BigInt(id) > 9223372036854775807n) throw Error("INVALID_VERSION");
+          return store.setExcluded(input.versionId, input.expectedCurrentId, actor, action === "inventoryExcludeVersion");
+        }
         case "inventoryRestore": {
           const staged = await store.stageRestore(input.sourceVersionId, actor);
           const diff = await store.diff(staged.draftId);
@@ -579,13 +668,13 @@ function createInventoryService({ verifySession, store, parseXlsx } = {}) {
 }
 
 // ops/maintrack/inventory/backend/src/create-review-runtime.mjs
-async function createReviewInventoryRuntime({ verifySession, pool: pool2, storage: storage2, bucket: bucket2 } = {}) {
+async function createReviewInventoryRuntime({ verifySession, pool: pool2, storage: storage2, bucket: bucket2, expandQuery: expandQuery2 } = {}) {
   if (typeof verifySession !== "function" || !pool2?.query || !pool2?.connect)
     throw Error("TRUSTED_SESSION_AND_DB_REQUIRED");
   const privateFiles = await createPrivateBucketArchive({ storage: storage2, bucket: bucket2 });
   const store = new PostgresInventoryStore({ pool: pool2, privateFiles });
   return Object.freeze({
-    service: createInventoryService({ verifySession, store, parseXlsx: parseInventoryXlsx })
+    service: createInventoryService({ verifySession, store, parseXlsx: parseInventoryXlsx, assist: createSearchAssist({ store, expand: expandQuery2, claim: (actor) => store.claimSearchBudget(actor) }) })
     // No raw storage bucket, database pool, credentials or unrestricted file method
     // is exposed to a client handler.
   });
@@ -649,8 +738,8 @@ var codeFor = (err) => {
   if (/REQUEST_TOO_LARGE|XLSX_DIRECT_UPLOAD_REQUIRED/.test(err)) return 413;
   if (/UNAUTHENTICATED|VERIFIED_USER_ID_REQUIRED/.test(err)) return 401;
   if (/FORBIDDEN/.test(err)) return 403;
-  if (/STALE_BASE|NOT_PENDING|REVIEW_RECEIPT_MISMATCH|INVENTORY_VERSION_CHANGED_RESTART_SEARCH/.test(err)) return 409;
-  if (/UNKNOWN_ACTION|INVALID_JSON|REQUEST_TOO_LARGE|REQUEST_BODY_REQUIRED|INVALID_XLSX_ENCODING|INVALID_QUERY|INVALID_LIMIT|INVALID_OFFSET|ONLY_XLSX|INVALID_FILE|DUPLICATE_|MISSING_|REQUIRED_|SUSPICIOUS_|OWNER_REVIEW_REQUIRED|LARGE_ABSENCE|FORMULA_|HYPERLINK_|XLSX_|INVALID_QUANTITY|INVALID_REQUIRED_FIELD/.test(err)) return 422;
+  if (/VERSION_CHANGED|CURRENT_VERSION_CANNOT_BE_EXCLUDED|VERSION_NOT_ARCHIVED|VERSION_IS_EXCLUDED|STALE_BASE|NOT_PENDING|REVIEW_RECEIPT_MISMATCH|INVENTORY_VERSION_CHANGED_RESTART_SEARCH/.test(err)) return 409;
+  if (/VERSION_ACTION_CONFIRM_REQUIRED|INVALID_VERSION|UNKNOWN_ACTION|INVALID_JSON|REQUEST_TOO_LARGE|REQUEST_BODY_REQUIRED|INVALID_XLSX_ENCODING|INVALID_QUERY|INVALID_LIMIT|INVALID_OFFSET|ONLY_XLSX|INVALID_FILE|DUPLICATE_|MISSING_|REQUIRED_|SUSPICIOUS_|OWNER_REVIEW_REQUIRED|LARGE_ABSENCE|FORMULA_|HYPERLINK_|XLSX_|INVALID_QUANTITY|INVALID_REQUIRED_FIELD/.test(err)) return 422;
   return 500;
 };
 function createInventoryHttpHandler({ service, allowedOrigins: allowedOrigins2 } = {}) {
@@ -711,7 +800,8 @@ async function createReviewInventoryHttpHandler({
   pool: pool2,
   storage: storage2,
   bucket: bucket2,
-  allowedOrigins: allowedOrigins2
+  allowedOrigins: allowedOrigins2,
+  expandQuery: expandQuery2
 } = {}) {
   if (!pool2?.query || !pool2?.connect) throw Error("PRIVATE_POSTGRES_POOL_REQUIRED");
   const verifySession = createMainTrackOpaqueSessionVerifier({ pool: pool2 });
@@ -719,7 +809,8 @@ async function createReviewInventoryHttpHandler({
     verifySession,
     pool: pool2,
     storage: storage2,
-    bucket: bucket2
+    bucket: bucket2,
+    expandQuery: expandQuery2
   });
   return createInventoryHttpHandler({ service: runtime.service, allowedOrigins: allowedOrigins2 });
 }
@@ -729,6 +820,7 @@ globalThis.Buffer ??= Buffer2;
 var url = Deno.env.get("SUPABASE_URL");
 var key2 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 var pool = new pg.Pool({ connectionString: Deno.env.get("SUPABASE_DB_URL"), max: 2, idleTimeoutMillis: 1e4, connectionTimeoutMillis: 7e3 });
+var expandQuery = createQueryExpander({ apiKey: Deno.env.get("OPENAI_API_KEY"), model: Deno.env.get("MAINTRACK_SEARCH_MODEL") || "gpt-4.1-mini" });
 var bucket = "maintrack-inventory-archive-staging";
 var allowedOrigins = ["https://maintrack-final-security-jb82mdyun-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-6oskca75z-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-5c2j4jzn0-mohamedashrefsrag-5918.vercel.app", "https://localhost", "https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app"];
 async function storageRequest(path, { method = "GET", body, headers = {} } = {}) {
@@ -763,11 +855,11 @@ var ready;
 var response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 Deno.serve(async (request) => {
   const path = new URL(request.url).pathname;
-  if (request.method === "GET" && path.endsWith("/healthz")) return response({ service: "maintrack-inventory-047-qa", status: "up" });
+  if (request.method === "GET" && path.endsWith("/healthz")) return response({ service: "maintrack-inventory-047-qa", status: "up", cloudSearchConfigured: !!expandQuery });
   if (!["POST", "OPTIONS"].includes(request.method)) return response({ ok: false, error: "METHOD_NOT_ALLOWED" }, 405);
   try {
     if (!url || !key2 || !Deno.env.get("SUPABASE_DB_URL")) throw Error("INVENTORY_NOT_CONFIGURED");
-    ready ??= createReviewInventoryHttpHandler({ pool, storage, bucket, allowedOrigins }).catch((e) => {
+    ready ??= createReviewInventoryHttpHandler({ pool, storage, bucket, allowedOrigins, expandQuery }).catch((e) => {
       ready = null;
       throw e;
     });

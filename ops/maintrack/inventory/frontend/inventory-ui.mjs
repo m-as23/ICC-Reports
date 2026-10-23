@@ -8,11 +8,17 @@ function active(){if(!readSession()?.token||section.style.display!=='block')thro
 window.MainTrackInventoryHost=Object.freeze({
  role:()=>{active();return readSession().role;},
  snapshot:()=>{active();return client.snapshot();},
+ capabilities:()=>{active();return client.capabilities();},
+ assist:input=>{active();return client.assist(input);},
  version:()=>{active();return client.version();},
  upload:file=>{active();return client.upload(file);},
  review:id=>{active();return client.review(id);},
  publish:args=>{active();return client.publish(args);},
  history:()=>{active();return client.history();},
+ versions:options=>{active();return client.versions(options);},
+ activity:options=>{active();return client.activity(options);},
+ exclude:input=>{active();return client.exclude(input);},
+ reinstate:input=>{active();return client.reinstate(input);},
  restore:id=>{active();return client.restore(id);}
 });
 function size(){if(mountedToken)frame.style.height=Math.max(320,window.innerHeight-Math.max(0,section.getBoundingClientRect().top))+'px';}

@@ -14,7 +14,7 @@ function identical(a,b){
  if(typeof a!=='string'||typeof b!=='string'||!/^[0-9a-f]{64}$/i.test(a)||!/^[0-9a-f]{64}$/i.test(b))return false;
  return timingSafeEqual(Buffer.from(a,'hex'),Buffer.from(b,'hex'));
 }
-export function createInventoryService({verifySession,store,parseXlsx}={}){
+export function createInventoryService({verifySession,store,parseXlsx,assist}={}){
  if(typeof verifySession!=='function'||!store)throw Error('TRUSTED_SESSION_ADAPTER_REQUIRED');
  return {
   async execute(input={}){
@@ -22,15 +22,17 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
    // Only trusted server-side verification may supply userId/role.
    const identity=await verifySession(input.session);
    const permission={
-    inventorySnapshot:'search',inventoryVersion:'search',inventorySearch:'search',inventorySearchPage:'search',inventoryItem:'details',
+    inventorySearchCapabilities:'search',inventorySearchAssist:'search',inventorySnapshot:'search',inventoryVersion:'search',inventorySearch:'search',inventorySearchPage:'search',inventoryItem:'details',
     inventoryDraft:'upload',inventoryDiff:'diff',inventoryPublish:'publish',
-    inventoryHistory:'versions:list',inventoryRestore:'restore'
+    inventoryHistory:'versions:list',inventoryVersions:'versions:list',inventoryActivity:'audit',inventoryExcludeVersion:'restore',inventoryReinstateVersion:'restore',inventoryRestore:'restore'
    }[action];
    if(!permission)throw Error('UNKNOWN_ACTION');
    const authorized=authorizeInventoryAction(identity,permission);
    const actor=String(authorized.userId||'').trim();
    if(!actor)throw Error('VERIFIED_USER_ID_REQUIRED');
    switch(action){
+    case 'inventorySearchCapabilities':return assist?.capabilities()||{cloud:false};
+    case 'inventorySearchAssist':return assist?assist.search({query:input.query,versionId:input.versionId,actor}):{codes:[],mode:'local'};
     case 'inventorySnapshot':return store.snapshot();
     case 'inventoryVersion':return store.current();
     case 'inventorySearch':return store.search(input.query,input.limit);
@@ -73,6 +75,13 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
       return store.publish(diff.draftId,diff.baseVersionId,actor);
     }
     case 'inventoryHistory':return store.history(input.limit);
+    case 'inventoryVersions':return store.versionsPage({limit:input.limit,offset:input.offset,includeExcluded:input.includeExcluded===true});
+    case 'inventoryActivity':return store.activity({limit:input.limit,offset:input.offset});
+    case 'inventoryExcludeVersion':case 'inventoryReinstateVersion':{
+      if(input.confirm!==true)throw Error('VERSION_ACTION_CONFIRM_REQUIRED');
+      for(const id of [input.versionId,input.expectedCurrentId])if(typeof id!=='string'||!/^\d{1,19}$/.test(id)||BigInt(id)<1n||BigInt(id)>9223372036854775807n)throw Error('INVALID_VERSION');
+      return store.setExcluded(input.versionId,input.expectedCurrentId,actor,action==='inventoryExcludeVersion');
+    }
     case 'inventoryRestore':{
       const staged=await store.stageRestore(input.sourceVersionId,actor);
       const diff=await store.diff(staged.draftId);

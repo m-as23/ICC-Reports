@@ -17,6 +17,8 @@ export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis
  return Object.freeze({
   version:()=>call('inventoryVersion'),
   snapshot:()=>call('inventorySnapshot'),
+  capabilities:()=>call('inventorySearchCapabilities'),
+  assist:input=>call('inventorySearchAssist',input),
   restore:sourceVersionId=>{owner();reviewed=null;return call('inventoryRestore',{sourceVersionId});},
   async search(query,{offset=0,limit=50}={}){
    const q=String(query||'').trim();if(!q)throw Error('INVALID_QUERY');
@@ -52,6 +54,10 @@ export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis
    return call('inventoryPublish',{draftId:active.draftId,reviewReceipt:active.reviewReceipt,confirmReviewed:true,acknowledgeLargeAbsence});
   },
   history:()=>{owner();return call('inventoryHistory',{limit:100});},
+  versions:options=>{owner();return call('inventoryVersions',options);},
+  activity:options=>{owner();return call('inventoryActivity',options);},
+  exclude:input=>{owner();return call('inventoryExcludeVersion',input);},
+  reinstate:input=>{owner();return call('inventoryReinstateVersion',input);},
   reset(){searchPin=null;reviewed=null;reviewSession=null;}
  });
 }

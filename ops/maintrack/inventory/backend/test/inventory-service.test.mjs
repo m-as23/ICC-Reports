@@ -93,3 +93,14 @@ test('Authenticated technician can load the approved reference snapshot; revoked
  await assert.rejects(()=>revoked.execute({action:'inventorySnapshot',session}),/UNAUTHENTICATED/);
  assert.equal(f.seen.length,1);
 });
+
+test('Owner version pages/activity and exclusion require trusted Owner and confirmation',async()=>{
+ const f=fixture();f.store.versionsPage=async x=>({items:[],...x});f.store.activity=async x=>({items:[],...x});
+ f.store.setExcluded=async(...args)=>{f.seen.push(['exclude',...args]);return {updated:true};};
+ const s=f.make();assert.equal((await s.execute({action:'inventoryVersions',limit:3,offset:0,session})).limit,3);
+ assert.deepEqual((await s.execute({action:'inventoryActivity',session})).items,[]);
+ await assert.rejects(()=>s.execute({action:'inventoryExcludeVersion',versionId:'8',expectedCurrentId:'9',session}),/VERSION_ACTION_CONFIRM_REQUIRED/);
+ await s.execute({action:'inventoryExcludeVersion',versionId:'8',expectedCurrentId:'9',confirm:true,session});
+ assert.deepEqual(f.seen,[['exclude','8','9','owner-1',true]]);
+ const denied=fixture(technician).make();for(const action of ['inventoryVersions','inventoryActivity','inventoryExcludeVersion','inventoryReinstateVersion'])await assert.rejects(()=>denied.execute({action,role:'owner',confirm:true,session}),/FORBIDDEN/);
+});

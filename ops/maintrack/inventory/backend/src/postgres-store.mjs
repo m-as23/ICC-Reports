@@ -117,19 +117,56 @@ export class PostgresInventoryStore {
  }
  async publish(draftId,baseVersionId,actor){
   try{
-   const q=await this.pool.query('SELECT inv_lab.publish_version($1,$2,$3)::text AS id',[draftId,baseVersionId,actor]);
-   return {versionId:q.rows[0].id};
+   return await this.transaction(async db=>{
+    await db.query('SELECT current_version_id FROM inv_lab.active WHERE singleton=true FOR UPDATE');
+    const source=await db.query('SELECT source.excluded_at FROM inv_lab.versions draft JOIN inv_lab.versions source ON source.id=draft.source_version_id WHERE draft.id=$1',[draftId]);
+    if(source.rows[0]?.excluded_at)throw Error('VERSION_IS_EXCLUDED');
+    const q=await db.query('SELECT inv_lab.publish_version($1,$2,$3)::text AS id',[draftId,baseVersionId,actor]);
+    return {versionId:q.rows[0].id};
+   });
   }catch(e){if(e.code==='40001')throw Error('STALE_BASE_RECOMPARE_REQUIRED');throw e;}
  }
  async history(limit=100){
   const q=await this.pool.query("SELECT id::text,parent_version_id::text AS \"parentVersionId\",source_version_id::text AS \"sourceVersionId\",filename,item_count AS \"itemCount\",status,approved_at AS \"approvedAt\",archived_at AS \"archivedAt\" FROM inv_lab.versions WHERE status IN ('current','archived') ORDER BY approved_at DESC LIMIT $1",[Math.max(1,Math.min(Number(limit)||100,500))]);
   return q.rows;
  }
+ pageArgs({limit=50,offset=0}={}){
+  if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('INVALID_LIMIT');
+  if(!Number.isInteger(offset)||offset<0||offset>100000)throw Error('INVALID_OFFSET');
+  return {limit,offset};
+ }
+ async versionsPage(input={}){
+  const {limit,offset}=this.pageArgs(input);
+  const q=await this.pool.query(`SELECT v.id::text,v.filename,v.item_count AS "itemCount",v.status,v.approved_at AS "approvedAt",v.excluded_at AS "excludedAt",COALESCE(u.name,'حساب سابق') AS "approvedBy" FROM inv_lab.versions v LEFT JOIN public.mt_users u ON u.id::text=v.approved_by WHERE v.status IN ('current','archived') AND ($1::boolean OR v.excluded_at IS NULL) ORDER BY v.approved_at DESC,v.id DESC LIMIT $2 OFFSET $3`,[input.includeExcluded===true,limit+1,offset]);
+  return {items:q.rows.slice(0,limit),hasMore:q.rows.length>limit,nextOffset:q.rows.length>limit?offset+limit:null};
+ }
+ async claimSearchBudget(actor){
+  const q=await this.pool.query('INSERT INTO inv_lab.search_budget(actor,day,requests) VALUES($1,CURRENT_DATE,1) ON CONFLICT(actor,day) DO UPDATE SET requests=inv_lab.search_budget.requests+1 WHERE inv_lab.search_budget.requests<60 RETURNING requests',[actor]);return q.rows.length>0;
+ }
+ async activity(input={}){
+  const {limit,offset}=this.pageArgs(input);
+  const q=await this.pool.query(`SELECT a.id::text,a.event,a.version_id::text AS "versionId",a.occurred_at AS "occurredAt",COALESCE(u.name,'حساب سابق') AS "actorName",v.filename FROM inv_lab.audit a LEFT JOIN public.mt_users u ON u.id::text=a.actor LEFT JOIN inv_lab.versions v ON v.id=a.version_id ORDER BY a.id DESC LIMIT $1 OFFSET $2`,[limit+1,offset]);
+  return {items:q.rows.slice(0,limit),hasMore:q.rows.length>limit,nextOffset:q.rows.length>limit?offset+limit:null};
+ }
+ async setExcluded(versionId,expectedCurrentId,actor,excluded){
+  return this.transaction(async db=>{
+   const active=await db.query('SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true FOR UPDATE');
+   if(active.rows[0]?.id!==expectedCurrentId)throw Error('VERSION_CHANGED_RELOAD_REQUIRED');
+   if(versionId===expectedCurrentId)throw Error('CURRENT_VERSION_CANNOT_BE_EXCLUDED');
+   const v=await db.query('SELECT status,excluded_at FROM inv_lab.versions WHERE id=$1 FOR UPDATE',[versionId]);
+   if(v.rows[0]?.status!=='archived')throw Error('VERSION_NOT_ARCHIVED');
+   if(Boolean(v.rows[0].excluded_at)===excluded)return {updated:false};
+   await db.query('UPDATE inv_lab.versions SET excluded_at=CASE WHEN $2::boolean THEN now() ELSE NULL END,excluded_by=CASE WHEN $2::boolean THEN $3 ELSE NULL END WHERE id=$1',[versionId,excluded,actor]);
+   await db.query('INSERT INTO inv_lab.audit(event,version_id,base_version_id,actor) VALUES($1,$2,$3,$4)',[excluded?'VERSION_EXCLUDED':'VERSION_REINSTATED',versionId,expectedCurrentId,actor]);
+   return {updated:true};
+  });
+ }
  async stageRestore(sourceId,actor){
   return this.transaction(async db=>{
-   const a=await db.query('SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true');
+   const a=await db.query('SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true FOR UPDATE');
    const baseId=a.rows[0]?.id??null;
-   const s=await db.query('SELECT file_sha256,file_storage_key,status FROM inv_lab.versions WHERE id=$1',[sourceId]);
+   const s=await db.query('SELECT file_sha256,file_storage_key,status,excluded_at FROM inv_lab.versions WHERE id=$1 FOR SHARE',[sourceId]);
+   if(s.rows[0]?.excluded_at)throw Error('VERSION_IS_EXCLUDED');
    if(s.rows[0]?.status!=='archived')throw Error('ONLY_ARCHIVED_VERSION_CAN_BE_RESTORED');
    const src=s.rows[0];
    const v=await db.query('INSERT INTO inv_lab.versions(parent_version_id,source_version_id,filename,file_sha256,file_storage_key,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING id::text AS id',[baseId,sourceId,'restore-v'+sourceId+'.xlsx',src.file_sha256,src.file_storage_key,actor]);

@@ -89,3 +89,20 @@ test('Reference page snapshot rejects concurrent publication',async()=>{
  store.current=async()=>({versionId:String(++n),generation:n});
  await assert.rejects(()=>store.snapshot(),/INVENTORY_VERSION_CHANGED_RESTART_SEARCH/);
 });
+
+test('Owner exclusion locks active version and refuses stale/current targets without updates',async()=>{
+ for(const [target,expected,error] of [['8','7','VERSION_CHANGED_RELOAD_REQUIRED'],['9','9','CURRENT_VERSION_CANNOT_BE_EXCLUDED']]){
+  const queries=[];const store=new PostgresInventoryStore({pool:{query(){},connect:async()=>({release(){},query:async(sql,args)=>{queries.push(sql);if(sql.includes('current_version_id'))return {rows:[{id:'9'}]};return {rows:[]};}})},privateFiles:{putObject(){},deleteObject(){}}});
+  await assert.rejects(()=>store.setExcluded(target,expected,'owner',true),new RegExp(error));assert.equal(queries.some(sql=>sql.startsWith('UPDATE')),false);assert.ok(queries.includes('ROLLBACK'));assert.match(queries.find(sql=>sql.includes('current_version_id')),/FOR UPDATE/);
+ }
+});
+test('Archived exclusion is audited and does not delete files or stock',async()=>{
+ const queries=[];const store=new PostgresInventoryStore({pool:{query(){},connect:async()=>({release(){},query:async(sql,args)=>{queries.push({sql,args});if(sql.includes('current_version_id'))return {rows:[{id:'9'}]};if(sql.startsWith('SELECT status'))return {rows:[{status:'archived',excluded_at:null}]};return {rows:[]};}})},privateFiles:{putObject(){throw Error('NO_FILE_WRITE')},deleteObject(){throw Error('NO_FILE_DELETE')}}});
+ assert.deepEqual(await store.setExcluded('8','9','owner',true),{updated:true});assert.deepEqual(queries.find(x=>x.sql.startsWith('INSERT INTO inv_lab.audit')).args,['VERSION_EXCLUDED','8','9','owner']);assert.equal(queries.some(x=>/DELETE FROM|UPDATE inv_lab.items/.test(x.sql)),false);
+});
+
+test('A reviewed restore cannot publish after its source version is excluded',async()=>{
+ const calls=[];const db={release(){},query:async(sql,args)=>{calls.push(sql);if(sql.includes('source.excluded_at'))return {rows:[{excluded_at:'2026-10-23'}]};return {rows:[]};}};
+ const store=new PostgresInventoryStore({pool:{connect:async()=>db,query:async sql=>{calls.push(sql);return {rows:[{id:'10'}]};}},privateFiles:{putObject(){},deleteObject(){}}});
+ await assert.rejects(()=>store.publish('10','9','owner'),/VERSION_IS_EXCLUDED/);assert.equal(calls.some(x=>x.includes('publish_version')),false);assert.ok(calls.some(x=>x.includes('FOR UPDATE')));
+});

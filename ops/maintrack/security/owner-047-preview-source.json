@@ -26,11 +26,19 @@
     },
     {
       "path": "inventory-047.js",
-      "sha256": "30e3bee939c28fac184507ea932bece8edc848157acfa15f35f035b4e10ecfda"
+      "sha256": "f913458dcb3181e01c5a5700f400e3be377c86e4bfae2b5e38720617945f2e05"
+    },
+    {
+      "path": "inventory-approved.css",
+      "sha256": "83b62293448407e5ac1f5be1a3774c2695f6aec25d7e3fb369115eab1448e55d"
+    },
+    {
+      "path": "inventory-approved.js",
+      "sha256": "e6e6872246d557ac680da9fe96b0ae298f9585215f22d865aaa7d2df312c86f5"
     },
     {
       "path": "inventory-reference-integration.js",
-      "sha256": "0effd58698a3bd0b2e6be30d52d005ead405608c79b9a8f9bea62782493aebd8"
+      "sha256": "3385e21d9b8e12e342e81215906748074d760f3c8977b9299996ce48277f0357"
     },
     {
       "path": "inventory-reference.css",
@@ -38,7 +46,7 @@
     },
     {
       "path": "inventory-reference.html",
-      "sha256": "22602692fa13addfaf3bb5bf215cb1d42933c53b3325ef4ca0bf584f50fb329c"
+      "sha256": "d26bd1fde317ce5d32cfa1b86f8ff53e79eb4220d1b1302adf659bd274010c32"
     },
     {
       "path": "inventory-reference.js",

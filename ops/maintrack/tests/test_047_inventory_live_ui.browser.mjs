@@ -10,7 +10,7 @@ const require=createRequire(path.join(root,'android/maintrack-app/tests-browser/
 const {chromium}=require('playwright');
 const stock=Array.from({length:25},(_,i)=>({code:'SE-DRV-M700'+String(i).padStart(3,'0'),description:(i===0?'<img src=x onerror=alert(1)> ':'')+'CONTROL TECHNIQUES DRIVE UNIDRIVE M700 '+(i+1)+' kW '+(i%2?'380':'220')+' V',quantity:i===24?null:i===0?'0':'7',location:i%2?'R2':'R1',extra:{sourceSheet:'parts',drawer:'D1',newCard:'C1'}}));
 const referenceItems=stock.map(x=>({c:x.code,d:x.description,q:x.quantity===null?null:Number(x.quantity),l:x.location,n:'C1',o:null,r:'D1',i:'',s:2}));
-for(const width of [390,1280])for(const role of ['owner','technician'])test('Exact uploaded search/cards/facets + host lifecycle: '+role+' '+width,async()=>{
+for(const width of [390,1280])for(const role of ['owner','technician'])test('Approved compact/empty UI and Owner versions: '+role+' '+width,async()=>{
  const index=await fs.readFile(path.join(assets,'index.html'),'utf8');
  const section=index.match(/<section id="inventory"[\s\S]*?<\/section>/)[0];
  const original=await fs.readFile(path.join(root,'ops/maintrack/tests/inventory-reference-original.fixture.html'),'utf8');
@@ -28,7 +28,7 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
   const page=await browser.newPage({viewport:{width,height:844}}),errors=[];
   page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(({role})=>{window.S={token:'a'.repeat(64),role};},{role});
-  const requests=[];let activeVersion='1';
+  const requests=[];let activeVersion='1',excluded=false;
   await page.route('https://tdnkeskczcsukcujwinu.supabase.co/**',async route=>{
    const req=route.request();
    if(req.method()==='OPTIONS'){await route.fulfill({status:204,headers:{'access-control-allow-origin':base,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, content-type'}});return;}
@@ -36,6 +36,10 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
    assert.equal(req.headers().authorization,'Bearer '+'a'.repeat(64));
    let data;
    if(x.action==='inventorySnapshot')data={versionId:activeVersion,generation:Number(activeVersion),filename:activeVersion==='1'?'approved.xlsx':'approved-v'+activeVersion+'.xlsx',approvedAt:'2026-10-23T07:03:00Z',items:stock};
+   else if(x.action==='inventorySearchCapabilities')data={cloud:false};
+   else if(x.action==='inventoryVersions'){const versions=[{id:activeVersion,status:'current',filename:'approved.xlsx',itemCount:25,approvedAt:'2026-10-23T07:03:00Z',approvedBy:'Owner'},...['8','7','6'].map(id=>({id,status:'archived',filename:'archive-'+id+'.xlsx',itemCount:25,approvedAt:'2026-10-22T07:03:00Z',approvedBy:'Owner',excludedAt:id==='8'&&excluded?'2026-10-23T07:03:00Z':null}))].filter(v=>v.status==='current'||!v.excludedAt||x.includeExcluded);data={items:versions.slice(x.offset,x.offset+x.limit),hasMore:false,nextOffset:null};}
+   else if(x.action==='inventoryActivity')data={items:[{id:'1',event:'PUBLISHED',actorName:'Owner',filename:'approved.xlsx',occurredAt:'2026-10-23T07:03:00Z'}],hasMore:false,nextOffset:null};
+   else if(x.action==='inventoryExcludeVersion'){excluded=true;data={updated:true};}
    else if(x.action==='inventoryVersion')data={versionId:activeVersion};
    else if(x.action==='inventoryHistory')data=[{id:'1',filename:'approved.xlsx',itemCount:25,status:'current',approvedAt:'2026-10-23T07:03:00Z'}];
    else if(x.action==='inventoryDraft')data={draftId:'2'};
@@ -46,7 +50,11 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
   });
   await page.goto(base+'/harness.html');await page.evaluate(()=>document.getElementById('inventory').style.display='block');
   const frame=page.frameLocator('#inv47Frame');
-  await frame.locator('#inventoryMeta').filter({hasText:'approved.xlsx'}).waitFor();
+  await frame.locator('#query:enabled').waitFor();
+  assert.equal(await frame.locator('#query').inputValue(),'');assert.equal(await frame.locator('#welcome').isVisible(),true);
+  assert.match(await frame.locator('.freshness-row').textContent(),/آخر تحديث لرصيد قطع الغيار/);assert.doesNotMatch(await frame.locator('.content').textContent(),/approved.xlsx/);
+  const outEmpty=path.join(root,'audit-output/maintrack-047-mobile');await fs.mkdir(outEmpty,{recursive:true});await page.screenshot({path:path.join(outEmpty,'approved-empty-'+role+'-'+width+'.png')});
+  await frame.locator('[data-example="ليمت سويتش"]').click();assert.equal(await frame.locator('#query').inputValue(),'ليمت سويتش');await frame.locator('#clearSearch').click();assert.equal(await frame.locator('#welcome').isVisible(),true);
   assert.match(await frame.locator('#inventoryFreshness').textContent(),/٢٠٢٦/);
   await frame.locator('#query').fill('M700');await frame.locator('#searchButton').click();
   await frame.locator('#counter').filter({hasText:'25 صنف'}).waitFor();
@@ -55,49 +63,29 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
   assert.match(await frame.locator('.item-heading h3').first().textContent(),/Drive \/ Inverter · M700/);
   assert.match(await frame.locator('#facetArea').textContent(),/القدرة/);
   assert.match(await frame.locator('#facetArea').textContent(),/الجهد/);
-  // Compare unchanged result DOM and pixels against the supplied source at the SAME viewport/data.
+  // Matching/facets remain equivalent to original; card layout is explicitly redesigned.
   const baseline=await browser.newPage({viewport:{width,height:844}});await baseline.goto(base+'/original.html');
   await baseline.evaluate(items=>{mt6SetData(items);document.getElementById('query').value='M700';search();},referenceItems);
   const live=page.frames().find(x=>x.url().endsWith('/inventory-reference.html'));
-  const actual=await live.locator('#results').innerHTML(),expected=await baseline.locator('#results').innerHTML();
-  assert.equal(actual,expected,'Original result cards must remain intact');
+  assert.deepEqual(await live.locator('[data-detail]').evaluateAll(rows=>rows.map(x=>x.dataset.detail)),await baseline.locator('[data-detail]').evaluateAll(rows=>rows.map(x=>x.dataset.detail)));
   assert.equal(await live.locator('#facetArea').innerHTML(),await baseline.locator('#facetArea').innerHTML());
-  await live.evaluate(()=>{document.documentElement.style.scrollBehavior='auto';document.getElementById('feedbackOpen').style.visibility='hidden';});await baseline.evaluate(()=>{document.documentElement.style.scrollBehavior='auto';document.getElementById('feedbackOpen').style.visibility='hidden';});
-  await live.locator('.part-card').first().scrollIntoViewIfNeeded();await baseline.locator('.part-card').first().scrollIntoViewIfNeeded();
-  // Different Owner controls change the page's absolute subpixel Y position.
-  // Rasterize both unchanged cards at integer origin, preserving their computed width.
-  const originalCardStyle=await live.locator('.part-card').first().getAttribute('style');
-  for(const context of [live,baseline])await context.locator('.part-card').first().evaluate(card=>{
-   const width=card.getBoundingClientRect().width;
-   Object.assign(card.style,{position:'fixed',top:'0px',left:'0px',right:'auto',width:width+'px',zIndex:'999'});
-  });
-  const actualImage=await live.locator('.part-card').first().screenshot({animations:'disabled'}),originalImage=await baseline.locator('.part-card').first().screenshot({animations:'disabled'});
-  const proof=path.join(root,'audit-output/maintrack-047-mobile');await fs.mkdir(proof,{recursive:true});
-  await fs.writeFile(path.join(proof,'actual-card-'+role+'-'+width+'.png'),actualImage);await fs.writeFile(path.join(proof,'original-card-'+role+'-'+width+'.png'),originalImage);
-  const visual=await baseline.evaluate(async images=>{
-   const decoded=await Promise.all(images.map(async encoded=>{
-    const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
-    const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);return {width:canvas.width,height:canvas.height,data:ctx.getImageData(0,0,canvas.width,canvas.height).data};
-   }));
-   const [a,b]=decoded;let changed=0;const h=Math.min(a.height,b.height),w=Math.min(a.width,b.width);
-   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const ai=(y*a.width+x)*4,bi=(y*b.width+x)*4;if(Math.max(...[0,1,2].map(c=>Math.abs(a.data[ai+c]-b.data[bi+c])))>16)changed++;}
-   return {widthDelta:Math.abs(a.width-b.width),heightDelta:Math.abs(a.height-b.height),changedRatio:changed/(w*h)};
-  },[actualImage.toString('base64'),originalImage.toString('base64')]);
-  // Ignore at most one rasterized edge row; layout/DOM/CSS remain strictly equal above.
-  assert.equal(visual.widthDelta,0);assert.ok(visual.heightDelta<=1,JSON.stringify(visual));assert.ok(visual.changedRatio<0.005,JSON.stringify(visual));
-  await live.locator('.part-card').first().evaluate((card,original)=>{if(original===null)card.removeAttribute('style');else card.setAttribute('style',original);},originalCardStyle);
-  await live.evaluate(()=>{document.getElementById('feedbackOpen').style.visibility='';});
-  await baseline.close();
+  assert.equal(await frame.locator('.item-desc').count(),0,'Full descriptions belong inside details');
+  await live.evaluate(()=>document.documentElement.style.scrollBehavior='auto');await baseline.close();
   await frame.locator('#moreBtn').click();await frame.locator('#moreBtn').click();assert.equal(await frame.locator('.part-card').count(),25);
   if(width<790)await frame.locator('#filterOpen').click();
   await frame.locator('[data-facet="availability"][data-value="missing"]').click();assert.equal(await frame.locator('.part-card').count(),1);
   await frame.locator('#resetFilters').click();if(width<790)await frame.locator('#filterClose').click();
   await frame.locator('[data-detail]').first().click();await frame.locator('#detailDrawer.open').waitFor();assert.match(await frame.locator('#detailBody').textContent(),/D1/);
   activeVersion='2';await live.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await frame.locator('#inventoryMeta').filter({hasText:'approved-v2.xlsx'}).waitFor();
+  await live.waitForFunction(()=>currentVersion?.versionId==='2');
   assert.equal(await frame.locator('#detailDrawer').evaluate(x=>x.classList.contains('open')),false,'New snapshot closes old item details');assert.equal(await frame.locator('#ownerImportOpen').isVisible(),role==='owner');
   if(role==='owner'){
-   await frame.locator('#ownerImportOpen').click();assert.equal(await frame.locator('#approveImport').isDisabled(),true);
+   await frame.locator('#ownerImportOpen').click();await frame.locator('#importHistory .version-card').first().waitFor();
+   assert.equal(await frame.locator('#importHistory .version-card').count(),3);assert.match(await frame.locator('#storageStatus').textContent(),/البحث السحابي غير مفعّل/);assert.equal(await frame.locator('#importHistory .current [data-version-action]').count(),0);
+   await frame.locator('#activityOpen').click();await frame.locator('#activityRows').filter({hasText:'اعتماد نسخة المخزن'}).waitFor();
+   page.once('dialog',d=>d.accept());await frame.locator('#importHistory [data-version-action=exclude]').first().click();await page.waitForFunction(()=>true);await frame.locator('#importHistory').filter({hasNotText:'archive-8.xlsx'}).waitFor();assert.equal(requests.filter(x=>x.action==='inventoryExcludeVersion').length,1);
+   await frame.locator('#archiveOpen').click();await frame.locator('#archiveRows .version-card').first().waitFor();
+   assert.equal(await frame.locator('#approveImport').isDisabled(),true);
    await frame.locator('#inventoryFile').setInputFiles({name:'test.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('synthetic-upload-fixture')});
    await frame.locator('#importPreview').waitFor({state:'visible'});assert.equal(await frame.locator('#diffBody tr').count(),50);assert.match(await frame.locator('#importMetrics').textContent(),/داخل الملف101/);
    await frame.locator('#diffNext').click();await frame.locator('#diffNext').click();assert.equal(await frame.locator('#diffBody tr').count(),1);assert.match(await frame.locator('#diffBody').textContent(),/ITEM100/);

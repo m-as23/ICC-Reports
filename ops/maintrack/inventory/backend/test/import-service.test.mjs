@@ -22,6 +22,8 @@ function environment(){
   if(sql.includes('INSERT INTO inv_lab.items')){events.push('staged-items:'+String(params.length/6));return {rows:[]};}
   if(sql.includes('inv_lab.seal_version'))return {rows:[]};
   if(sql.includes('INSERT INTO inv_lab.audit'))return {rows:[]};
+  if(sql.includes('source.excluded_at')){events.push('checked-restore-source');return {rows:[]};}
+  if(sql.includes('inv_lab.publish_version')){assert.ok(events.includes('checked-restore-source'));events.push('published');return {rows:[{id:'10'}]};}
   throw Error('UNEXPECTED_TRANSACTION_QUERY');
  },release(){}};
  const pool={
