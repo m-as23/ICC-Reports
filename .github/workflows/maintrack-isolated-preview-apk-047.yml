@@ -1,5 +1,5 @@
 name: MainTrack 0.4.7 isolated installable Preview APK
-# Approved compact cards/empty search, Owner versions and activity log.
+# General semantic index and exact-first search; Owner versions and compact design retained.
 on:
   push:
     branches: [feature/maintrack-047-integration-20261022]
