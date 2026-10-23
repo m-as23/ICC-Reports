@@ -33,6 +33,14 @@ export class PostgresInventoryStore {
   if(r.rows.length>MAX_APPROVED_ROWS)throw Error('INVENTORY_SCAN_TOO_LARGE');
   return r.rows;
  }
+ async snapshot(){
+  const before=await this.current();
+  const items=await this.approvedRows();
+  const after=await this.current();
+  if(before.versionId!==after.versionId||before.generation!==after.generation)
+   throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
+  return {...before,items};
+ }
  async search(term,limit=50){
   // Backward-compatible short list. For exhaustive counts/pages use searchPage.
   if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');

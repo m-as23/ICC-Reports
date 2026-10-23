@@ -18,15 +18,31 @@
     },
     {
       "path": "index.html",
-      "sha256": "efd3db96655d72ab9e38d8610fad2562cb0c8e01813b4bc6cdfbca4cd393d46e"
+      "sha256": "06683f83e10154ba93ef5e0fa2cc1f99d9c2ab2cb2726d583c863dac032651df"
     },
     {
       "path": "inventory-047.css",
-      "sha256": "f1f7ff40dbfdbf935bd9720536bedb1d7c90862fd858bf5b2f6d04df6ae4953d"
+      "sha256": "5eccd7859d8d8de7c9314bbd66238053243e842971656042d1151802fafff3f8"
     },
     {
       "path": "inventory-047.js",
-      "sha256": "53e624d8a3f2051ddc65c2e6c1e68d41a84325d8bd058a77b4d3599159547c80"
+      "sha256": "30e3bee939c28fac184507ea932bece8edc848157acfa15f35f035b4e10ecfda"
+    },
+    {
+      "path": "inventory-reference-integration.js",
+      "sha256": "66302f075e70e467d5892ec0d00f3d91f8c5f5d1e963bfa0320db64e790eca52"
+    },
+    {
+      "path": "inventory-reference.css",
+      "sha256": "bd59f87bb082ac8a116909ce3f60af9ecb236a6139715ba26494c541485ea9fe"
+    },
+    {
+      "path": "inventory-reference.html",
+      "sha256": "22602692fa13addfaf3bb5bf215cb1d42933c53b3325ef4ca0bf584f50fb329c"
+    },
+    {
+      "path": "inventory-reference.js",
+      "sha256": "f02610c7feb70cf303cc15fb35f64418b00fd75522f76a570f5cfc5b9dc3eeb6"
     },
     {
       "path": "manifest.webmanifest",

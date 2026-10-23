@@ -332,6 +332,14 @@ var PostgresInventoryStore = class {
     if (r.rows.length > MAX_APPROVED_ROWS) throw Error("INVENTORY_SCAN_TOO_LARGE");
     return r.rows;
   }
+  async snapshot() {
+    const before = await this.current();
+    const items = await this.approvedRows();
+    const after = await this.current();
+    if (before.versionId !== after.versionId || before.generation !== after.generation)
+      throw Error("INVENTORY_VERSION_CHANGED_RESTART_SEARCH");
+    return { ...before, items };
+  }
   async search(term, limit = 50) {
     if (typeof term !== "string" || !term.trim()) throw Error("INVALID_QUERY");
     inventoryTerms(term);
@@ -479,6 +487,7 @@ function createInventoryService({ verifySession, store, parseXlsx } = {}) {
       const action = String(input.action || "");
       const identity = await verifySession(input.session);
       const permission = {
+        inventorySnapshot: "search",
         inventoryVersion: "search",
         inventorySearch: "search",
         inventorySearchPage: "search",
@@ -494,6 +503,8 @@ function createInventoryService({ verifySession, store, parseXlsx } = {}) {
       const actor = String(authorized.userId || "").trim();
       if (!actor) throw Error("VERIFIED_USER_ID_REQUIRED");
       switch (action) {
+        case "inventorySnapshot":
+          return store.snapshot();
         case "inventoryVersion":
           return store.current();
         case "inventorySearch":

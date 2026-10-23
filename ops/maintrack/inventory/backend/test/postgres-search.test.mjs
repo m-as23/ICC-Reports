@@ -76,3 +76,16 @@ test('Concurrent Owner approval invalidates paged search rather than mixing two 
  await assert.rejects(()=>store.searchPage('Parker',{limit:1}),/INVENTORY_VERSION_CHANGED_RESTART_SEARCH/);
  assert.equal(reads,2);
 });
+
+test('Reference page snapshot returns approved rows and their actual metadata together',async()=>{
+ const {store}=storeFor([good,bearing]);
+ const result=await store.snapshot();
+ assert.equal(result.versionId,'9');
+ assert.equal(result.filename,'approved.xlsx');
+ assert.deepEqual(result.items,[good,bearing]);
+});
+test('Reference page snapshot rejects concurrent publication',async()=>{
+ const {store}=storeFor([good]);let n=0;
+ store.current=async()=>({versionId:String(++n),generation:n});
+ await assert.rejects(()=>store.snapshot(),/INVENTORY_VERSION_CHANGED_RESTART_SEARCH/);
+});

@@ -11,7 +11,7 @@ const baseDiff={draftId:'10',baseVersionId:'9',currentVersionId:'9',
 function fixture(user=owner){
  const seen=[],diff={...baseDiff};
  const store={
- current:async()=>({versionId:'9'}),search:async(q,limit)=>{seen.push(['search',q,limit]);return [];},
+ snapshot:async()=>{seen.push(['snapshot']);return {versionId:'9',filename:'approved.xlsx',approvedAt:'2026-10-23T07:03:00Z',items:[]};},current:async()=>({versionId:'9'}),search:async(q,limit)=>{seen.push(['search',q,limit]);return [];},
  item:async code=>({code}),searchPage:async(q,o)=>{seen.push(['searchPage',q,o]);return {versionId:'9',items:[]};},stage:async input=>{seen.push(['stage',input]);return {draftId:'10',baseVersionId:'9'};},
  diff:async()=>diff,
  publish:async (...args)=>{seen.push(['publish',args]);return {versionId:'10'};},
@@ -83,4 +83,13 @@ test('Complete diffs are paged with stable full-diff receipt, no unseen rows omi
  assert.equal(receipts.size,1,'Every page is tied to identical complete diff');
  await assert.rejects(()=>service.execute({action:'inventoryDiff',session,draftId:'10',limit:501}),/INVALID_LIMIT/);
  await assert.rejects(()=>service.execute({action:'inventoryDiff',session,draftId:'10',offset:-1}),/INVALID_OFFSET/);
+});
+
+test('Authenticated technician can load the approved reference snapshot; revoked session cannot',async()=>{
+ const f=fixture(technician);
+ const data=await f.make().execute({action:'inventorySnapshot',session,role:'owner'});
+ assert.equal(data.filename,'approved.xlsx');assert.equal(data.approvedAt,'2026-10-23T07:03:00Z');assert.deepEqual(f.seen,[['snapshot']]);
+ const revoked=f.make({verifySession:async()=>null});
+ await assert.rejects(()=>revoked.execute({action:'inventorySnapshot',session}),/UNAUTHENTICATED/);
+ assert.equal(f.seen.length,1);
 });

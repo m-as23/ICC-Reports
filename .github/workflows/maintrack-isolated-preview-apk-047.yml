@@ -1,5 +1,5 @@
 name: MainTrack 0.4.7 isolated installable Preview APK
-# Inventory reference: mobile sort + filter sheet; version-pinned result heading.
+# Inventory page copied from the supplied HTML; authenticated snapshot and original adaptive engine.
 on:
   push:
     branches: [feature/maintrack-047-integration-20261022]
@@ -70,10 +70,10 @@ jobs:
           s=re.sub(r'\bversionCode\s+\d+','versionCode 407',s,count=1)
           s=re.sub(r'\bversionName\s+"[^"]+"','versionName "0.4.7"',s,count=1)
           assert s.count('applicationId "com.icc.maintrack"')==1
-          s=s.replace('applicationId "com.icc.maintrack"','applicationId "com.icc.maintrack.preview047r3"')
+          s=s.replace('applicationId "com.icc.maintrack"','applicationId "com.icc.maintrack.preview047r4"')
           p.write_text(s)
           strings=Path('android/app/src/main/res/values/strings.xml')
-          strings.write_text(strings.read_text().replace('>MainTrack<','>MainTrack 0.4.7 Preview 3<'))
+          strings.write_text(strings.read_text().replace('>MainTrack<','>MainTrack 0.4.7 Preview 4<'))
           PYTHON
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           MANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
@@ -95,9 +95,9 @@ jobs:
           TOOLS="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.0.0"
           mkdir -p release-output
           "$TOOLS/zipalign" -p -f 4 android/maintrack-app/android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/047-preview-aligned.apk"
-          "$TOOLS/apksigner" sign --ks "$QA_KEY" --ks-key-alias preview047 --ks-pass env:MT047_QA_PASS --key-pass env:MT047_QA_PASS --v2-signing-enabled true --v3-signing-enabled true --out release-output/MainTrack-0.4.7-407-INVENTORY-DESIGN-PREVIEW.apk "$RUNNER_TEMP/047-preview-aligned.apk"
-          "$TOOLS/apksigner" verify --verbose --print-certs release-output/MainTrack-0.4.7-407-INVENTORY-DESIGN-PREVIEW.apk > release-output/signature-public.txt
-          "$TOOLS/aapt" dump badging release-output/MainTrack-0.4.7-407-INVENTORY-DESIGN-PREVIEW.apk > release-output/apk-badging.txt
+          "$TOOLS/apksigner" sign --ks "$QA_KEY" --ks-key-alias preview047 --ks-pass env:MT047_QA_PASS --key-pass env:MT047_QA_PASS --v2-signing-enabled true --v3-signing-enabled true --out release-output/MainTrack-0.4.7-407-EXACT-HTML-PREVIEW.apk "$RUNNER_TEMP/047-preview-aligned.apk"
+          "$TOOLS/apksigner" verify --verbose --print-certs release-output/MainTrack-0.4.7-407-EXACT-HTML-PREVIEW.apk > release-output/signature-public.txt
+          "$TOOLS/aapt" dump badging release-output/MainTrack-0.4.7-407-EXACT-HTML-PREVIEW.apk > release-output/apk-badging.txt
           keytool -exportcert -keystore "$QA_KEY" -alias preview047 -storepass:env MT047_QA_PASS | sha256sum > "$RUNNER_TEMP/047-expected-cert.sha256"
           python3 - <<'PYTHON'
           from pathlib import Path
@@ -106,19 +106,19 @@ jobs:
           signature=(out/'signature-public.txt').read_text()
           badge=(out/'apk-badging.txt').read_text()
           identity=re.search(r"^package:\s+name='([^']+)'\s+versionCode='([^']+)'\s+versionName='([^']+)'",badge,re.M)
-          assert identity and identity.groups()==('com.icc.maintrack.preview047r3','407','0.4.7'),'PREVIEW_MUST_NOT_REPLACE_ORIGINAL_APP'
+          assert identity and identity.groups()==('com.icc.maintrack.preview047r4','407','0.4.7'),'PREVIEW_MUST_NOT_REPLACE_ORIGINAL_APP'
           assert 'application-debuggable' not in badge
           cert=re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]{64})',signature).group(1).lower()
           assert cert==Path(os.environ['RUNNER_TEMP']+'/047-expected-cert.sha256').read_text().split()[0]
           assert cert!='07a35f17c9a7a17b24b1867e839fab2043d83f998bb604701776f3f64c807d5b'
           for v in (2,3):assert re.search(r'Verified using v'+str(v)+r' scheme[^\n]*:\s*true',signature)
-          apk=out/'MainTrack-0.4.7-407-INVENTORY-DESIGN-PREVIEW.apk'
+          apk=out/'MainTrack-0.4.7-407-EXACT-HTML-PREVIEW.apk'
           reviewed=Path('audit-output/owner-047/native/www')
           with zipfile.ZipFile(apk) as z:
            for f in reviewed.rglob('*'):
             if f.is_file():assert z.read('assets/public/'+f.relative_to(reviewed).as_posix())==f.read_bytes()
           report=json.loads(Path('audit-output/owner-047/provenance.json').read_text())
-          report.update({'channel':'ISOLATED_OWNER_PREVIEW_047','appId':'com.icc.maintrack.preview047r3','originalPackageUnchangedByDesign':True,'certificateSha256':cert,'temporaryQaCertificate':True,'signatureV2':True,'signatureV3':True,'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'apkBytes':apk.stat().st_size,'deviceInstallTest':'NOT_RUN'})
+          report.update({'channel':'ISOLATED_OWNER_PREVIEW_047','appId':'com.icc.maintrack.preview047r4','originalPackageUnchangedByDesign':True,'certificateSha256':cert,'temporaryQaCertificate':True,'signatureV2':True,'signatureV3':True,'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'apkBytes':apk.stat().st_size,'deviceInstallTest':'NOT_RUN'})
           (out/'MainTrack-047-Isolated-Preview-Provenance.json').write_text(json.dumps(report,indent=2)+'\n')
           print('PASS separate package, release build, temporary certificate, v2/v3 and exact shared/native application assets')
           PYTHON

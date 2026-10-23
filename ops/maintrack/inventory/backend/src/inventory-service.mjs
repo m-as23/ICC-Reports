@@ -22,7 +22,7 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
    // Only trusted server-side verification may supply userId/role.
    const identity=await verifySession(input.session);
    const permission={
-    inventoryVersion:'search',inventorySearch:'search',inventorySearchPage:'search',inventoryItem:'details',
+    inventorySnapshot:'search',inventoryVersion:'search',inventorySearch:'search',inventorySearchPage:'search',inventoryItem:'details',
     inventoryDraft:'upload',inventoryDiff:'diff',inventoryPublish:'publish',
     inventoryHistory:'versions:list',inventoryRestore:'restore'
    }[action];
@@ -31,6 +31,7 @@ export function createInventoryService({verifySession,store,parseXlsx}={}){
    const actor=String(authorized.userId||'').trim();
    if(!actor)throw Error('VERIFIED_USER_ID_REQUIRED');
    switch(action){
+    case 'inventorySnapshot':return store.snapshot();
     case 'inventoryVersion':return store.current();
     case 'inventorySearch':return store.search(input.query,input.limit);
     case 'inventorySearchPage':return store.searchPage(input.query,{limit:input.limit,offset:input.offset,versionId:input.versionId});

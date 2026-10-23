@@ -38,6 +38,12 @@ const allow=new Set([
  'supabase/functions/maintrack-inventory-047-qa/index.ts',
  'supabase/functions/maintrack-inventory-047-qa/deno.json',
  'web/maintrack/public/inventory-047.js',
+ 'web/maintrack/public/inventory-reference.html',
+ 'web/maintrack/public/inventory-reference.css',
+ 'web/maintrack/public/inventory-reference.js',
+ 'web/maintrack/public/inventory-reference-integration.js',
+ 'ops/maintrack/inventory/frontend/reference-source.json',
+ 'ops/maintrack/tests/inventory-reference-original.fixture.html',
 
  '.github/workflows/maintrack-047-isolated-qa.yml',
  '.github/workflows/maintrack-change-qa.yml',

@@ -16,6 +16,8 @@ export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis
  }
  return Object.freeze({
   version:()=>call('inventoryVersion'),
+  snapshot:()=>call('inventorySnapshot'),
+  restore:sourceVersionId=>{owner();reviewed=null;return call('inventoryRestore',{sourceVersionId});},
   async search(query,{offset=0,limit=50}={}){
    const q=String(query||'').trim();if(!q)throw Error('INVALID_QUERY');
    const token=session().token;
@@ -39,7 +41,7 @@ export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis
    owner();reviewed=null;const token=session().token;let summary;
    const result=await collectOwnerDiff({draftId,fetchPage:async args=>{const page=await call('inventoryDiff',args);summary??=page;return page;}});
    if(session().token!==token)throw Error('SESSION_CHANGED');
-   reviewed={...result,counts:summary.counts,filename:summary.filename,requiresExplicitReview:summary.requiresExplicitReview};reviewSession=token;
+   reviewed={...result,total:summary.total,counts:summary.counts,filename:summary.filename,requiresExplicitReview:summary.requiresExplicitReview};reviewSession=token;
    return reviewed;
   },
   async publish({confirmReviewed,acknowledgeLargeAbsence=false}={}){

@@ -75,12 +75,12 @@ assert.deepEqual(order,['tabDash','tabForm','tabCmms','tabCatalog','tabProfile',
 assert.ok(webIndex.includes('<button id="tabInventory" type="button" style="display:none">قطع الغيار</button>'));
 assert.ok(webIndex.includes('<section id="inventory" style="display:none"'));
 assert.ok(webIndex.includes('<link rel="stylesheet" href="inventory-047.css">'));
-assert.ok(webIndex.includes('id="inv47Query"')&&webIndex.includes('id="inv47Find"'));
+assert.ok(webIndex.includes('id="inv47Frame"')&&webIndex.includes('inventory-047.js'));
 assert.ok(webIndex.includes('id="inv47Owner"')&&webIndex.includes('id="inv47State"'));
 assert.ok(!/<input id="inv47Query"[^>]* disabled>/.test(webIndex),'Integrated search must be enabled');
 assert.ok(webIndex.includes('<script src="inventory-047.js"></script>'));
 assert.ok(!/<button id="inv47Find"[^>]* disabled>/.test(webIndex),'Integrated search button must be enabled');
-assert.ok(/<button id="inv47Publish"[^>]*disabled/.test(webIndex),'Publish must start disabled until complete review');
+assert.ok(read('web/maintrack/public/inventory-reference.html').includes('id="approveImport" disabled'),'Publish starts disabled in the original page');
 assert.ok(menuCore.includes('tabInventory:'),'New menu icon must not replace existing icons');
 assert.ok(inventoryCss.split('\n').filter(line=>line.trim()).every(line=>line.startsWith('#inventory')||line.startsWith('/*')||line.startsWith('@media')||line.startsWith('}')),'CSS must be scoped to inventory preview');
 assert.ok(webJs.includes("$('tabInventory').style.display=canReport()?'block':'none';"));

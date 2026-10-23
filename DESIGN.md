@@ -39,3 +39,6 @@ Cards15px, panels18px, restrained rounded buttons. No bottom navigation strip.
 
 ## Do's and Don'ts
 Use the authenticated API as stock source. The reference's embedded inventory, local-only import logic, trial banners and feedback controls are not application data or features. Do not alter report/mail/session behavior for this visual change.
+
+## Inventory source fidelity (2026-10-23 correction)
+The user-supplied current-design.html is the visual authority for inventory. The previous rebuilt layout is rejected. inventory-reference.html retains its DOM and SVGs, inventory-reference.css is the exact original style block, and inventory-reference.js retains its V9 query engine, measurement rules, adaptive facets, cards, and drawers. A same-origin iframe isolates this page from MainTrack's global styles. No aesthetic changes are authorized by this correction. Only demo-specific data/Owner claims change to describe authenticated approved service behavior. The local-only import lab is replaced by the existing server review/approval flow, with pagination and explicit large-absence approval. The other MainTrack views/navigation remain outside the iframe.

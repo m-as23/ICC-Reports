@@ -15,3 +15,11 @@ Scope: Owner-approved reference design applies only to inventory. Arabic RTL; co
 | Error/recovery | existing transport and inline status | Uncertain write outcome never automatically retried; session change suppresses stale rows |
 
 Business sources: `ops/maintrack/inventory/backend/src/domain.mjs` (roles), `inventory-service.mjs` (review and publish), `postgres-store.mjs` (approved snapshot/paging), and approved/archive SQL contract. Missing quantities stay null and descriptions/metadata stay source-derived. Archived versions are retained; imports compare with latest approved only.
+
+## Exact inventory source contract
+- Use the supplied HTML directly; do not rebuild icons, cards, facets, or search typography.
+- Load authenticated current sealed inventory with matching filename and actual approval timestamp. Never embed private stock in public assets or silently fall back to demo/IndexedDB stock.
+- Search and unit matching use the original V9 engine. Filters derive from the current result family.
+- Keep original result HTML and screenshot parity at equal viewport and synthetic data. Test both 390px and 1280px.
+- Preserve Owner upload → complete server diff → explicit confirmation → publish. Make every diff row available; restore stages a review and never auto-publishes.
+- Clear the iframe and its data when leaving inventory/logging out. Keep credentials in the parent client.
