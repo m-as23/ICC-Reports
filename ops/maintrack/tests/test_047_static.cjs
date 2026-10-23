@@ -15,6 +15,11 @@ const css=read('web/maintrack/public/v6.css');
 const menuCore=read('web/maintrack/public/v6-core.js');
 const nav=read('web/maintrack/public/v6.js');
 const inventoryCss=read('web/maintrack/public/inventory-047.css');
+const originalReference=JSON.parse(read('ops/maintrack/inventory/frontend/reference-source.json'));
+const referenceHash=value=>require('node:crypto').createHash('sha256').update(value).digest('hex');
+assert.equal(referenceHash(read('web/maintrack/public/inventory-reference.css')),originalReference.cssSha256,'Original uploaded CSS must not drift');
+assert.equal(referenceHash(read('web/maintrack/public/inventory-reference.js')),originalReference.engineSha256,'Original search, facets and card engine must not drift');
+
 const api=read('supabase/functions/maintrack-stage9-security-api/index.ts');
 const worker=read('supabase/functions/maintrack-pilot-mail-worker/index.ts');
 
