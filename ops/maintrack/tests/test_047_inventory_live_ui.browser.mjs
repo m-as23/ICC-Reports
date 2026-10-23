@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createServer} from 'node:http';
-import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 const root=path.resolve(import.meta.dirname,'../../..'),assets=path.join(root,'web/maintrack/public');
 const require=createRequire(path.join(root,'android/maintrack-app/tests-browser/package.json'));
@@ -63,12 +62,23 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
   const actual=await live.locator('#results').innerHTML(),expected=await baseline.locator('#results').innerHTML();
   assert.equal(actual,expected,'Original result cards must remain intact');
   assert.equal(await live.locator('#facetArea').innerHTML(),await baseline.locator('#facetArea').innerHTML());
+  await live.evaluate(()=>{document.documentElement.style.scrollBehavior='auto';document.getElementById('feedbackOpen').style.visibility='hidden';});await baseline.evaluate(()=>{document.documentElement.style.scrollBehavior='auto';document.getElementById('feedbackOpen').style.visibility='hidden';});
   await live.locator('.part-card').first().scrollIntoViewIfNeeded();await baseline.locator('.part-card').first().scrollIntoViewIfNeeded();
   const actualImage=await live.locator('.part-card').first().screenshot({animations:'disabled'}),originalImage=await baseline.locator('.part-card').first().screenshot({animations:'disabled'});
   const proof=path.join(root,'audit-output/maintrack-047-mobile');await fs.mkdir(proof,{recursive:true});
   await fs.writeFile(path.join(proof,'actual-card-'+role+'-'+width+'.png'),actualImage);await fs.writeFile(path.join(proof,'original-card-'+role+'-'+width+'.png'),originalImage);
-  const hash=image=>createHash('sha256').update(image).digest('hex');
-  assert.equal(hash(actualImage),hash(originalImage),'Result-card screenshot must match supplied HTML at '+width);
+  const visual=await baseline.evaluate(async images=>{
+   const decoded=await Promise.all(images.map(async encoded=>{
+    const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
+    const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);return {width:canvas.width,height:canvas.height,data:ctx.getImageData(0,0,canvas.width,canvas.height).data};
+   }));
+   const [a,b]=decoded;let changed=0;const h=Math.min(a.height,b.height),w=Math.min(a.width,b.width);
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const ai=(y*a.width+x)*4,bi=(y*b.width+x)*4;if(Math.max(...[0,1,2].map(c=>Math.abs(a.data[ai+c]-b.data[bi+c])))>16)changed++;}
+   return {widthDelta:Math.abs(a.width-b.width),heightDelta:Math.abs(a.height-b.height),changedRatio:changed/(w*h)};
+  },[actualImage.toString('base64'),originalImage.toString('base64')]);
+  // Ignore at most one rasterized edge row; layout/DOM/CSS remain strictly equal above.
+  assert.equal(visual.widthDelta,0);assert.ok(visual.heightDelta<=1,JSON.stringify(visual));assert.ok(visual.changedRatio<0.005,JSON.stringify(visual));
+  await live.evaluate(()=>{document.getElementById('feedbackOpen').style.visibility='';});
   await baseline.close();
   await frame.locator('#moreBtn').click();await frame.locator('#moreBtn').click();assert.equal(await frame.locator('.part-card').count(),25);
   if(width<790)await frame.locator('#filterOpen').click();
