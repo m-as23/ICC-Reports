@@ -26,7 +26,7 @@ Inventory's runtime token owner is the scoped `#inventory` declaration in `web/m
 Inventory uses the reference's Tahoma/Segoe UI/Arial system stack. Arabic layout is RTL; codes use LTR and complete original descriptions use automatic direction. Other screens retain the existing Cairo stack.
 
 ## Layout
-The existing MainTrack sidebar remains the navigation owner. Inventory has a compact heading/illustration, prominent search panel, result cards and filters. On phones filters remain in document flow and the decorative illustration is hidden. The list uses explicit load-more in blocks of12 after the entire pinned server result set has been collected for accurate filtering.
+The existing MainTrack sidebar remains the navigation owner. Inventory has a compact heading/illustration, prominent search panel, result cards and filters. On phones filters open in a native modal bottom sheet and the decorative illustration is hidden. The list uses explicit load-more in blocks of12 after the entire pinned server result set has been collected for accurate filtering.
 
 ## Elevation & Depth
 Cards use subtle borders and shadows from the reference; the item-details modal uses a right-side sheet and native dialog backdrop.

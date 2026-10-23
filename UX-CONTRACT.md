@@ -8,7 +8,7 @@ Scope: Owner-approved reference design applies only to inventory. Arabic RTL; co
 | Search/filter/sort | inventory-presentation.mjs and inventory-ui.mjs | Collect all version-pinned API pages before enabling filters; complete counts; local load-more12; presentation tests |
 | Session/permissions | inventory-client.mjs + MainTrack server verifier | Existing opaque bearer; backend only trusts server role; Owner mutation guards unchanged |
 | Approval | owner-review-pagination.mjs + inventory-client.mjs | Complete diff receipt, human review checkbox, extra large-absence acknowledgement; never auto-publish |
-| Details | native dialog in inventory | Modal focus, Escape, inert backdrop, restore trigger focus; browser test |
+| Details | native dialog in inventory | Details modal and mobile filter sheet: focus, Escape, inert backdrop, restore trigger focus; browser test |
 | Status/copy | inventory inline live region | Same status region for search/import errors and copy result; no native alert/confirm |
 | Select | native select | OS-owned popup geometry accepted; labels/keyboard preserved |
 | Scroll | existing app shell; scoped inventory table/detail overflow | Natural page height; bounded diff table; main forms unchanged |
