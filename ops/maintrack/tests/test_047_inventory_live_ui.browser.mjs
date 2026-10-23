@@ -23,7 +23,7 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('App
   res.writeHead(200,{'Content-Type':type});res.end(content);
  }catch{res.writeHead(404);res.end();}});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,...(process.env.MT047_CHROME?{executablePath:process.env.MT047_CHROME,args:['--no-sandbox']}:{} )});
  try{
   const page=await browser.newPage({viewport:{width,height:844}}),errors=[];
   page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
@@ -106,7 +106,7 @@ test('Hybrid search retains literal matches, appends labelled meaning matches ac
  const rows=[{code:'SENSOR-1',description:'MOUNTING BRACKET',quantity:1},{code:'TEMP-K',description:'THERMOCOUPLE TYPE K',quantity:2},{code:'RTD-1',description:'PT100',quantity:3},{code:'LIMIT-1',description:'MECHANICAL LIMIT SWITCH',quantity:4}];
  const index=await fs.readFile(path.join(assets,'index.html'),'utf8');const section=index.match(/<section id="inventory"[\s\S]*?<\/section>/)[0];
  const server=createServer(async(req,res)=>{try{const name=new URL(req.url,'http://local').pathname.slice(1);if(name==='harness.html'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><html dir="rtl"><head><link rel="stylesheet" href="inventory-047.css"></head><body style="margin:0">'+section+'<script src="inventory-047.js"></script></body></html>');return;}if(!/^[a-z0-9.-]+$/i.test(name))throw Error('PATH');res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(path.join(assets,name)));}catch{res.writeHead(404);res.end();}});
- await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true,...(process.env.MT047_CHROME?{executablePath:process.env.MT047_CHROME,args:['--no-sandbox']}:{} )});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>window.S={token:'a'.repeat(64),role:'technician'});

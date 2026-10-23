@@ -24,6 +24,14 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'ops/maintrack/tests/test_047_inventory_loading.browser.mjs',
+ 'docs/superpowers/plans/2026-10-23-inventory-responsive-loading.md',
+ 'ops/maintrack/inventory/frontend/inventory-loader.mjs',
+ 'ops/maintrack/inventory/frontend/inventory-loader.test.mjs',
+ 'ops/maintrack/scripts/build-inventory-preparation.mjs',
+ 'ops/maintrack/tests/test_047_worker_equivalence.test.mjs',
+ 'web/maintrack/public/inventory-preparation.js',
+ 'web/maintrack/public/inventory-reference-worker.js',
  'ops/maintrack/inventory/backend/src/index-worker.mjs',
  'docs/superpowers/specs/2026-10-23-hybrid-search-design.md',
  'docs/superpowers/plans/2026-10-23-hybrid-search.md',

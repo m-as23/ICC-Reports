@@ -13,26 +13,37 @@ function setProgress(message){$('importProgress').textContent=message;}
 function setImportError(message){$('importError').textContent=message;$('importError').hidden=!message;}
 function setImportBusy(value){importBusy=value;document.querySelectorAll('[data-version-action]').forEach(b=>b.disabled=value);$('inventoryFile').disabled=value;$('cancelImport').disabled=value;updateApproval();}
 function updateApproval(){$('approveImport').disabled=importBusy||!pendingImport?.complete||!$('reviewConfirm').checked||(pendingImport?.requiresExplicitReview&&!$('largeAbsenceConfirm').checked);}
+let inventoryLoadController;
 async function loadInventory(){
- const epoch=++loadEpoch;++mt6Generation;if(mt6Pending){mt6Pending.abort();mt6Pending=null;}closeDetail();closeFilters();$('retryInventory').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
- try{
-  if(!inventoryHost)throw Error('UNAUTHENTICATED');
-  const data=await inventoryHost.snapshot();if(epoch!==loadEpoch)return;
-  currentVersion=data;mt6SetData(data.items.map(toReferenceItem));$('totalCount').textContent=nf.format(INDEX.length);
-  $('inventoryFreshness').textContent=formattedStamp(data.approvedAt);
-  $('inventoryMeta').textContent=data.versionId?'':'لم تُعتمد نسخة جرد بعد';$('inventoryMeta').hidden=!!data.versionId;
-
-  $('query').disabled=false;$('searchButton').disabled=false;
-  search();
-  if(!data.versionId)mt6Status('لم تُعتمد بيانات بعد. يرفع المسؤول ملف الجرد ويعتمده.');
-  updateCloudMessage();
- }catch(e){
-  if(epoch!==loadEpoch)return;
-  INDEX=[];currentVersion=null;$('results').replaceChildren();$('resultSection').hidden=true;
-  $('inventoryFreshness').textContent='تعذر التحميل';$('inventoryMeta').textContent=inventoryError(e);$('inventoryMeta').hidden=false;mt6Status(inventoryError(e));
-  $('retryInventory').hidden=false;
- }
+ ++loadEpoch;++mt6Generation;if(mt6Pending){mt6Pending.abort();mt6Pending=null;}
+ closeDetail();closeFilters();$('retryInventory').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
+ $('resultSection').hidden=true;$('inventoryMeta').hidden=false;$('inventoryMeta').textContent='جارٍ تحميل رصيد قطع الغيار…';$('inventoryMeta').setAttribute('role','status');
+ inventoryLoadController??=MainTrackInventoryPreparation.createInventoryLoader({
+  context:()=>inventoryHost.contextKey(),
+  fetchSnapshot:()=>inventoryHost.snapshot(),
+  validateVersion:async data=>(await inventoryHost.version()).versionId===data.versionId,
+  prepareSnapshot:(items,{signal})=>{
+   $('inventoryMeta').textContent='جارٍ تجهيز البحث في رصيد قطع الغيار…';
+   return MainTrackInventoryPreparation.prepareInWorker(items,{signal});
+  },
+  commit:({data,rows})=>{
+   currentVersion=data;INDEX=rows;$('totalCount').textContent=nf.format(INDEX.length);
+   $('inventoryFreshness').textContent=formattedStamp(data.approvedAt);
+   $('inventoryMeta').textContent=data.versionId?'':'لم تُعتمد نسخة جرد بعد';$('inventoryMeta').hidden=!!data.versionId;
+   $('query').disabled=false;$('searchButton').disabled=false;search();
+   if(!data.versionId)mt6Status('لم تُعتمد بيانات بعد. يرفع المسؤول ملف الجرد ويعتمده.');
+   updateCloudMessage();
+  },
+  onError:e=>{
+   INDEX=[];currentVersion=null;$('results').replaceChildren();$('resultSection').hidden=true;
+   $('inventoryFreshness').textContent='تعذر التحميل';$('inventoryMeta').textContent=inventoryError(e);$('inventoryMeta').hidden=false;mt6Status(inventoryError(e));$('retryInventory').hidden=false;
+  }
+ });
+ return inventoryLoadController.load();
 }
+
+window.addEventListener('pagehide',()=>inventoryLoadController?.cancel());
+window.addEventListener('pageshow',event=>{if(event.persisted)loadInventory();});
 function metric(title,count){return '<div class="import-metric"><span>'+title+'</span><b>'+nf.format(count||0)+'</b></div>';}
 function renderImportPreview(){
  const p=pendingImport;if(!p)return;const c=p.counts||{};

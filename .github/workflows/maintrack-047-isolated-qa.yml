@@ -29,7 +29,7 @@ jobs:
           node --check web/maintrack/public/secure-assets/index-inline-1.js
           node --check ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/tests/test_047_static.cjs
-          node --test ops/maintrack/tests/test_047_hybrid_search.test.mjs ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
+          node --test ops/maintrack/inventory/frontend/inventory-loader.test.mjs ops/maintrack/tests/test_047_worker_equivalence.test.mjs ops/maintrack/tests/test_047_hybrid_search.test.mjs ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
       - name: Install locked XLSX dependencies (no install scripts; isolated runner only)
         run: npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)
@@ -69,7 +69,7 @@ jobs:
       - name: Install Chromium
         run: npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
       - name: Verify four mobile viewport clearances without live API or login
-        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs ops/maintrack/tests/test_047_inventory.browser.mjs ops/maintrack/tests/test_047_menu_roles.browser.mjs ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs
+        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs ops/maintrack/tests/test_047_inventory.browser.mjs ops/maintrack/tests/test_047_menu_roles.browser.mjs ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs ops/maintrack/tests/test_047_inventory_loading.browser.mjs
       - name: Save mobile QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
