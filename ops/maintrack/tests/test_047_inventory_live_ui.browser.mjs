@@ -8,13 +8,13 @@ const root=path.resolve(import.meta.dirname,'../../..');
 const require=createRequire(path.join(root,'android/maintrack-app/tests-browser/package.json'));
 const {chromium}=require('playwright');
 const assets=path.join(root,'web/maintrack/public');
-for(const role of ['owner','technician'])test('inventory usable search/paging and Owner review guard: '+role,async()=>{
+for(const width of [390,1280])for(const role of ['owner','technician'])test('inventory cards/filter/details and Owner guard: '+role+' '+width,async()=>{
  const index=await fs.readFile(path.join(assets,'index.html'),'utf8');
  const section=index.match(/<section id="inventory"[\s\S]*?<\/section>/)[0];
  const css=await fs.readFile(path.join(assets,'inventory-047.css'),'utf8');
  const browser=await chromium.launch({headless:true});
  try{
-  const page=await browser.newPage({viewport:{width:390,height:844}});
+  const page=await browser.newPage({viewport:{width,height:844}});
   await page.setContent('<html dir="rtl"><style>'+css+'</style><body>'+section+'</body></html>');
   await page.evaluate(({role})=>{
    window.S={token:'a'.repeat(64),role};window.requests=[];
@@ -43,10 +43,12 @@ for(const role of ['owner','technician'])test('inventory usable search/paging an
   await page.locator('#inv47More').click();
   assert.equal(await page.locator('#inv47Results .part-card').count(),25);
   assert.equal(await page.locator('#inv47More').isVisible(),false);
+  if(width<=760)await page.locator('#inv47FilterToggle').click();
   await page.locator('#inv47Stock').selectOption('unknown');
   assert.equal(await page.locator('#inv47Results .part-card').count(),1);
   assert.match(await page.locator('#inv47Results').textContent(),/A25/);
   await page.locator('#inv47ResetFilters').click();
+  if(width<=760)await page.locator('#inv47FilterClose').click();
   const detail=page.getByRole('button',{name:'التفاصيل',exact:true}).first();
   await detail.click();
   await page.locator('#inv47Detail').waitFor({state:'visible'});
@@ -57,7 +59,7 @@ for(const role of ['owner','technician'])test('inventory usable search/paging an
   const calls=await page.evaluate(()=>requests.filter(x=>x.action==='inventorySearchPage'));
   assert.equal(calls[1].versionId,'1');
   assert.equal(await page.locator('#inv47Owner').isVisible(),role==='owner');
-  assert.ok((await page.locator('#inventory').evaluate(x=>x.scrollWidth))<=390,'Inventory overflow');
+  assert.ok((await page.locator('#inventory').evaluate(x=>x.scrollWidth))<=width,'Inventory overflow');
   if(role==='owner'){
    assert.equal(await page.locator('#inv47Publish').isDisabled(),true);
    await page.locator('#inv47File').setInputFiles({name:'test.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('synthetic-upload-fixture')});

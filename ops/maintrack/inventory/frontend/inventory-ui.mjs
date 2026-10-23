@@ -36,7 +36,7 @@ function el(tag,className,text){const n=document.createElement(tag);if(className
 function action(label,kind,handler){const b=el('button',kind,label);b.type='button';b.onclick=handler;return b;}
 function labeledIcon(name,text){const n=el('span','loc-pill');n.append(icon(name),el('span','',text));return n;}
 async function copyCode(code){try{await navigator.clipboard.writeText(code);state('تم نسخ كود الصنف: '+code);}catch{state('تعذر النسخ التلقائي. يمكنك تحديد الكود ونسخه يدويًا.');}}
-function resetResults(){searchEpoch++;allItems=[];visibleItems=12;nextOffset=null;empty($('inv47Results'));$('inv47SearchArea').hidden=true;$('inv47Welcome').hidden=false;if($('inv47Detail').open)$('inv47Detail').close();}
+function resetResults(){searchEpoch++;allItems=[];visibleItems=12;nextOffset=null;empty($('inv47Results'));$('inv47SearchArea').hidden=true;$('inv47Welcome').hidden=false;if($('inv47Detail').open)$('inv47Detail').close();if($('inv47FilterDialog').open)$('inv47FilterDialog').close();}
 function fillOptions(id,values,label){const select=$(id);empty(select);select.append(new Option(label,''));for(const [value,text] of values)select.append(new Option(text,value));}
 function prepareFilters(){
  fillOptions('inv47Category',Object.entries(CATEGORIES).filter(([k])=>allItems.some(x=>describeItem(x).category===k)),'كل الأنواع');
@@ -86,7 +86,17 @@ $('inv47Clear').onclick=()=>{$('inv47Query').value='';resetResults();state('اك
 $('inv47Query').addEventListener('input',controls);
 for(const id of ['inv47Category','inv47Location','inv47Stock','inv47Sort'])$(id).onchange=()=>{visibleItems=12;renderResults();};
 $('inv47ResetFilters').onclick=()=>{$('inv47Category').value='';$('inv47Location').value='';$('inv47Stock').value='';visibleItems=12;renderResults();};
-$('inv47FilterToggle').onclick=()=>{const hidden=!$('inv47Filters').hidden;$('inv47Filters').hidden=hidden;$('inv47FilterToggle').setAttribute('aria-expanded',String(!hidden));};
+const narrow=window.matchMedia('(max-width:760px)');
+function placeFilters(){
+ const filters=$('inv47Filters'),dialog=$('inv47FilterDialog');
+ if(narrow.matches){$('inv47FilterBody').append(filters);filters.hidden=false;$('inv47FilterToggle').setAttribute('aria-haspopup','dialog');}
+ else{if(dialog.open)dialog.close();section.querySelector('.workarea').append(filters);filters.hidden=false;$('inv47FilterToggle').removeAttribute('aria-haspopup');}
+ $('inv47FilterToggle').setAttribute('aria-expanded',String(!narrow.matches));
+}
+placeFilters();narrow.addEventListener('change',placeFilters);
+$('inv47FilterToggle').onclick=()=>{if(narrow.matches){$('inv47Filters').hidden=false;$('inv47FilterDialog').showModal();$('inv47FilterToggle').setAttribute('aria-expanded','true');}else{const hidden=!$('inv47Filters').hidden;$('inv47Filters').hidden=hidden;$('inv47FilterToggle').setAttribute('aria-expanded',String(!hidden));}};
+$('inv47FilterClose').onclick=()=>$('inv47FilterDialog').close();
+$('inv47FilterDialog').addEventListener('close',()=>{$('inv47FilterToggle').setAttribute('aria-expanded','false');});
 $('inv47DetailClose').onclick=()=>$('inv47Detail').close();
 $('inv47Detail').addEventListener('close',()=>{if(detailTrigger?.isConnected)detailTrigger.focus();});
 for(const b of section.querySelectorAll('[data-inv-query]'))b.onclick=()=>{if(busy)return;$('inv47Query').value=b.dataset.invQuery;run(()=>search());};
