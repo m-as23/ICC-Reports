@@ -11,7 +11,7 @@ const pool=new pg.Pool({connectionString:Deno.env.get('SUPABASE_DB_URL'),max:2,i
 const embed=createEmbeddingProvider({apiKey:Deno.env.get('OPENAI_API_KEY')});
 const schedule=promise=>EdgeRuntime.waitUntil(promise);
 const bucket='maintrack-inventory-archive-staging';
-const allowedOrigins=["https://maintrack-final-security-mkupyiv11-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-jb82mdyun-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-6oskca75z-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-5c2j4jzn0-mohamedashrefsrag-5918.vercel.app","https://localhost","https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app"];
+const allowedOrigins=["https://maintrack-final-security-qa.vercel.app","https://maintrack-final-security-mkupyiv11-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-jb82mdyun-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-6oskca75z-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-5c2j4jzn0-mohamedashrefsrag-5918.vercel.app","https://localhost","https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app","https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app"];
 async function storageRequest(path,{method='GET',body,headers={}}={}){
  const response=await fetch(url+'/storage/v1/'+path,{method,headers:{Authorization:'Bearer '+key,apikey:key,...headers},body,signal:AbortSignal.timeout(30000)});
  if(!response.ok)return {error:{code:'PRIVATE_STORAGE_REQUEST_FAILED'}};
