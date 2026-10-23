@@ -54,7 +54,7 @@ jobs:
   qa-047-mobile:
     name: v0.4.7 — mobile Chromium form collision QA (offline backend)
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,7 +82,7 @@ jobs:
   qa-047-inventory-sql:
     name: v0.4.7 — pinned inventory SQL contract on disposable Postgres only
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16

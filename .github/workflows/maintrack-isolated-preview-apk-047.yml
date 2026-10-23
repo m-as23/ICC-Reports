@@ -1,5 +1,5 @@
 name: MainTrack 0.4.7 isolated installable Preview APK
-# Inventory page copied from the supplied HTML; authenticated snapshot and original adaptive engine.
+# Inventory page copied from the supplied HTML; original adaptive engine and stale-detail refresh guard.
 on:
   push:
     branches: [feature/maintrack-047-integration-20261022]

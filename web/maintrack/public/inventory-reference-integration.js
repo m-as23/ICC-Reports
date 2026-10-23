@@ -14,7 +14,7 @@ function setImportError(message){$('importError').textContent=message;$('importE
 function setImportBusy(value){importBusy=value;$('inventoryFile').disabled=value;$('cancelImport').disabled=value;updateApproval();}
 function updateApproval(){$('approveImport').disabled=importBusy||!pendingImport?.complete||!$('reviewConfirm').checked||(pendingImport?.requiresExplicitReview&&!$('largeAbsenceConfirm').checked);}
 async function loadInventory(){
- const epoch=++loadEpoch;$('query').disabled=true;$('searchButton').disabled=true;
+ const epoch=++loadEpoch;closeDetail();closeFilters();$('retryInventory').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
  try{
   if(!inventoryHost)throw Error('UNAUTHENTICATED');
   const data=await inventoryHost.snapshot();if(epoch!==loadEpoch)return;

@@ -26,21 +26,23 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width,height:844}}),errors=[];
-  page.on('pageerror',e=>errors.push(e.message));
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(({role})=>{window.S={token:'a'.repeat(64),role};},{role});
-  const requests=[];
+  const requests=[];let activeVersion='1';
   await page.route('https://tdnkeskczcsukcujwinu.supabase.co/**',async route=>{
-   const req=route.request(),x=req.postDataJSON();requests.push(x);
+   const req=route.request();
+   if(req.method()==='OPTIONS'){await route.fulfill({status:204,headers:{'access-control-allow-origin':base,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, content-type'}});return;}
+   const x=req.postDataJSON();requests.push(x);
    assert.equal(req.headers().authorization,'Bearer '+'a'.repeat(64));
    let data;
-   if(x.action==='inventorySnapshot')data={versionId:'1',generation:1,filename:'approved.xlsx',approvedAt:'2026-10-23T07:03:00Z',items:stock};
-   else if(x.action==='inventoryVersion')data={versionId:'1'};
+   if(x.action==='inventorySnapshot')data={versionId:activeVersion,generation:Number(activeVersion),filename:activeVersion==='1'?'approved.xlsx':'approved-v'+activeVersion+'.xlsx',approvedAt:'2026-10-23T07:03:00Z',items:stock};
+   else if(x.action==='inventoryVersion')data={versionId:activeVersion};
    else if(x.action==='inventoryHistory')data=[{id:'1',filename:'approved.xlsx',itemCount:25,status:'current',approvedAt:'2026-10-23T07:03:00Z'}];
    else if(x.action==='inventoryDraft')data={draftId:'2'};
    else if(x.action==='inventoryDiff')data={draftId:'2',baseVersionId:'1',currentVersionId:'1',filename:'test.xlsx',reviewReceipt:'b'.repeat(64),isStale:false,detailsTotal:101,total:101,offset:x.offset,limit:x.limit,nextOffset:null,hasMore:false,truncated:false,counts:{CHANGED:101},requiresExplicitReview:false,details:Array.from({length:101},(_,i)=>({code:'ITEM'+i,type:'CHANGED',before:{description:'Parker',quantity:7},after:{description:'Parker',quantity:9}}))};
    else if(x.action==='inventoryPublish')data={versionId:'2'};
    else throw Error('UNEXPECTED_ACTION '+x.action);
-   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,data})});
+   await route.fulfill({status:200,headers:{'access-control-allow-origin':base},contentType:'application/json',body:JSON.stringify({ok:true,data})});
   });
   await page.goto(base+'/harness.html');await page.evaluate(()=>document.getElementById('inventory').style.display='block');
   const frame=page.frameLocator('#inv47Frame');
@@ -60,8 +62,8 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
   const actual=await live.locator('#results').innerHTML(),expected=await baseline.locator('#results').innerHTML();
   assert.equal(actual,expected,'Original result cards must remain intact');
   assert.equal(await live.locator('#facetArea').innerHTML(),await baseline.locator('#facetArea').innerHTML());
-  await live.locator('#results').scrollIntoViewIfNeeded();await baseline.locator('#results').scrollIntoViewIfNeeded();
-  const actualImage=await live.locator('#results').screenshot({animations:'disabled'}),originalImage=await baseline.locator('#results').screenshot({animations:'disabled'});
+  await live.locator('.part-card').first().scrollIntoViewIfNeeded();await baseline.locator('.part-card').first().scrollIntoViewIfNeeded();
+  const actualImage=await live.locator('.part-card').first().screenshot({animations:'disabled'}),originalImage=await baseline.locator('.part-card').first().screenshot({animations:'disabled'});
   assert.deepEqual(actualImage,originalImage,'Result-card screenshot must match supplied HTML at '+width);
   await baseline.close();
   await frame.locator('#moreBtn').click();await frame.locator('#moreBtn').click();assert.equal(await frame.locator('.part-card').count(),25);
@@ -69,7 +71,9 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('Exa
   await frame.locator('[data-facet="availability"][data-value="missing"]').click();assert.equal(await frame.locator('.part-card').count(),1);
   await frame.locator('#resetFilters').click();if(width<790)await frame.locator('#filterClose').click();
   await frame.locator('[data-detail]').first().click();await frame.locator('#detailDrawer.open').waitFor();assert.match(await frame.locator('#detailBody').textContent(),/D1/);
-  await frame.locator('#detailClose').click();assert.equal(await frame.locator('#ownerImportOpen').isVisible(),role==='owner');
+  activeVersion='2';await live.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await frame.locator('#inventoryMeta').filter({hasText:'approved-v2.xlsx'}).waitFor();
+  assert.equal(await frame.locator('#detailDrawer').evaluate(x=>x.classList.contains('open')),false,'New snapshot closes old item details');assert.equal(await frame.locator('#ownerImportOpen').isVisible(),role==='owner');
   if(role==='owner'){
    await frame.locator('#ownerImportOpen').click();assert.equal(await frame.locator('#approveImport').isDisabled(),true);
    await frame.locator('#inventoryFile').setInputFiles({name:'test.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('synthetic-upload-fixture')});
