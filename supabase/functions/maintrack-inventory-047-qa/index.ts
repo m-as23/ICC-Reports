@@ -730,7 +730,7 @@ var url = Deno.env.get("SUPABASE_URL");
 var key2 = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 var pool = new pg.Pool({ connectionString: Deno.env.get("SUPABASE_DB_URL"), max: 2, idleTimeoutMillis: 1e4, connectionTimeoutMillis: 7e3 });
 var bucket = "maintrack-inventory-archive-staging";
-var allowedOrigins = ["https://maintrack-final-security-6oskca75z-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-5c2j4jzn0-mohamedashrefsrag-5918.vercel.app", "https://localhost", "https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app"];
+var allowedOrigins = ["https://maintrack-final-security-jb82mdyun-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-6oskca75z-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-5c2j4jzn0-mohamedashrefsrag-5918.vercel.app", "https://localhost", "https://maintrack-final-security-km1nq1386-mohamedashrefsrag-5918.vercel.app", "https://maintrack-final-security-b0ib33obd-mohamedashrefsrag-5918.vercel.app"];
 async function storageRequest(path, { method = "GET", body, headers = {} } = {}) {
   const response2 = await fetch(url + "/storage/v1/" + path, { method, headers: { Authorization: "Bearer " + key2, apikey: key2, ...headers }, body, signal: AbortSignal.timeout(3e4) });
   if (!response2.ok) return { error: { code: "PRIVATE_STORAGE_REQUEST_FAILED" } };
