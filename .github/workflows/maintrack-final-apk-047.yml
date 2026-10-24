@@ -48,6 +48,7 @@ jobs:
           node ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/scripts/audit-release-workflows.mjs
           node --test ops/maintrack/tests/prepare-047-owner-preview.test.mjs ops/maintrack/tests/prepare-final-047.test.mjs ops/maintrack/tests/final-047-qa.test.mjs ops/maintrack/tests/final-047-ota.test.mjs
+          node --test ops/maintrack/tests/credential-policy.test.mjs ops/maintrack/tests/credential-policy-api.test.mjs
           python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_407_build.py -v
           python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_final_407_build.py -v
           node --input-type=module <<'JS'
@@ -65,6 +66,7 @@ jobs:
           npm ci --prefix android/maintrack-app/tests-browser --no-audit --no-fund
           npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
           MT047_ASSET_DIR="$GITHUB_WORKSPACE/audit-output/final-047/web" node --test ops/maintrack/tests/test_047_inventory_cache.browser.mjs
+          MT047_ASSET_DIR="$GITHUB_WORKSPACE/audit-output/final-047/web" node --test ops/maintrack/tests/credential-policy.browser.mjs
       - name: Prepare Android 407 with existing Keystore session plugin
         working-directory: android/maintrack-app
         run: |

@@ -24,6 +24,15 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'ops/maintrack/scripts/credential-policy.mjs',
+ 'ops/maintrack/tests/credential-policy.test.mjs',
+ 'ops/maintrack/tests/credential-policy-api.test.mjs',
+ 'ops/maintrack/tests/credential-password-sql.test.mjs',
+ 'ops/maintrack/tests/credential-policy.browser.mjs',
+ 'supabase/functions/maintrack-final-047/index.ts',
+ 'supabase/functions/maintrack-final-047/ledger-service.mjs',
+ 'supabase/functions/maintrack-final-047/deno.json',
+ 'docs/superpowers/plans/2026-10-24-credential-policy.md',
  'ops/maintrack/scripts/final-047-live-smoke.mjs',
  'ops/maintrack/final-047-reset.sql',
  'ops/maintrack/tests/final-047-reset.test.mjs',

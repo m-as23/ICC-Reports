@@ -8,6 +8,7 @@ import {prepare047,verify047Parity} from './prepare-047-owner-preview.mjs';
 import {inventory} from './prepare-native-405-qa.mjs';
 import {sha256,QA_API} from './prepare-qa-api-client.mjs';
 import {validatePilotConfig} from '../../../android/maintrack-app/update-system/pilot-session.mjs';
+import {patchCredentialAsset} from './credential-policy.mjs';
 const root=path.resolve(import.meta.dirname,'../../..');
 export const defaultTarget=path.join(root,'audit-output/final-047');
 const finalApi=QA_API.replace('maintrack-unified-four-qa','maintrack-final-047');
@@ -35,8 +36,8 @@ function transform(rel,bytes,native=false){
   }
  }else if(rel==='manifest.webmanifest'){
   const m=JSON.parse(s);assert.equal(m.name,'MainTrack 0.4.7 — Owner Preview');m.name='MainTrack 0.4.7 Final';s=JSON.stringify(m)+'\n';
- }else return bytes;
- return Buffer.from(s);
+ }else return patchCredentialAsset(rel,bytes);
+ return patchCredentialAsset(rel,Buffer.from(s));
 }
 async function updateAssets(){
  const config=validatePilotConfig(JSON.parse(await fs.readFile(path.join(root,'android/maintrack-app/release/owner-public.json'),'utf8')));

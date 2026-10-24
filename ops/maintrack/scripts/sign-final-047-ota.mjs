@@ -9,9 +9,11 @@ import {verifyLabRelease} from '../../../android/maintrack-app/update-system/ota
 import {LOCAL_DATA_CONTRACT} from '../../../android/maintrack-app/update-system/data-contract.mjs';
 export function finalBaseline(policy,sourceCommit,now){
  assert.match(sourceCommit,/^[a-f0-9]{40}$/);
- assert.match(policy.bundleUrl,/^https:\/\/raw\.githubusercontent\.com\/m-as23\/ICC-Reports\/[a-f0-9]{40}\/updates\/android\/maintrack-0\.4\.7-final\.zip$/);
+ const bundleVersion=policy.bundleVersion||'0.4.7';assert.ok(['0.4.7','0.4.8'].includes(bundleVersion));
+ assert.match(policy.bundleUrl,/^https:\/\/raw\.githubusercontent\.com\/m-as23\/ICC-Reports\/[a-f0-9]{40}\/updates\/android\/maintrack-0\.4\.[78]-final\.zip$/);
+ assert.ok(policy.bundleUrl.endsWith('/maintrack-'+bundleVersion+'-final.zip'));
  assert.match(policy.sha256,/^[a-f0-9]{64}$/);assert.ok(Number.isSafeInteger(policy.bytes)&&policy.bytes>100&&policy.bytes<15000000);
- return {schema:1,channel:'lab',kind:'web-ota',appId:'com.icc.maintrack',issuedAt:now-1000,expiresAt:now+6*86400000,nativeMinimum:'0.4.7',nativeMaximum:'0.4.99',bundleVersion:'0.4.7',bundleUrl:policy.bundleUrl,sha256:policy.sha256,bytes:policy.bytes,localData:LOCAL_DATA_CONTRACT,sourceCommit};
+ return {schema:1,channel:'lab',kind:'web-ota',appId:'com.icc.maintrack',issuedAt:now-1000,expiresAt:now+6*86400000,nativeMinimum:'0.4.7',nativeMaximum:'0.4.99',bundleVersion,bundleUrl:policy.bundleUrl,sha256:policy.sha256,bytes:policy.bytes,localData:LOCAL_DATA_CONTRACT,sourceCommit};
 }
 async function main(){
  assert.equal(process.env.GITHUB_REPOSITORY,'m-as23/ICC-Reports');
