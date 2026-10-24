@@ -74,8 +74,7 @@ assert(finalSigner.includes('branches: [release/maintrack-047-final-20261024]') 
 assert(/permissions:\s*\n\s*contents:\s*read\s*\n\s*checks:\s*read/.test(finalSigner) && !/contents:\s*write/.test(finalSigner),'047_FINAL_READ_ONLY_REQUIRED');
 assert(finalSigner.includes('prepare-final-047.mjs --verify') &&
  finalSigner.includes('verify-native-final-407-build.py --mode signed') &&
- finalSigner.includes('Actual candidate Chromium — cache, account isolation, numerals') &&
- finalSigner.includes('MainTrack Staging-only QA — required combined result'),'047_FINAL_PROOFS_REQUIRED');
+ finalSigner.includes('node ops/maintrack/scripts/check-final-047-qa.mjs'),'047_FINAL_PROOFS_REQUIRED');
 assert(!/(?:gh release create|vercel deploy|supabase functions deploy|git push)/.test(finalSigner),'047_FINAL_ARTIFACT_ONLY_REQUIRED');
 // Owner explicitly requested an installable 047 preview and matching Web.
 const signer047=read('maintrack-owner-qa-apk-047.yml');

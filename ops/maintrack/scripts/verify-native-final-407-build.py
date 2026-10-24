@@ -47,6 +47,11 @@ def native_source():
  gradle=(APP/'android/app/build.gradle').read_text()
  require(re.search(r'\bversionCode\s+407\b',gradle) and re.search(r'\bversionName\s+"0\.4\.7"',gradle),'GRADLE_VERSION_NOT_407')
 
+def verify_platform_extras(names,read):
+ # Locked Capacitor CLI emits only these two empty shims without Cordova plugins.
+ require(names=={'cordova.js','cordova_plugins.js'},'APK_EXTRA_APPLICATION_ASSETS')
+ for name in names:require(read(name)==b'','APK_PLATFORM_SHIM_TAMPERED')
+
 def verify_signed(apk,sdk,output):
  record=reviewed()
  signature=subprocess.check_output([str(sdk/'apksigner'),'verify','--verbose','--print-certs',str(apk)],text=True)
@@ -58,7 +63,7 @@ def verify_signed(apk,sdk,output):
   for rel,file in expected.items():
    require(archive.read('assets/public/'+rel)==file.read_bytes(),'APK_ASSET_MISMATCH: '+rel)
   installed={p[len('assets/public/'):] for p in archive.namelist() if p.startswith('assets/public/') and not p.endswith('/')}
-  require(installed-set(expected)<= {'cordova.js','cordova_plugins.js','capacitor.js','capacitor.plugins.js'},'APK_EXTRA_APPLICATION_ASSETS')
+  verify_platform_extras(installed-set(expected),lambda rel:archive.read('assets/public/'+rel))
  record.update({'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'apkBytes':apk.stat().st_size,'signatureV2':True,'signatureV3':True,'certificateSha256':CERT,'deviceInstallTest':'NOT_RUN'})
  output.write_text(json.dumps(record,indent=2)+'\n')
  print('PASS signed Owner 047 APK, exact application assets and original certificate:',record['apkSha256'])

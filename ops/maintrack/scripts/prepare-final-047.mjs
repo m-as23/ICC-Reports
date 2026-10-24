@@ -20,6 +20,9 @@ function transform(rel,bytes){
   // The client also pins the exact allowed endpoint in a regex; update both pins.
   assert.equal(s.split('maintrack-inventory-047-qa').length-1,2,'FINAL_INVENTORY_ENDPOINT_PINS_REQUIRED');
   s=s.replaceAll('maintrack-inventory-047-qa','maintrack-inventory-final-047');
+  // Final is a clean launch; a recreated account must not restore preview stock.
+  assert.equal(s.split('"tdnkeskczcsukcujwinu:"').length-1,1,'FINAL_CACHE_ACCOUNT_PIN_REQUIRED');
+  s=s.replace('"tdnkeskczcsukcujwinu:"','"tdnkeskczcsukcujwinu:final047:"');
  }else if(rel==='index.html'){
   assert.equal(s.split('MainTrack 0.4.7 — Owner Preview').length-1,1,'FINAL_TITLE_REQUIRED');s=s.replace('MainTrack 0.4.7 — Owner Preview','MainTrack 0.4.7 Final');
  }else if(rel==='manifest.webmanifest'){

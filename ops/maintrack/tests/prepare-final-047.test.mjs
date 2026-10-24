@@ -15,6 +15,7 @@ test('Final 047 derives identical reviewed Web/native assets with final routes a
   assert.ok(web.includes('/maintrack-final-047/api'));assert.ok(!web.includes('/maintrack-unified-four-qa/api'));
   const inv=await fs.readFile(path.join(target,'web/inventory-047.js'),'utf8');
   assert.ok(inv.includes('/maintrack-inventory-final-047'));assert.ok(!inv.includes('/maintrack-inventory-047-qa'));
+  assert.ok(inv.includes('"tdnkeskczcsukcujwinu:final047:"'));assert.ok(!inv.includes('"tdnkeskczcsukcujwinu:"'));
   assert.match(await fs.readFile(path.join(target,'web/index.html'),'utf8'),/MainTrack 0.4.7 Final/);
   for(const rel of ['inventory-047.js','team-ledger.js','secure-assets/index-inline-1.js'])assert.deepEqual(await fs.readFile(path.join(target,'web',rel)),await fs.readFile(path.join(target,'native/www',rel)));
   await verifyFinal047(target);

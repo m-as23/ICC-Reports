@@ -42,8 +42,9 @@ jobs:
           mkdir -p audit-output
           node ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/scripts/audit-release-workflows.mjs
-          node --test ops/maintrack/tests/prepare-047-owner-preview.test.mjs ops/maintrack/tests/prepare-final-047.test.mjs
+          node --test ops/maintrack/tests/prepare-047-owner-preview.test.mjs ops/maintrack/tests/prepare-final-047.test.mjs ops/maintrack/tests/final-047-qa.test.mjs
           python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_407_build.py -v
+          python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_final_407_build.py -v
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import {execFileSync} from 'node:child_process';
@@ -127,12 +128,7 @@ jobs:
           set -euo pipefail
           for attempt in $(seq 1 50); do
             gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" > "$RUNNER_TEMP/047-checks.json"
-            if python3 - <<'PYTHON'
-          import json,os
-          checks=json.load(open(os.environ['RUNNER_TEMP']+'/047-checks.json'))['check_runs']
-          required=['v0.4.7 — syntax, leave overlap, roles, mail duration, immutable legacy root','v0.4.7 — pinned inventory SQL contract on disposable Postgres only','v0.4.7 — mobile Chromium form collision QA (offline backend)','MainTrack Staging-only QA — required combined result','Actual candidate Chromium — cache, account isolation, numerals']
-          raise SystemExit(0 if all(any(c['name']==n and c['conclusion']=='success' for c in checks) for n in required) else 1)
-          PYTHON
+            if node ops/maintrack/scripts/check-final-047-qa.mjs "$RUNNER_TEMP/047-checks.json"
             then break; fi
             test "$attempt" -lt 50
             sleep 15
