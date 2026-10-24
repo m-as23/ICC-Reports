@@ -1,24 +1,25 @@
 import {collectOwnerDiff} from '../backend/src/owner-review-pagination.mjs';
-export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis.fetch}={}){
+export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis.fetch,onAuthFailure=()=>{}}={}){
  if(!/^https:\/\/[a-z0-9]+\.supabase\.co\/functions\/v1\/maintrack-inventory-047-qa$/.test(endpoint||''))throw Error('UNREVIEWED_INVENTORY_ENDPOINT');
- let searchPin=null,reviewed=null,reviewSession=null;
+ let searchPin=null,reviewed=null,reviewSession=null;const pending=new Set();
  const session=()=>{const s=readSession?.();if(!s||!/^[a-f0-9]{64}$/i.test(s.token||''))throw Error('UNAUTHENTICATED');return s;};
  const owner=()=>{if(session().role!=='owner')throw Error('FORBIDDEN');};
- async function call(action,input={}){
+ async function call(action,input={},options={}){
   const s=session(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
+  const abort=()=>controller.abort();pending.add(controller);options.signal?.addEventListener('abort',abort,{once:true});if(options.signal?.aborted)abort();
   try{
    const response=await fetchImpl(endpoint,{method:'POST',signal:controller.signal,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({...input,action})});
    const result=await response.json();
    if(session().token!==s.token)throw Error('SESSION_CHANGED');
-   if(!response.ok||result.ok!==true)throw Error(result.error||'INVENTORY_UNAVAILABLE');
+   if(!response.ok||result.ok!==true){const error=Error(result.error||'INVENTORY_UNAVAILABLE');if(['AUTH','UNAUTHENTICATED','STALE_SESSION','FORBIDDEN'].includes(error.message))onAuthFailure(error);throw error;}
    return result.data;
-  }finally{clearTimeout(timer);}
+  }finally{clearTimeout(timer);pending.delete(controller);options.signal?.removeEventListener('abort',abort);}
  }
  return Object.freeze({
-  version:()=>call('inventoryVersion'),
-  snapshot:()=>call('inventorySnapshot'),
+  version:options=>call('inventoryVersion',{},options),
+  snapshot:options=>call('inventorySnapshot',{},options),
   capabilities:()=>call('inventorySearchCapabilities'),
-  assist:input=>call('inventorySearchAssist',input),
+  assist:(input,options)=>call('inventorySearchAssist',input,options),
   restore:sourceVersionId=>{owner();reviewed=null;return call('inventoryRestore',{sourceVersionId});},
   async search(query,{offset=0,limit=50}={}){
    const q=String(query||'').trim();if(!q)throw Error('INVALID_QUERY');
@@ -58,6 +59,6 @@ export function createInventoryClient({endpoint,readSession,fetchImpl=globalThis
   activity:options=>{owner();return call('inventoryActivity',options);},
   exclude:input=>{owner();return call('inventoryExcludeVersion',input);},
   reinstate:input=>{owner();return call('inventoryReinstateVersion',input);},
-  reset(){searchPin=null;reviewed=null;reviewSession=null;}
+  reset(){for(const controller of pending)controller.abort();pending.clear();searchPin=null;reviewed=null;reviewSession=null;}
  });
 }

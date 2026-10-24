@@ -13,37 +13,55 @@ function setProgress(message){$('importProgress').textContent=message;}
 function setImportError(message){$('importError').textContent=message;$('importError').hidden=!message;}
 function setImportBusy(value){importBusy=value;document.querySelectorAll('[data-version-action]').forEach(b=>b.disabled=value);$('inventoryFile').disabled=value;$('cancelImport').disabled=value;updateApproval();}
 function updateApproval(){$('approveImport').disabled=importBusy||!pendingImport?.complete||!$('reviewConfirm').checked||(pendingImport?.requiresExplicitReview&&!$('largeAbsenceConfirm').checked);}
-let inventoryLoadController;
-async function loadInventory(){
- ++loadEpoch;++mt6Generation;if(mt6Pending){mt6Pending.abort();mt6Pending=null;}
- closeDetail();closeFilters();$('retryInventory').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
- $('resultSection').hidden=true;$('inventoryMeta').hidden=false;$('inventoryMeta').textContent='جارٍ تحميل رصيد قطع الغيار…';$('inventoryMeta').setAttribute('role','status');
+let inventoryLoadController,lastCheck=0,lastGoodCheck=0,loadInterrupted=false,loadPending=0;
+const inventoryVisible=()=>!inventoryHost?.isVisible||inventoryHost.isVisible();
+function cacheStatus(mode){
+ if(mode==='ready'){lastGoodCheck=Date.now();$('inventoryMeta').hidden=!!currentVersion?.versionId;$('inventoryMeta').textContent=currentVersion?.versionId?'':'لم تُعتمد نسخة جرد بعد';return;}
+ const messages={checking:'نسخة محفوظة — جارٍ التحقق من تحديث الرصيد…',updating:'نسخة محفوظة — جارٍ تحميل الرصيد الأحدث…',offline:'نسخة محفوظة — تعذر التحقق من التحديث. تحقق من الاتصال.',loading:'جارٍ تحميل رصيد قطع الغيار…'};
+ $('inventoryMeta').hidden=false;$('inventoryMeta').textContent=messages[mode]||messages.checking;
+ if(mode==='offline')$('retryInventory').hidden=false;
+}
+async function loadInventory(force=false){
+ if(!inventoryVisible())return;
+ ++loadEpoch;
+ if(!currentVersion){closeDetail();closeFilters();$('query').disabled=true;$('searchButton').disabled=true;$('resultSection').hidden=true;}
+ $('retryInventory').hidden=true;$('inventoryMeta').setAttribute('role','status');
  inventoryLoadController??=MainTrackInventoryPreparation.createInventoryLoader({
   context:()=>inventoryHost.contextKey(),
-  fetchSnapshot:()=>inventoryHost.snapshot(),
-  validateVersion:async data=>(await inventoryHost.version()).versionId===data.versionId,
-  prepareSnapshot:(items,{signal})=>{
-   $('inventoryMeta').textContent='جارٍ تجهيز البحث في رصيد قطع الغيار…';
+  fetchSnapshot:options=>inventoryHost.snapshot(options),
+  getVersion:options=>inventoryHost.version(options),
+  readCache:()=>inventoryHost.readCache?.(),
+  writeCache:payload=>inventoryHost.writeCache?.(payload),
+  clearCache:()=>inventoryHost.clearCache?.(),
+  validateVersion:async(data,options)=>{const v=await inventoryHost.version(options);return v.versionId===data.versionId&&v.generation===data.generation},
+  prepareSnapshot:(items,{signal,background})=>{
+   if(!background){$('inventoryMeta').hidden=false;$('inventoryMeta').textContent='جارٍ تجهيز البحث في رصيد قطع الغيار…';}
    return MainTrackInventoryPreparation.prepareInWorker(items,{signal});
   },
-  commit:({data,rows})=>{
-   currentVersion=data;INDEX=rows;$('totalCount').textContent=nf.format(INDEX.length);
+  commit:({data,rows,cached})=>{
+   ++mt6Generation;if(mt6Pending){mt6Pending.abort();mt6Pending=null;}
+   closeDetail();currentVersion=data;INDEX=rows;$('totalCount').textContent=nf.format(INDEX.length);
    $('inventoryFreshness').textContent=formattedStamp(data.approvedAt);
-   $('inventoryMeta').textContent=data.versionId?'':'لم تُعتمد نسخة جرد بعد';$('inventoryMeta').hidden=!!data.versionId;
-   $('query').disabled=false;$('searchButton').disabled=false;search();
+   $('query').disabled=false;$('searchButton').disabled=false;search();cacheStatus(cached?'checking':'ready');
    if(!data.versionId)mt6Status('لم تُعتمد بيانات بعد. يرفع المسؤول ملف الجرد ويعتمده.');
    updateCloudMessage();
   },
+  onState:cacheStatus,
   onError:e=>{
-   INDEX=[];currentVersion=null;$('results').replaceChildren();$('resultSection').hidden=true;
+   INDEX=[];currentVersion=null;$('results').replaceChildren();$('resultSection').hidden=true;$('query').disabled=true;$('searchButton').disabled=true;
    $('inventoryFreshness').textContent='تعذر التحميل';$('inventoryMeta').textContent=inventoryError(e);$('inventoryMeta').hidden=false;mt6Status(inventoryError(e));$('retryInventory').hidden=false;
   }
  });
- return inventoryLoadController.load();
+ lastCheck=Date.now();const task=++loadPending;loadInterrupted=false;try{return await inventoryLoadController.load({reuse:true,force})}finally{if(task===loadPending)loadPending=0;}
 }
-
-window.addEventListener('pagehide',()=>inventoryLoadController?.cancel());
-window.addEventListener('pageshow',event=>{if(event.persisted)loadInventory();});
+function pauseInventory(){if(loadPending)loadInterrupted=true;inventoryLoadController?.cancel();++mt6Generation;if(mt6Pending){mt6Pending.abort();mt6Pending=null;}}
+function resumeInventory(){if(inventoryVisible()&&(loadInterrupted||!currentVersion||!lastGoodCheck||Date.now()-lastCheck>=60000))void loadInventory();}
+window.addEventListener('pagehide',pauseInventory);
+window.addEventListener('pageshow',event=>{if(event.persisted)void loadInventory();});
+window.addEventListener('maintrack-inventory-hidden',pauseInventory);
+window.addEventListener('maintrack-inventory-visible',resumeInventory);
+window.addEventListener('online',()=>{if(inventoryVisible())void loadInventory();});
+window.addEventListener('offline',()=>{if(currentVersion)cacheStatus('offline');});
 function metric(title,count){return '<div class="import-metric"><span>'+title+'</span><b>'+nf.format(count||0)+'</b></div>';}
 function renderImportPreview(){
  const p=pendingImport;if(!p)return;const c=p.counts||{};
@@ -77,7 +95,7 @@ async function approveInventory(){
  try{
   await inventoryHost.publish({confirmReviewed:$('reviewConfirm').checked,acknowledgeLargeAbsence:$('largeAbsenceConfirm').checked});
   pendingImport=null;$('importPreview').hidden=true;$('inventoryFile').value='';
-  await loadInventory();await refreshHistory();setProgress('تم اعتماد النسخة الجديدة. تم حفظ النسخة السابقة في الأرشيف.');toast('تم تحديث بيانات المخزن');
+  await loadInventory(true);await refreshHistory();setProgress('تم اعتماد النسخة الجديدة. تم حفظ النسخة السابقة في الأرشيف.');toast('تم تحديث بيانات المخزن');
  }catch(e){pendingImport=null;$('importPreview').hidden=true;setImportError(inventoryError(e));}
  finally{setImportBusy(false);}
 }
@@ -133,7 +151,7 @@ let canManage=false;try{canManage=inventoryHost?.role()==='owner';}catch{}
 $('ownerActions').hidden=!canManage;$('ownerImportOpen').hidden=!canManage;
 $('ownerGuideOpen').hidden=!canManage;
 // Reload only when a newer approved snapshot exists; no browser-local approval or embedded fallback.
-window.addEventListener('focus',async()=>{try{if(currentVersion&&!importBusy){const v=await inventoryHost.version();if(v.versionId!==currentVersion.versionId)await loadInventory();}}catch{}});
+window.addEventListener('focus',()=>{if(!importBusy)resumeInventory();});
 loadInventory();
 
 let cloudConfigured=false;
@@ -141,4 +159,4 @@ function updateCloudMessage(){$('storageStatus').textContent='متصل بخدم�
 function showSearchMode(){const mode=$('mt6Explain').dataset.mode;const badge=$('searchMode');badge.dataset.mode=!navigator.onLine?'offline':mode||'local';badge.textContent=!navigator.onLine?'بحث فني محلي':mode==='pending'?'تحسين البحث…':mode==='augmented'?'بحث بالمعنى':cloudConfigured?'بحث تلقائي':'بحث فني';}
 new MutationObserver(showSearchMode).observe($('mt6Explain'),{attributes:true,childList:true,subtree:true});
 window.addEventListener('online',showSearchMode);window.addEventListener('offline',showSearchMode);
-(async()=>{try{const c=await inventoryHost.capabilities();cloudConfigured=c.cloud===true;if(cloudConfigured)window.MainTrackAI={search:async({query,signal})=>{const versionId=currentVersion?.versionId;const result=await inventoryHost.assist({query,versionId});if(signal.aborted||versionId!==currentVersion?.versionId)throw Error('SEARCH_SUPERSEDED');return result;}};updateCloudMessage();showSearchMode();}catch{showSearchMode();}})();
+(async()=>{try{const c=await inventoryHost.capabilities();cloudConfigured=c.cloud===true;if(cloudConfigured)window.MainTrackAI={search:async({query,signal})=>{if(!inventoryVisible())throw Error('INVENTORY_HIDDEN');const versionId=currentVersion?.versionId;const result=await inventoryHost.assist({query,versionId},{signal});if(signal.aborted||versionId!==currentVersion?.versionId)throw Error('SEARCH_SUPERSEDED');return result;}};updateCloudMessage();showSearchMode();}catch{showSearchMode();}})();

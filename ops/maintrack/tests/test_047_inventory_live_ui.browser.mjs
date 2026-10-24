@@ -27,7 +27,7 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('App
  try{
   const page=await browser.newPage({viewport:{width,height:844}}),errors=[];
   page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(({role})=>{window.S={token:'a'.repeat(64),role};},{role});
+  await page.addInitScript(({role})=>{window.S={token:'a'.repeat(64),role,code:'LAB-'+role};},{role});
   const requests=[];let activeVersion='1',excluded=false;
   await page.route('https://tdnkeskczcsukcujwinu.supabase.co/**',async route=>{
    const req=route.request();
@@ -40,7 +40,7 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('App
    else if(x.action==='inventoryVersions'){const versions=[{id:activeVersion,status:'current',filename:'approved.xlsx',itemCount:25,approvedAt:'2026-10-23T07:03:00Z',approvedBy:'Owner'},...['8','7','6'].map(id=>({id,status:'archived',filename:'archive-'+id+'.xlsx',itemCount:25,approvedAt:'2026-10-22T07:03:00Z',approvedBy:'Owner',excludedAt:id==='8'&&excluded?'2026-10-23T07:03:00Z':null}))].filter(v=>v.status==='current'||!v.excludedAt||x.includeExcluded);data={items:versions.slice(x.offset,x.offset+x.limit),hasMore:false,nextOffset:null};}
    else if(x.action==='inventoryActivity')data={items:[{id:'1',event:'PUBLISHED',actorName:'Owner',filename:'approved.xlsx',occurredAt:'2026-10-23T07:03:00Z'}],hasMore:false,nextOffset:null};
    else if(x.action==='inventoryExcludeVersion'){excluded=true;data={updated:true};}
-   else if(x.action==='inventoryVersion')data={versionId:activeVersion};
+   else if(x.action==='inventoryVersion')data={versionId:activeVersion,generation:Number(activeVersion)};
    else if(x.action==='inventoryHistory')data=[{id:'1',filename:'approved.xlsx',itemCount:25,status:'current',approvedAt:'2026-10-23T07:03:00Z'}];
    else if(x.action==='inventoryDraft')data={draftId:'2'};
    else if(x.action==='inventoryDiff')data={draftId:'2',baseVersionId:'1',currentVersionId:'1',filename:'test.xlsx',reviewReceipt:'b'.repeat(64),isStale:false,detailsTotal:101,total:101,offset:x.offset,limit:x.limit,nextOffset:null,hasMore:false,truncated:false,counts:{CHANGED:101},requiresExplicitReview:false,details:Array.from({length:101},(_,i)=>({code:'ITEM'+i,type:'CHANGED',before:{description:'Parker',quantity:7},after:{description:'Parker',quantity:9}}))};
@@ -76,7 +76,7 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('App
   await frame.locator('[data-facet="availability"][data-value="missing"]').click();assert.equal(await frame.locator('.part-card').count(),1);
   await frame.locator('#resetFilters').click();if(width<790)await frame.locator('#filterClose').click();
   await frame.locator('[data-detail]').first().click();await frame.locator('#detailDrawer.open').waitFor();assert.match(await frame.locator('#detailBody').textContent(),/D1/);
-  activeVersion='2';await live.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  activeVersion='2';await live.evaluate(()=>loadInventory());
   await live.waitForFunction(()=>currentVersion?.versionId==='2');
   assert.equal(await frame.locator('#detailDrawer').evaluate(x=>x.classList.contains('open')),false,'New snapshot closes old item details');assert.equal(await frame.locator('#ownerImportOpen').isVisible(),role==='owner');
   if(role==='owner'){
@@ -109,14 +109,14 @@ test('Hybrid search retains literal matches, appends labelled meaning matches ac
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true,...(process.env.MT047_CHROME?{executablePath:process.env.MT047_CHROME,args:['--no-sandbox']}:{} )});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(()=>window.S={token:'a'.repeat(64),role:'technician'});
+  await page.addInitScript(()=>window.S={token:'a'.repeat(64),role:'technician',code:'LAB-TECH'});
   let held,resolveHeld,requests=0;
   await page.route('https://tdnkeskczcsukcujwinu.supabase.co/**',async route=>{
    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'access-control-allow-origin':base,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, content-type'}});return;}
    const x=route.request().postDataJSON();let data;
    if(x.action==='inventorySnapshot')data={versionId:'1',generation:1,approvedAt:'2026-10-23T07:03:00Z',items:rows};
    else if(x.action==='inventorySearchCapabilities')data={cloud:true,semantic:true};
-   else if(x.action==='inventoryVersion')data={versionId:'1'};
+   else if(x.action==='inventoryVersion')data={versionId:'1',generation:1};
    else if(x.action==='inventorySearchAssist'){
     requests++;if(x.query==='انتظار'){resolveHeld?.();await new Promise(r=>held=r);}
     data={mode:'semantic',versionId:'1',codes:x.query.includes('مشوار')?['LIMIT-1']:['TEMP-K','RTD-1']};

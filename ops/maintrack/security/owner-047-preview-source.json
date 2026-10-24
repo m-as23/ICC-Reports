@@ -26,7 +26,7 @@
     },
     {
       "path": "inventory-047.js",
-      "sha256": "987cf46eca0ec5ac22880305170ab403ff6911d116ac2fcd6f319f6970916401"
+      "sha256": "124eb4cc8914e180f63ab425ccbc071ab091572111e94cf14828969ad4967351"
     },
     {
       "path": "inventory-approved.css",
@@ -42,11 +42,11 @@
     },
     {
       "path": "inventory-preparation.js",
-      "sha256": "fec6194f2dbae9bb8677881e1f717c70df75b6df8d908953453a805181944af2"
+      "sha256": "08ffe9581243f45e882eb5680c966d9de25fa2f5d53249265a7cba391e83a7b8"
     },
     {
       "path": "inventory-reference-integration.js",
-      "sha256": "7c0bab98774bcd07797d7722cbcc3a79dfac3bcb99991a53fd22f0cbbf704b65"
+      "sha256": "ddf20bb2822db9d05464b6e67e5f79ad124d8b54cb618eed3824028b00395a15"
     },
     {
       "path": "inventory-reference-worker.js",
@@ -114,7 +114,7 @@
     },
     {
       "path": "team-ledger.js",
-      "sha256": "293c391eeaa65eb717d90e260ff450469859128a1647c1e86c8c977947a2b516"
+      "sha256": "99201cd2d6db30eb80fed38d911887c3242fa2b29524ffe4e982d536c4f8dfba"
     },
     {
       "path": "v6-core.css",
@@ -132,5 +132,6 @@
       "path": "v6.js",
       "sha256": "faea823c3001c1d76dd31adf0898ed61d327e56be3ec1d651b6e651bb5d8fdff"
     }
-  ]
+  ],
+  "reviewedChange": "Owner-authorized inventory cache and Latin numerals, 2026-10-24"
 }

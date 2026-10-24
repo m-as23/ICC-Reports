@@ -53,9 +53,9 @@ test('overlapping loads commit only the newest version in the actual page',async
  const h=await harness();try{
   await h.frame.locator('#query:enabled').waitFor();
   await h.page.evaluate(()=>{lab.delay=150;lab.version='2';});
-  await h.live().evaluate(()=>{loadInventory();});
+  await h.live().evaluate(()=>{loadInventory(true);});
   await h.page.evaluate(()=>{lab.delay=0;lab.version='3';});
-  await h.live().evaluate(()=>{loadInventory();});
+  await h.live().evaluate(()=>{loadInventory(true);});
   await h.live().waitForFunction(()=>currentVersion?.versionId==='3');
   await new Promise(r=>setTimeout(r,250));
   assert.equal(await h.live().evaluate(()=>currentVersion?.versionId),'3');

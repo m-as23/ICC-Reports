@@ -4,6 +4,7 @@ on:
     branches:
       - feature/maintrack-047-integration-20261022
       - feature/maintrack-team-balances-from-047-20261024
+      - fix/maintrack-047-inventory-cache-numerals-20261024
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,7 +31,7 @@ jobs:
           node --check web/maintrack/public/secure-assets/index-inline-1.js
           node --check ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/tests/test_047_static.cjs
-          node --test ops/maintrack/inventory/frontend/inventory-loader.test.mjs ops/maintrack/tests/test_047_worker_equivalence.test.mjs ops/maintrack/tests/test_047_hybrid_search.test.mjs ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
+          node --test ops/maintrack/inventory/frontend/inventory-loader.test.mjs ops/maintrack/inventory/frontend/inventory-cache.test.mjs ops/maintrack/tests/test_047_worker_equivalence.test.mjs ops/maintrack/tests/test_047_hybrid_search.test.mjs ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
       - name: Test read-only Team Ledger on disposable PostgreSQL WASM
         run: |
           npm ci --prefix android/maintrack-app --no-audit --no-fund
@@ -169,3 +170,21 @@ jobs:
       - name: Confirm no cloud resources modified
         run: echo 'PASS disposable PostgreSQL CI only; no Supabase changes, no migrations deployed.' >> "$GITHUB_STEP_SUMMARY"
 
+
+  cache-numerals-browser:
+    name: Actual candidate Chromium — cache, account isolation, numerals
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser test dependencies
+        run: |
+          npm ci --prefix android/maintrack-app/tests-browser --ignore-scripts --no-audit --no-fund
+          npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
+      - name: Exercise real candidate with synthetic closed transport
+        run: node --test --test-concurrency=1 ops/maintrack/tests/test_047_inventory_cache.browser.mjs ops/maintrack/tests/test_047_inventory_loading.browser.mjs ops/maintrack/team-ledger/test/ui.browser.mjs
