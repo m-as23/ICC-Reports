@@ -1,6 +1,6 @@
 {
-  "bundleVersion": "0.4.9",
-  "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/2a172199d4c488b18cb537cb55368c76dc89ee08/updates/android/maintrack-0.4.9-final.zip",
-  "sha256": "d2303b1c17a721921f2234e44310fa19222fa6932babe268b1f702b365cfb648",
-  "bytes": 191385
+  "bundleVersion": "0.4.10",
+  "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/33058b396c5fbc9fce72791991f9500fdde66309/updates/android/maintrack-0.4.10-final.zip",
+  "sha256": "88ab2564619d604752436578561eb1a03d100200e8d3fc9d121c109c72af13ef",
+  "bytes": 191438
 }

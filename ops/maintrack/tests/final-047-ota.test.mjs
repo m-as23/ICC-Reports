@@ -4,8 +4,8 @@ import {finalBaseline} from '../scripts/sign-final-047-ota.mjs';
 import {canonicalJson} from '../../../android/maintrack-app/update-system/policy.mjs';
 import {verifyLabRelease} from '../../../android/maintrack-app/update-system/ota-lab.mjs';
 test('credential update advances OTA version while retaining the compatible 047 native floor',()=>{
- const policy={bundleVersion:'0.4.9',bundleUrl:'https://raw.githubusercontent.com/m-as23/ICC-Reports/'+'a'.repeat(40)+'/updates/android/maintrack-0.4.9-final.zip',sha256:'b'.repeat(64),bytes:191000};
- const payload=finalBaseline(policy,'c'.repeat(40),Date.now());assert.equal(payload.bundleVersion,'0.4.9');assert.equal(payload.nativeMinimum,'0.4.7');
+ const policy={bundleVersion:'0.4.10',bundleUrl:'https://raw.githubusercontent.com/m-as23/ICC-Reports/'+'a'.repeat(40)+'/updates/android/maintrack-0.4.10-final.zip',sha256:'b'.repeat(64),bytes:191000};
+ const payload=finalBaseline(policy,'c'.repeat(40),Date.now());assert.equal(payload.bundleVersion,'0.4.10');assert.equal(payload.nativeMinimum,'0.4.7');
  assert.throws(()=>finalBaseline({...policy,bundleVersion:'0.4.7'},'c'.repeat(40),Date.now()));
 });
 test('Final signed baseline accepts 047, rejects older native and tampering, and preserves queue contract',async()=>{

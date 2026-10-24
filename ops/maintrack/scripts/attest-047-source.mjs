@@ -24,6 +24,9 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'android/maintrack-app/update-system/pilot-panel.mjs',
+ 'android/maintrack-app/tests/pilot-panel.test.mjs',
+ 'android/maintrack-app/tests-browser/pilot-panel.browser.test.mjs',
  'ops/maintrack/scripts/credential-policy.mjs',
  'ops/maintrack/tests/credential-policy.test.mjs',
  'ops/maintrack/tests/credential-policy-api.test.mjs',

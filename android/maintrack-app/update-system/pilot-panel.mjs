@@ -14,6 +14,7 @@ export function mountPilotPanel({document = globalThis.document, autoDiscover = 
   open.setAttribute('aria-controls', 'mt-pilot-dialog'); open.setAttribute('aria-expanded', 'false');
   const dialog = document.createElement('div'); dialog.id = 'mt-pilot-dialog'; dialog.hidden = true;
   dialog.setAttribute('role', 'region'); dialog.setAttribute('aria-labelledby', 'mt-pilot-title'); root.append(dialog);
+  dialog.tabIndex = -1;
   const title = document.createElement('h2'); title.id = 'mt-pilot-title'; title.textContent = 'تحديث MainTrack'; dialog.append(title);
   const text = document.createElement('p'); text.id = 'mt-pilot-status'; text.setAttribute('role', 'status'); text.setAttribute('aria-live', 'polite'); dialog.append(text);
   const actions = document.createElement('div'); actions.id = 'mt-pilot-actions'; dialog.append(actions);
@@ -40,6 +41,7 @@ export function mountPilotPanel({document = globalThis.document, autoDiscover = 
       + (state.installedVersion ? ' الإصدار الحالي: ' + state.installedVersion + '.' : '')
       + (state.version ? ' التحديث المتاح: ' + state.version : '');
     check.disabled = busy; download.disabled = busy; activate.disabled = busy;
+    check.hidden = !['idle','failed','rejected','up-to-date'].includes(state.phase);
     download.hidden = !['available','blocked'].includes(state.phase);
     activate.hidden = state.phase !== 'ready';
     close.disabled = ['activating','recovery-required'].includes(state.phase);
@@ -52,7 +54,7 @@ export function mountPilotPanel({document = globalThis.document, autoDiscover = 
     if (settings) {const manual = button('mt-update-manual', 'التحقق من التحديث', settings); manual.className = 'btn'; manual.onclick = check.onclick;}
   } download.onclick = () => session.download();
   activate.onclick = () => session.activate();
-  open.onclick = () => {dialog.hidden = false; open.setAttribute('aria-expanded','true'); check.focus();};
+  open.onclick = () => {dialog.hidden = false; open.setAttribute('aria-expanded','true'); ([download,activate,check,close].find(button => !button.hidden && !button.disabled) || dialog).focus();};
   close.onclick = () => {dialog.hidden = true; open.setAttribute('aria-expanded','false'); open.focus();};
   document.body.append(root); render(session.read());
   return Object.freeze({read:session.read});

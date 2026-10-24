@@ -10,6 +10,7 @@ on:
       - 'ops/maintrack/tests/prepare-final-047.test.mjs'
       - 'ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs'
       - 'android/maintrack-app/update-system/startup.mjs'
+      - 'android/maintrack-app/update-system/pilot-panel.mjs'
       - 'android/maintrack-app/update-system/shell-readiness.mjs'
       - 'ops/maintrack/security/final-047-ota-source.json'
       - 'ops/maintrack/scripts/sign-final-047-ota.mjs'
@@ -67,6 +68,7 @@ jobs:
           npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
           MT047_ASSET_DIR="$GITHUB_WORKSPACE/audit-output/final-047/web" node --test ops/maintrack/tests/test_047_inventory_cache.browser.mjs
           MT047_ASSET_DIR="$GITHUB_WORKSPACE/audit-output/final-047/web" node --test ops/maintrack/tests/credential-policy.browser.mjs
+          node --test android/maintrack-app/tests-browser/pilot-panel.browser.test.mjs
       - name: Prepare Android 407 with existing Keystore session plugin
         working-directory: android/maintrack-app
         run: |
