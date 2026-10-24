@@ -148,7 +148,18 @@ jobs:
         with:
           node-version: '22'
       - name: Read-only live Staging API contract smoke (no secrets or credentials)
+        if: github.ref != 'refs/heads/release/maintrack-047-final-20261024'
         run: node android/maintrack-app/scripts/qa/live-api-smoke.mjs
+      - name: Read reviewed Final service smoke from actual release source
+        if: github.ref == 'refs/heads/release/maintrack-047-final-20261024'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: final-service-check
+          persist-credentials: false
+      - name: Verify Final service health and old-client retirement
+        if: github.ref == 'refs/heads/release/maintrack-047-final-20261024'
+        run: node final-service-check/ops/maintrack/scripts/final-047-live-smoke.mjs
   overall-qa:
     name: MainTrack Staging-only QA — required combined result
     if: always()

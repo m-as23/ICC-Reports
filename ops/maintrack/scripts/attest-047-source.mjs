@@ -24,6 +24,10 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'ops/maintrack/scripts/final-047-live-smoke.mjs',
+ 'ops/maintrack/final-047-reset.sql',
+ 'ops/maintrack/tests/final-047-reset.test.mjs',
+ 'docs/superpowers/specs/2026-10-24-final-047-cutover-status.md',
  'ops/maintrack/security/final-047-ota-source.json',
  'ops/maintrack/scripts/sign-final-047-ota.mjs',
  'ops/maintrack/tests/final-047-ota.test.mjs',
