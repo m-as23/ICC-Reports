@@ -45,3 +45,6 @@ The user-supplied current-design.html is the visual authority for inventory. The
 
 ## Owner Team Ledger (24 October 2026)
 Owner-approved `MainTrack_Admin_With_Team_Balances_Preview.html` defines only the two tabs within existing Administration and its ledger/details. `team-ledger.css` scopes the copied palette, SVGs, cards, tables and 650px card breakpoint to `#admin .team-ledger`. Existing Accounts content and all other app screens retain their existing styles. Reference fixture is test-only; no mock data in canonical runtime.
+
+## Approved numeral consistency (2026-10-24)
+Team ledger counts, balances and durations use `ar-EG-u-nu-latn` (0–9) with the existing Cairo stack, matching the year selector and established app. Layout, colors and domain values are unchanged. Inventory keeps its exact original engine/visual design; local-cache checking and failure use the existing inline status region.

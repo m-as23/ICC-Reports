@@ -23,13 +23,16 @@ else if(['notifications','leaveInbox','overtimeInbox','leaveMine','overtimeMine'
 else if(b.action==='adminUsers')answer={items:data.years[${new Date().getFullYear()}].team.items.map(p=>({...p.profile,active:p.active,leaveBalance:p.balance.annualAvailableDays,substituteAvailableHours:p.balance.substituteAvailableDays*8}))};
 else if(b.action==='accountSummary')answer=data.account;
 else if(b.action==='profile')answer={profile:data.account.profile};
+else if(b.action==='inventorySearchCapabilities')answer={ok:true,data:{cloud:false}};
+else if(b.action==='inventoryVersion')answer={ok:true,data:{versionId:'LAB-1',generation:1}};
+else if(b.action==='inventorySnapshot')answer={ok:true,data:{versionId:'LAB-1',generation:1,filename:'synthetic-only.xlsx',approvedAt:'2026-10-24T08:00:00Z',items:Array.from({length:3920},(_,i)=>({code:'LAB-'+i,description:'CONTACTOR '+(i%2?165:65)+' A 220 V',quantity:i,location:'LOCAL TEST',extra:{}}))}};
 else if(b.action==='teamBalances'){const y=data.years[b.year];if(!y)answer={error:'YEAR_NOT_IN_PREVIEW'};else{const q=String(b.query||'').toLowerCase(),rows=y.team.items.filter(p=>(p.profile.code+' '+p.profile.name).toLowerCase().includes(q));answer={...y.team,total:rows.length,items:rows.slice(b.offset||0,(b.offset||0)+(b.limit||50)),hasMore:false};}}
 else if(b.action==='teamBalanceDetail')answer=data.years[b.year]?.details[b.employeeCode]?.[b.kind]||{error:'EMPLOYEE_NOT_FOUND'};
 else answer={error:'PREVIEW_READ_ONLY'};
 return new Response(JSON.stringify(answer),{status:200,headers:{'content-type':'application/json'}});};
 window.addEventListener('load',()=>document.getElementById('tabAdmin').click());})();`;
  await fs.writeFile(path.join(target,'team-ledger-review-host.js'),host);
- const file=path.join(target,'index.html');let html=await fs.readFile(file,'utf8');html=html.replace('<script src="secure-assets/index-inline-1.js">','<script src="team-ledger-review-host.js"></script><script src="secure-assets/index-inline-1.js">');html=html.replace('<body>','<body><div class="team-ledger-preview-note" role="note">معاينة مراجعة — بيانات صناعية فقط. لا يوجد اتصال ببيانات الموظفين أو المخزن. الربط الحي ينتظر اعتماد الـAPI.</div>');await fs.writeFile(file,html);
+ const file=path.join(target,'index.html');let html=await fs.readFile(file,'utf8');html=html.replace('<script src="secure-assets/index-inline-1.js">','<script src="team-ledger-review-host.js"></script><script src="secure-assets/index-inline-1.js">');html=html.replace('<body>','<body><div class="team-ledger-preview-note" role="note">معاينة اختبار — بيانات صناعية فقط. لا تتصل ببيانات الموظفين أو المخزن الفعلية.</div>');await fs.writeFile(file,html);
  await fs.appendFile(path.join(target,'team-ledger.css'),'\n.team-ledger-preview-note{padding:12px 18px;background:#fff5db;border:1px solid #e8c46e;color:#624914;font:700 13px Tahoma;position:relative;z-index:10000;text-align:center}\n');
  return {target,synthetic:true,liveData:false,externalWrites:false};
 }
