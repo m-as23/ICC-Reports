@@ -4,20 +4,20 @@
     "channel": "lab",
     "kind": "web-ota",
     "appId": "com.icc.maintrack",
-    "issuedAt": 1792875222988,
-    "expiresAt": 1793393623988,
+    "issuedAt": 1792878476875,
+    "expiresAt": 1793396877875,
     "nativeMinimum": "0.4.7",
     "nativeMaximum": "0.4.99",
-    "bundleVersion": "0.4.9",
-    "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/2a172199d4c488b18cb537cb55368c76dc89ee08/updates/android/maintrack-0.4.9-final.zip",
-    "sha256": "d2303b1c17a721921f2234e44310fa19222fa6932babe268b1f702b365cfb648",
-    "bytes": 191385,
+    "bundleVersion": "0.4.10",
+    "bundleUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/33058b396c5fbc9fce72791991f9500fdde66309/updates/android/maintrack-0.4.10-final.zip",
+    "sha256": "88ab2564619d604752436578561eb1a03d100200e8d3fc9d121c109c72af13ef",
+    "bytes": 191438,
     "localData": {
       "reportQueue": 1,
       "writesReportQueue": 1,
       "migration": "none"
     },
-    "sourceCommit": "a7b878abd669a146d7fcd53ec94d6cb1897eb752"
+    "sourceCommit": "97b0f61a4a1661bb4cfcaa90bc242cbe9cf12964"
   },
-  "signature": "q1JStyiZ9p2uBIX02qPJ_6JTtBr9WPDQKhQ2wS5-Ka4g3FGWq6tz_n4AEeF1rWUpjAG_H4vEVWryUAVv0MeQBw"
+  "signature": "er7-pmbKdfZqPdEa58e0A9GQSeJx3vcys-CaefXyDo69VmnYATAkTi9SSAfEJpBJj2uv9G38TFKSyBEgXYZcDg"
 }
