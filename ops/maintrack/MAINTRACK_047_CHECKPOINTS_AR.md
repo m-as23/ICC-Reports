@@ -284,3 +284,18 @@
 - QA source `1ab2661673d1e0007a5d5e0460625f0fe4f0bf8e`, run `39921351892` SUCCESS: all seven Chromium tests passed, including Owner/Technician at 390/1280, original result DOM/facets, card visual comparison, search/more/filter/detail, complete 101-row review pagination, explicit approval and stale-detail closure on snapshot change. Mobile menu/form regression and disposable PostgreSQL checks also passed. Local inventory/parser/client suite: 73/73.
 - Compared the supplied source's engine and the integrated engine against the uploaded 3,920-item workbook: same M700 result count/facets. Visual comparison excludes the floating feedback overlay and aligns card rasterization at integer origin; it does not claim every whole-page pixel on a physical device is identical.
 - Remains an isolated installable Owner test APK. Original signing-key environment restrictions remain in force. No OTA, employee rollout, manual email or physical-device installation test performed.
+
+## 24 أكتوبر 2026 — Team Leave & Overtime Ledger (فرع مستقل)
+
+مرجع الحالة الجديدة هو هذا القسم؛ الأقسام السابقة سجل تاريخي لا يُعاد تفسير PENDING القديم على أنه الحالة الحالية.
+
+| CP للطلب الجديد | الحالة | الدليل والنطاق |
+|---|---|---|
+| CP-01 مراجعة المشروع | PASS | HEAD047=ba5102b؛ CI39993561020 و39993561050 ناجحان؛ API Staging v21؛ جداول الأرصدة/الحركات الحالية صالحة لإعادة الاستخدام. فرع مستقل feature/maintrack-team-balances-from-047-20261024 من HEAD نفسه. |
+| CP-02 استقرار047 | PASS ضمن أدلة المصدر وCI، مع BLOCKED مستقل | المخزن6/3920، إجمالي6نسخ؛ لم تتغير. AI ready=false/failures4/PROVIDER_UNAVAILABLE. لم يُفعّل مزود أو مفتاح. التوقيع الأصلي/OTA/استعادة التطبيق الكاملة والبريد المستلم الفعلي تظل BLOCKED/NOT VERIFIED. |
+| CP-03 أرصدة الفريق | PASS للكود المعزول؛ BLOCKED للربط الحي | مصدر SQL مركزي بنفس حساب accountSummary، Owner API للقراءة فقط، تبويبا admin مع الحفاظ على Accounts. لا Migration؛ مرشح API لم ينشر ويتطلب موافقة محددة على Staging. |
+| CP-04 اختبارات | PASS للصناعي/المتصفح؛ اختبار الجهاز NOT STARTED | PostgreSQL حقيقية داخلWASM، handler كامل+جلساتopaque، مقارنةملخص الحساب الحالي، صلاحيات وحالات/نصف يوم/بدل/مالي/تسويات/تواريخ/صفحات. UI360/390/412/600/1280 وحالات الاستجابة القديمة، ومضيف التطبيق الكامل. المخرجات والأوامر في README الميزة وCI الفرع. |
+| CP-05 المعاينة | IN PROGRESS | بناء Web Preview صناعي واضح منفصل وAPK بحزمة QA جديدة. المعاينة الموصولة ببيانات فعلية تنتظر موافقة API وOrigin المحدد إن لزم؛ ليست PASS قبل تنفيذها. |
+| النشر الرسمي/main/Production/Original OTA | BLOCKED | لا تصريح في هذا الطلب. |
+
+نقطة سياسة معلقة: لا يوجد رصيد سنوي تاريخي مستقل في DB. نعرض الأرصدة الحالية المطابقة لحسابي ونصفي السجلات بالسنة مع تنبيه صريح؛ لم نخترع ترحيلًا أو استحقاق28 للجميع. اعتماد أرصدة افتتاحية لكل سنة عمل منفصل.

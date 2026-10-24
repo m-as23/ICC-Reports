@@ -24,6 +24,25 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ "docs/superpowers/plans/2026-10-24-team-balances.md",
+ "docs/superpowers/specs/2026-10-24-team-balances-design.md",
+ "ops/maintrack/team-ledger/README_AR.md",
+ "ops/maintrack/team-ledger/backend/ledger-service.mjs",
+ "ops/maintrack/team-ledger/backend/prepare-candidate.mjs",
+ "ops/maintrack/team-ledger/frontend/extract-reference.py",
+ "ops/maintrack/team-ledger/frontend/team-ledger.js",
+ "ops/maintrack/team-ledger/scripts/prepare-review.mjs",
+ "ops/maintrack/team-ledger/test/api.test.mjs",
+ "ops/maintrack/team-ledger/test/approved-reference.fixture.html",
+ "ops/maintrack/team-ledger/test/full-app.browser.mjs",
+ "ops/maintrack/team-ledger/test/ledger.test.mjs",
+ "ops/maintrack/team-ledger/test/regression.test.mjs",
+ "ops/maintrack/team-ledger/test/schema.sql",
+ "ops/maintrack/team-ledger/test/ui.browser.mjs",
+ "ops/maintrack/team-ledger/test/unified-v21.fixture.ts",
+ "web/maintrack/public/team-ledger.css",
+ "web/maintrack/public/team-ledger.js",
+
  'ops/maintrack/tests/test_047_inventory_loading.browser.mjs',
  'docs/superpowers/plans/2026-10-23-inventory-responsive-loading.md',
  'ops/maintrack/inventory/frontend/inventory-loader.mjs',

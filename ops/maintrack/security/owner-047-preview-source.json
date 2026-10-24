@@ -18,7 +18,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "06683f83e10154ba93ef5e0fa2cc1f99d9c2ab2cb2726d583c863dac032651df"
+      "sha256": "7a9d0c24b42bf05343ac67957d64d640c40f425bc6ceebc8ef33c0808574b829"
     },
     {
       "path": "inventory-047.css",
@@ -107,6 +107,14 @@
     {
       "path": "security-final-check.html",
       "sha256": "a705a632b353679359560200b9d41494e18a02f07c9df089d9837833a3cad800"
+    },
+    {
+      "path": "team-ledger.css",
+      "sha256": "c45716fe5b5fbdc9ba23178fd8722b99dac7791dc0d68cacf8a0aa85638b3765"
+    },
+    {
+      "path": "team-ledger.js",
+      "sha256": "293c391eeaa65eb717d90e260ff450469859128a1647c1e86c8c977947a2b516"
     },
     {
       "path": "v6-core.css",

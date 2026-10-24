@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#0e3448">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<title>MainTrack | الإدارة — أرصدة الفريق داخل الصفحة</title>
+<style>
+:root{font-family:'Cairo','Noto Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif;color:#193345;background:#f3f7f9;--dark:#0c2334;--nav:#143448;--turq:#078f93;--border:#e3eaef;--mute:#728696;--gold:#f4c45a;--shadow:0 13px 40px #102d4211}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;line-height:1.65}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #3dc4ca;outline-offset:2px}[hidden]{display:none!important}
+.app{min-height:100vh}.sidebar{background:linear-gradient(160deg,#0b1928,#173d52);width:260px;position:fixed;right:0;top:0;bottom:0;padding:22px 14px;z-index:30;display:flex;flex-direction:column;color:#e0ecf1;box-shadow:-4px 0 22px #152d4024;overflow-y:auto}.logo{display:flex;align-items:center;gap:10px;padding:1px 7px 19px;border-bottom:1px solid #ffffff20;margin-bottom:14px}.mark{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:13px;background:linear-gradient(140deg,#0db3ae,#0b6682);border:1px solid #60d2c9b0;color:white;font-size:24px;font-weight:900;box-shadow:inset 0 -4px 8px #00344c40}.logo strong{display:block;font-size:22px;letter-spacing:-.8px;line-height:1.1}.logo small{display:block;font-size:10px;color:#b3d2dc;margin-top:3px;letter-spacing:.08em}.nav-caption{padding:14px 12px 6px;font-size:10px;letter-spacing:.09em;color:#84a4b6}.nav{display:grid;gap:5px}.nav-item{display:flex;align-items:center;gap:13px;text-align:right;width:100%;color:#d9e6eb;background:transparent;border:1px solid transparent;padding:12px 13px;min-height:47px;border-radius:11px;font-size:13px;font-weight:700}.nav-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;flex-shrink:0;stroke-linejoin:round;stroke-linecap:round}.nav-item.is-active{background:linear-gradient(110deg,#078e92,#146c80);color:white;box-shadow:inset -3px 0 var(--gold);border-color:#ffffff21}.nav-item:disabled{cursor:default;opacity:.72}.nav-item:not(:disabled):hover{background:#ffffff16}.sidebar-user{display:flex;align-items:center;gap:10px;border-top:1px solid #ffffff27;background:#143448;border-radius:12px;margin-top:auto;padding:15px 7px 5px}.avatar{display:grid;place-items:center;width:39px;height:39px;border-radius:50%;background:#dbf3f2;color:#087984;font-weight:900}.sidebar-user strong{display:block;font-size:12px}.sidebar-user small{display:block;color:#a1bec9;font-size:11px}.sidebar-close{display:none}
+.main{margin-right:260px;min-width:0}.topbar{background:#fff;min-height:82px;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:16px clamp(18px,3vw,46px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:12}.path{display:flex;gap:10px;align-items:center;font-size:12px;color:#8b9ba8}.path b{color:#177e89}.topbar h2{margin:1px 0 0;font-size:19px;line-height:1.4}.right-top{display:flex;align-items:center;gap:12px}.owner-chip{display:flex;align-items:center;gap:8px;border:1px solid #d3e8eb;color:#0b7481;background:#edf9f9;border-radius:24px;padding:7px 12px;font-size:12px;font-weight:800}.owner-chip span{width:7px;height:7px;border-radius:50%;background:#08b1aa}.menu-toggle{display:none;border:1px solid #d9e7e9;background:#f2faf9;color:#0e7284;width:43px;height:43px;border-radius:10px;font-size:22px}.container{padding:28px clamp(18px,3vw,45px) 72px;max-width:1610px;margin:auto}.preview-note{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;background:#fff8e5;color:#806020;border:1px solid #f3dea6;border-radius:12px;padding:9px 15px;margin-bottom:23px;font-size:12px}.preview-note b{font-size:12px}.preview-note span{color:#92794d}.page-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px}.eyebrow{color:#008c91;font-size:11px;font-weight:900;letter-spacing:.07em;margin:0 0 4px}.page-heading h1{margin:0;font-size:28px;line-height:1.5;letter-spacing:-.65px}.page-heading p{margin:4px 0 0;color:#7a8c9b;font-size:13px}.page-tag{border:1px solid #d4e5e9;border-radius:20px;background:#fff;padding:8px 14px;color:#477184;font-size:12px;white-space:nowrap;display:flex;align-items:center;gap:8px}.page-tag:before{content:'';width:7px;height:7px;background:#2bab9d;border-radius:100%}.summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-bottom:23px;max-width:770px}.metric{background:#fff;border:1px solid var(--border);border-radius:16px;min-height:137px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 6px 23px #1c38440a}.metric-label{font-weight:700;color:#718696;font-size:13px}.metric-value{font-size:39px;font-weight:900;line-height:1.25;display:block;font-variant-numeric:tabular-nums;color:#18384a;margin:6px 0 2px}.metric-sub{color:#94a1ad;font-size:11px}.metric-icon{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;background:#ecf8f8;color:#078b8e}.metric-icon.gold{background:#fff6e0;color:#b17c1b}.metric-icon svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.panel{border:1px solid var(--border);background:#fff;border-radius:18px;box-shadow:var(--shadow);overflow:hidden}.panel-top{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:21px 23px;border-bottom:1px solid var(--border)}.panel-top h3{margin:0;font-size:17px}.panel-top p{font-size:12px;color:#8b9cab;margin:2px 0 0}.filters{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.field{position:relative}.field input,.field select{border:1px solid #d8e3e8;background:#fcfdfd;border-radius:10px;padding:10px 12px;min-height:43px;font-weight:600;color:#314e5d;outline-offset:2px}.field input{width:215px;padding-right:35px}.field select{width:130px}.field-icon{position:absolute;right:11px;top:10px;color:#849aab;font-size:17px;pointer-events:none}.field input::placeholder{color:#a5b2ba}.label-year{font-size:12px;color:#647d8b;font-weight:700}.table-wrap{overflow:auto;max-width:100%}table{width:100%;border-collapse:collapse;min-width:615px;text-align:right}th{font-size:11px;font-weight:800;color:#8495a4;white-space:nowrap;background:#f8fafb;padding:15px 21px}td{padding:16px 21px;font-size:13px;border-top:1px solid #eef2f4;white-space:nowrap}tbody tr{transition:background .12s;cursor:pointer}tbody tr:hover,tbody tr:focus-within{background:#f5fbfb}tbody tr:nth-child(even){background:#fdfefe}tbody tr:nth-child(even):hover{background:#f5fbfb}.person{display:flex;align-items:center;gap:11px}.person-avatar{display:grid;place-items:center;background:#eaf4f7;width:39px;height:39px;border-radius:12px;flex-shrink:0;color:#29788c;font-weight:900}.person-name{font-weight:800;color:#2a4252}.person-meta{display:block;color:#97a7b1;font-size:11px;margin-top:1px}.value-strong{color:#235563;font-weight:900;font-size:15px;font-variant-numeric:tabular-nums}.value-muted{font-weight:800;color:#647a87}.value-alert{font-weight:900;color:#af6b14}.open-link{display:inline-flex;gap:5px;align-items:center;background:#eef9f8;color:#007b82;border:1px solid #d5efed;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:900}.open-link:after{content:'←';font-size:13px}.table-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 22px;border-top:1px solid var(--border);font-size:11px;color:#90a1ad}.mobile-help{display:none}.empty{padding:34px;text-align:center;color:#7b94a0}
+.detail-head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px}.back{border:1px solid #d9e6e9;border-radius:10px;background:#fff;color:#277585;padding:9px 13px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}.detail-toppanel{padding:24px 26px;border:1px solid var(--border);background:#fff;border-radius:18px;margin-bottom:21px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}.person-big{display:flex;align-items:center;gap:15px}.person-avatar.big{width:61px;height:61px;border-radius:17px;font-size:21px;background:#e1f2f3}.person-big h2{font-size:23px;margin:0}.person-big p{font-size:12px;color:#8b9ca9;margin:2px 0 0}.year-pill{border:1px solid #dbe7e9;border-radius:10px;padding:9px 12px;color:#5d7887;font-size:12px;background:#fafdfd}.tabs-panel{padding:9px;background:#edf4f5;border-radius:13px;display:flex;gap:7px;width:100%;max-width:520px;margin-bottom:20px}.tab{flex:1;border:0;background:transparent;color:#62818d;border-radius:9px;min-height:44px;font-weight:900;font-size:13px}.tab[aria-selected="true"]{background:#fff;color:#087c87;box-shadow:0 3px 12px #12374c16}.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:21px}.stat-grid.two{grid-template-columns:repeat(2,minmax(0,1fr));max-width:650px}.stat-card{border:1px solid #e1e9ed;background:#fff;border-radius:14px;padding:20px 23px}.stat-card small{color:#78909d;font-size:12px;font-weight:700;display:block}.stat-card strong{display:block;color:#1b4557;font-weight:900;font-size:31px;margin:3px 0 0;line-height:1.5}.stat-card em{font-style:normal;font-size:12px;color:#80939e;font-weight:600}.stat-card.highlight{border-color:#a9dedd;background:#edf9f7}.stat-card.highlight strong{color:#088b86}.detail-layout{display:grid;grid-template-columns:1fr;gap:18px}.detail-table-title{font-size:16px;font-weight:900;margin:0}.help-line{font-size:12px;color:#8196a5;margin:5px 0 0}.kind{display:inline-block;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:800;background:#edf9f4;color:#218672}.kind.pending{background:#fff7e2;color:#9d741e}.kind.cash{background:#edf4fc;color:#3c6fa2}.plus{color:#138b79;font-weight:900}.minus{color:#b15c53;font-weight:900}.warn{background:#fffaed;color:#806429;border:1px solid #f1e4b8;font-size:12px;border-radius:9px;padding:11px 14px;margin:17px 0 0}.note-line{display:flex;gap:8px;align-items:flex-start;background:#f6fbfb;border:1px solid #e1f0f1;border-radius:12px;padding:12px 15px;font-size:12px;color:#607e8a;margin:17px 0 0}.no-results{text-align:center;padding:35px;color:#9eb0ba}.soft{font-weight:600;color:#6d8794}.veil{display:none}.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1100px){.container{padding-top:23px}.summary{max-width:none}.panel-top{align-items:flex-start}}
+@media(max-width:960px){.sidebar{width:min(315px,87vw);transform:translateX(110%);transition:transform .22s;z-index:61}.sidebar.open{transform:translateX(0)}.sidebar-close{display:flex;color:white;border:1px solid #ffffff3d;background:#ffffff16;border-radius:10px;width:34px;height:34px;align-items:center;justify-content:center;margin-right:auto}.veil.show{display:block;position:fixed;inset:0;background:#031b2ca6;z-index:60}.main{margin-right:0}.menu-toggle{display:grid;place-items:center}.topbar{min-height:74px}.container{padding:22px 19px 62px}.page-heading h1{font-size:25px}}
+@media(max-width:650px){.topbar{padding:12px 15px;min-height:70px}.path{font-size:10px}.topbar h2{font-size:17px}.owner-chip{font-size:11px;padding:6px 9px}.owner-chip span{width:6px;height:6px}.container{padding:18px 13px 50px}.preview-note{font-size:11px;margin-bottom:20px}.page-heading{gap:9px;flex-wrap:wrap;margin-bottom:18px}.page-heading h1{font-size:24px}.page-heading p{font-size:12px}.page-tag{font-size:11px;padding:5px 11px}.summary{gap:9px;margin-bottom:16px}.metric{min-height:114px;padding:14px 13px;border-radius:13px}.metric-value{font-size:34px}.metric-icon{width:39px;height:39px;border-radius:11px}.metric-icon svg{width:21px;height:21px}.metric-label{font-size:11px}.metric-sub{font-size:10px}.panel{border-radius:13px}.panel-top{padding:16px 14px;gap:13px}.filters{width:100%;gap:8px}.field.search{flex:1;min-width:170px}.field input{width:100%}.field select{width:95px}.label-year{display:none}.mobile-help{display:block;color:#8799a6;font-size:11px;margin:0;padding:9px 15px;background:#f9fbfb}.table-wrap{margin:0}th,td{padding:13px 13px;font-size:11px}th:first-child,td:first-child{position:sticky;right:0;z-index:1;background:inherit;min-width:118px}th:first-child{background:#f8fafb}td:first-child{background:#fff}tr:nth-child(even) td:first-child{background:#fdfefe}.person-avatar{width:31px;height:31px;border-radius:9px}.person-name{font-size:12px}.person-meta{font-size:10px}.open-link{font-size:10px;padding:5px}.detail-head{margin-bottom:15px}.detail-toppanel{padding:17px 14px}.person-big h2{font-size:19px}.person-avatar.big{width:47px;height:47px;font-size:16px}.person-big{gap:11px}.stat-grid{gap:8px}.stat-card{padding:13px 10px;border-radius:11px}.stat-card small{font-size:11px}.stat-card strong{font-size:26px}.stat-card em{font-size:10px}.tabs-panel{max-width:none;gap:3px;padding:6px}.tab{min-height:42px;font-size:12px}.detail-table-title{font-size:14px}.warn{font-size:11px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
+
+/* Mobile employee cards retain the original table fields without sideways scrolling. */
+@media(max-width:650px){
+ .mobile-help{display:none}
+ .table-wrap{overflow:visible;padding:12px}
+ table[aria-label="جدول أرصدة الفريق"]{min-width:0;width:100%;display:block}
+ table[aria-label="جدول أرصدة الفريق"] thead{display:none}
+ table[aria-label="جدول أرصدة الفريق"] tbody{display:grid;gap:10px}
+ table[aria-label="جدول أرصدة الفريق"] tbody tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:10px 10px 8px;border:1px solid #e0eaed;border-radius:12px;background:#fff!important;box-shadow:0 4px 11px #09273707;overflow:hidden}
+ table[aria-label="جدول أرصدة الفريق"] tbody td{position:static;min-width:0!important;width:auto;white-space:normal;border:0!important;background:transparent!important;padding:7px 3px;text-align:center;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:11px}
+ table[aria-label="جدول أرصدة الفريق"] tbody td:first-child{grid-column:1/-1;border-bottom:1px solid #eaf0f2!important;display:block;text-align:right;padding:3px 3px 11px}
+ table[aria-label="جدول أرصدة الفريق"] tbody td:nth-child(2):before{content:"متبقي سنوي";display:block;color:#8297a3;font-size:10px;margin-bottom:3px}
+ table[aria-label="جدول أرصدة الفريق"] tbody td:nth-child(3):before{content:"متبقي بدل";display:block;color:#8297a3;font-size:10px;margin-bottom:3px}
+ table[aria-label="جدول أرصدة الفريق"] tbody td:nth-child(4):before{content:"إضافي مالي";display:block;color:#8297a3;font-size:10px;margin-bottom:3px}
+ table[aria-label="جدول أرصدة الفريق"] tbody td:nth-child(5){grid-column:1/-1;padding:2px 3px 3px;align-items:stretch}
+ table[aria-label="جدول أرصدة الفريق"] tbody .open-link{display:flex;justify-content:center;align-items:center;width:100%;min-height:32px;font-size:11px}
+ table[aria-label="جدول أرصدة الفريق"] tbody .person-avatar{width:36px;height:36px}
+ table[aria-label="جدول أرصدة الفريق"] tbody .person-name{font-size:13px}
+ table[aria-label="جدول أرصدة الفريق"] tbody .value-strong{font-size:14px}
+ table[aria-label="جدول أرصدة الفريق"] tbody td.no-results{grid-column:1/-1}
+}
+
+/* Proposed integration inside existing MainTrack Owner Administration. */
+.admin-hero{margin-bottom:17px}.admin-main-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 11px}.admin-tab{position:relative;display:flex;gap:12px;align-items:center;text-align:right;border:1px solid #dce7eb;border-radius:15px;padding:17px 18px;background:#fff;color:#496576;min-height:87px;box-shadow:0 4px 14px #0a2f4210}.admin-tab strong{display:block;color:#203c4e;font-weight:900;font-size:15px}.admin-tab small{display:block;font-weight:600;font-size:11px;color:#91a1ac;margin-top:3px}.adm-tab-icon{width:40px;height:40px;display:grid;place-items:center;flex-shrink:0;border-radius:11px;background:#ebf5f5;color:#078b90}.adm-tab-icon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}.admin-tab.is-selected{background:#effaf9;border-color:#52b9b5;box-shadow:inset 0 -3px #0f9492,0 5px 18px #00898112}.admin-tab.is-selected strong{color:#087e82}.admin-tab.is-proposed:not(.is-selected){border-style:dashed;border-color:#a9cfcf}.new-dot{margin-right:auto;font-weight:800;font-size:10px;color:#997229;background:#fff6de;border:1px solid #f5e4b0;border-radius:99px;padding:4px 8px}.placement-label{background:#fff9e9;border:1px solid #efe0b1;color:#856627;border-radius:10px;padding:10px 14px;font-size:12px;margin:0 0 18px}.admin-card{background:white;border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:19px;box-shadow:var(--shadow)}.admin-section-head{padding:20px 23px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}.admin-section-head h2{margin:0;font-size:17px;color:#203c4e}.admin-section-head p{margin:3px 0 0;font-size:12px;color:#95a6b2}.admin-card-body{padding:16px 23px 23px}.admin-card-body label:not(.adm-checkbox){font-size:12px;font-weight:800;color:#415a6b;display:block;margin:12px 0 5px}.adm-input{font:inherit;color:#314e5d;border:1px solid #e0e8ed;background:#f8fafb;border-radius:9px;width:100%;min-height:43px;padding:10px 13px}.adm-input:disabled{opacity:1;color:#718594}.admin-card textarea.adm-input{resize:none;min-height:66px}.admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.admin-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.adm-help{font-size:11px;line-height:1.7;color:#93a3ae;margin:9px 0}.adm-checkbox{font-size:12px;color:#466277;font-weight:800;display:flex;align-items:center;gap:6px;margin:12px 0}.adm-checkbox input{width:17px;height:17px}.adm-primary,.admin-actions button{border:0;border-radius:9px;padding:11px 16px;font-size:12px;font-weight:800;background:#068a90;color:white;min-height:42px}.admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.admin-actions button:nth-child(2){background:#eaf6f5;color:#0a8390}.adm-primary:disabled,.admin-actions button:disabled{opacity:.5;cursor:not-allowed}.muted-chip{border-radius:99px;background:#f0f4f6;color:#6f8591;font-size:10px;padding:5px 10px;font-weight:800}.admin-decor-guide{max-width:100%}
+@media(max-width:650px){.admin-main-tabs{gap:8px}.admin-tab{padding:12px 9px;min-height:102px;flex-wrap:wrap;align-content:center;gap:7px}.adm-tab-icon{height:31px;width:31px;flex:0 0 31px}.adm-tab-icon svg{height:17px;width:17px}.admin-tab strong{font-size:12px}.admin-tab small{font-size:10px}.new-dot{margin-right:0;font-size:9px;padding:3px 6px}.admin-card-body{padding:11px 13px 18px}.admin-section-head{padding:15px 13px}.admin-section-head h2{font-size:14px}.admin-grid,.admin-grid.three{grid-template-columns:1fr}.placement-label{font-size:11px}.admin-hero{margin-bottom:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="veil" id="veil" aria-hidden="true"></div>
+<aside class="sidebar" id="sidebar" aria-label="قائمة MainTrack الجانبية">
+  <div class="logo"><span class="mark" aria-hidden="true">M</span><div><strong>MainTrack</strong><small>MAINTENANCE WORKSPACE</small></div><button id="closeMenu" class="sidebar-close" aria-label="إغلاق القائمة">✕</button></div>
+  <div class="nav-caption">MAIN MENU</div>
+  <nav class="nav" id="navLinks">
+    <button class="nav-item" disabled data-icon="grid">لوحة الأداء</button>
+    <button class="nav-item" disabled data-icon="plus">بلاغ جديد</button>
+    <button class="nav-item" disabled data-icon="file">سجل أوامر الشغل</button>
+    <button class="nav-item" disabled data-icon="list">إدارة بيانات الصيانة</button>
+    <button class="nav-item" disabled data-icon="user">حسابي</button>
+    <button class="nav-item" disabled data-icon="check">الاعتمادات</button>
+    <button class="nav-item is-active" id="adminLink" data-icon="settings" aria-current="page">الإدارة</button>
+    <button class="nav-item" disabled data-icon="box">قطع الغيار</button>
+  </nav>
+  <div class="sidebar-user"><span class="avatar">O</span><div><strong>Owner — عرض تجريبي</strong><small>Section Head / Application Owner</small></div></div>
+</aside>
+<div class="main">
+  <header class="topbar"><div class="right-top"><button class="menu-toggle" id="menuToggle" aria-label="فتح القائمة الجانبية" aria-expanded="false" aria-controls="sidebar">☰</button><div><div class="path">MainTrack <span>‹</span> الإدارة <span>‹</span> <b id="pageCrumb">حسابات المستخدمين</b></div><h2 id="topTitle">الإدارة</h2></div></div><div class="owner-chip"><span></span> Owner Access</div></header>
+  <main class="container" id="mainContent">
+   <div class="preview-note"><b>◉ صفحة الإدارة + أرصدة الفريق — نموذج للمراجعة قبل الدمج</b><span>البيانات والأسماء افتراضية • لا يوجد اتصال بالبرنامج أو قاعدة البيانات</span></div>
+   <section id="adminShell" aria-labelledby="adminTitle">
+     <div class="page-heading admin-hero"><div><p class="eyebrow">OWNER CONTROL CENTER</p><h1 id="adminTitle">إدارة الفريق والصلاحيات</h1><p>أي تغيير يُنفّذ ويتحقق من صلاحيته داخل Supabase في النسخة الحقيقية</p></div><div class="page-tag">للـOwner فقط</div></div>
+     <div class="admin-main-tabs" role="tablist" aria-label="أقسام صفحة الإدارة">
+       <button id="adminAccountsTab" class="admin-tab is-selected" type="button" role="tab" aria-selected="true"><span class="adm-tab-icon" data-icon="settings"></span><span><strong>حسابات المستخدمين</strong><small>البيانات والصلاحيات</small></span></button>
+       <button id="adminBalancesTab" class="admin-tab is-proposed" type="button" role="tab" aria-selected="false"><span class="adm-tab-icon" data-icon="users"></span><span><strong>أرصدة الفريق</strong><small>الإجازات والعمل الإضافي</small></span><span class="new-dot">الإضافة المقترحة</span></button>
+     </div>
+     <p class="placement-label" id="placementHelp">↑ هنا مكان «أرصدة الفريق» المقترح: تبويب ثانٍ داخل الإدارة، مع بقاء إعدادات الحسابات كما هي.</p>
+   </section>
+   <section id="accountsView" aria-labelledby="accountsTitle">
+     <div class="admin-card">
+       <div class="admin-section-head"><div><h2 id="accountsTitle">حسابات المستخدمين</h2><p>نفس أقسام إدارة المستخدمين الحالية — مثال غير متصل بقاعدة البيانات</p></div><span class="muted-chip">موجود حاليًا</span></div>
+       <div class="admin-card-body">
+         <label for="adminUser">اختر الموظف</label>
+         <select id="adminUser" class="adm-input"><option value="MT-001">فني 01 — MT-001</option><option value="MT-002">فني 02 — MT-002</option><option value="MT-003">مهندس 01 — MT-003</option></select>
+         <div class="admin-grid"><div><label for="adminDepartment">القسم</label><input class="adm-input" id="adminDepartment" value="الصيانة الكهربائية" disabled></div><div><label for="adminJob">المسمى الوظيفي</label><input class="adm-input" id="adminJob" value="فني صيانة كهربائية" disabled></div></div>
+         <div class="admin-grid"><div><label for="adminRole">الدور</label><select class="adm-input" id="adminRole" disabled><option value="technician">Technician</option><option value="engineer">Engineer</option></select></div><div><label for="adminLeave">رصيد الإجازات (يوم)</label><input class="adm-input" id="adminLeave" type="number" value="28" disabled></div></div>
+         <div class="admin-grid"><div><label for="adminSubHours">رصيد البدلات المتاح (ساعة)</label><input class="adm-input" id="adminSubHours" type="number" value="16" disabled></div></div>
+         <label for="adminBalanceReason">سبب تعديل الرصيد السنوي أو رصيد البدلات</label><textarea class="adm-input" id="adminBalanceReason" placeholder="اكتب سبب تعديل الرصيد" disabled></textarea>
+         <p class="adm-help">الأرصدة القديمة لا تُمسح؛ أي فرق جديد يُسجّل في سجل التدقيق باسم الـOwner.</p>
+         <label class="adm-checkbox"><input type="checkbox" checked disabled> الحساب نشط</label>
+         <p class="adm-help">تغيير الدور أو حالة الحساب يلغي الجلسات القديمة للموظف. لا يمكن تعديل حساب المالك الحالي من هذه الشاشة.</p>
+         <button class="adm-primary" disabled>حفظ إعدادات الموظف</button>
+       </div>
+     </div>
+     <div class="admin-card">
+       <div class="admin-section-head"><div><h2>إنشاء موظف / إعادة تعيين كلمة المرور</h2><p>الحسابات الجديدة وكلمات المرور المؤقتة تبقى في الإدارة</p></div></div>
+       <div class="admin-card-body"><div class="admin-grid three"><div><label>كود الموظف</label><input class="adm-input" placeholder="كود الموظف" disabled></div><div><label>اسم الموظف</label><input class="adm-input" placeholder="اسم الموظف" disabled></div><div><label>الصلاحية</label><select class="adm-input" disabled><option>Technician</option></select></div></div><div class="admin-actions"><button disabled>إنشاء موظف</button><button disabled>إعادة تعيين كلمة المرور</button></div></div>
+     </div>
+   </section>
+   <section id="teamView" aria-labelledby="teamTitle" hidden>
+    <div class="page-heading"><div><p class="eyebrow">MAINTRACK / TEAM MANAGEMENT</p><h1 id="teamTitle">أرصدة الفريق</h1><p>نظرة مركزية لأرصدة الإجازات والعمل الإضافي لجميع أفراد القسم.</p></div><div class="page-tag">للـOwner فقط</div></div>
+    <div class="summary">
+     <div class="metric"><div><div class="metric-label">الموظفون</div><strong class="metric-value" id="staffCount">12</strong><div class="metric-sub">موظفون مسجّلون في القسم</div></div><span class="metric-icon" data-svg="users"></span></div>
+     <div class="metric"><div><div class="metric-label">طلبات معلّقة</div><strong class="metric-value" id="pendingCount">3</strong><div class="metric-sub">في انتظار اعتماد الـOwner</div></div><span class="metric-icon gold" data-svg="clock"></span></div>
+    </div>
+    <div class="panel">
+     <div class="panel-top"><div><h3>جدول أرصدة الموظفين</h3><p>اضغط على اسم الموظف لعرض السجل والتفاصيل</p></div><div class="filters"><label class="field search"><span class="sr-only">بحث عن موظف</span><span class="field-icon">⌕</span><input type="search" id="search" placeholder="ابحث عن موظف أو كود..." autocomplete="off"></label><label class="label-year" for="year">السنة</label><div class="field"><select id="year" aria-label="السنة"><option value="2026">2026</option><option value="2025">2025</option></select></div></div></div>
+     <p class="mobile-help">← حرّك الجدول لعرض بقية الأعمدة، أو اضغط على الموظف لفتح التفاصيل</p>
+     <div class="table-wrap"><table aria-label="جدول أرصدة الفريق"><thead><tr><th scope="col">الموظف</th><th scope="col">المتبقي السنوي</th><th scope="col">المتبقي بدل</th><th scope="col">إضافي مالي (أيام)</th><th scope="col">التفاصيل</th></tr></thead><tbody id="teamRows"></tbody></table></div>
+     <div class="table-bottom"><span id="tableCaption">عرض 12 موظفًا — بيانات توضيحية</span><span>الأرصدة بالأيام · تدعم أنصاف الأيام</span></div>
+    </div>
+   </section>
+   <section id="detailView" hidden aria-labelledby="detailTitle">
+    <div class="detail-head"><button type="button" class="back" id="backBtn">→ العودة إلى أرصدة الفريق</button></div>
+    <div class="detail-toppanel"><div class="person-big"><span class="person-avatar big" id="detailInitial">ف</span><div><p class="eyebrow">EMPLOYEE / LEAVE & OVERTIME LEDGER</p><h2 id="detailTitle">فني 01</h2><p id="detailMeta">فني صيانة كهربائية · MT-001</p></div></div><div class="year-pill">السنة المختارة: <b id="detailYear">2026</b></div></div>
+    <div class="tabs-panel" role="tablist" aria-label="تفاصيل أرصدة الموظف"><button type="button" role="tab" class="tab" id="tabAnnual" aria-selected="true" data-tab="annual">سنوي</button><button type="button" role="tab" class="tab" id="tabSub" aria-selected="false" data-tab="sub">بدل</button><button type="button" role="tab" class="tab" id="tabCash" aria-selected="false" data-tab="cash">مالي</button></div>
+    <div id="detailBody" aria-live="polite"></div>
+   </section>
+  </main>
+</div>
+</div>
+<script>
+'use strict';
+const icons={grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',plus:'<path d="M12 5v14M5 12h14"/>',file:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/>',list:'<path d="M3 6h18M3 12h18M3 18h18M8 3v18"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',check:'<path d="M4 3h16v18H4zM8 12l3 3 5-6"/>',settings:'<path d="M4 7h16M4 12h16M4 17h16"/>',box:'<path d="M3 7h18v13H3zM6 7V4h12v3M8 12h8M8 16h5"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'};
+const svg=(name)=>'<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">'+icons[name]+'</svg>';
+document.querySelectorAll('[data-icon]').forEach(el=>{el.insertAdjacentHTML('afterbegin',svg(el.dataset.icon));});
+document.querySelectorAll('[data-svg]').forEach(el=>{el.innerHTML=svg(el.dataset.svg);});
+const $=id=>document.getElementById(id);
+// Strictly mock data: never fetch, persist, authenticate or submit anything.
+const personnel=[
+ ['MT-001','فني 01','فني صيانة كهربائية',28,8,3,1,4,32,1],
+ ['MT-002','فني 02','فني صيانة ميكانيكية',28,13.5,2,0.5,6,44,0],
+ ['MT-003','مهندس 01','مهندس كهرباء وتحكم',28,5,4,1,2,16,1],
+ ['MT-004','فني 03','فني كهرباء',28,12,1,0.5,5,35,0],
+ ['MT-005','فني 04','فني ميكانيكا',28,9.5,2.5,1,3,24,1],
+ ['MT-006','مهندس 02','مهندس صيانة',28,7,1.5,0,3,20,0],
+ ['MT-007','فني 05','فني تحكم',28,11,3,2,1,8,0],
+ ['MT-008','فني 06','فني كهرباء',28,15,0.5,0,7,48,0],
+ ['MT-009','فني 07','فني ميكانيكا',28,4,1,0.5,2,14,0],
+ ['MT-010','فني 08','فني تشغيل',28,10,2,1,4,29,0],
+ ['MT-011','فني 09','فني كهرباء',28,16,0,0,5,40,0],
+ ['MT-012','مهندس 03','مهندس أتمتة',28,6.5,2,1,3,18,0]
+].map(([code,name,title,annual,used,subEarned,subUsed,cashDays,cashHours,pending],i)=>({code,name,title,annual,used,subEarned,subUsed,cashDays,cashHours,pending,idx:i}));
+let year='2026',selected=null,activeTab='annual';
+const format=n=>Number.isInteger(n)?String(n):Number(n).toFixed(1);
+function snapshot(p){const isOld=year==='2025';const used=isOld?Math.max(0,p.used-3):p.used;const earned=isOld?Math.max(0,p.subEarned-1):p.subEarned;const su=isOld?Math.max(0,p.subUsed-.5):p.subUsed;return {...p,used,subEarned:earned,subUsed:su,cashDays:isOld?Math.max(0,p.cashDays-1):p.cashDays,cashHours:isOld?Math.max(0,p.cashHours-8):p.cashHours,annualRemaining:p.annual-used,subRemaining:earned-su};}
+const txt=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function renderRows(){const q=$('search').value.trim().toLowerCase();const entries=personnel.filter(p=>(p.name+' '+p.code+' '+p.title).toLowerCase().includes(q));
+ $('staffCount').textContent=personnel.length;
+ $('pendingCount').textContent=personnel.reduce((s,p)=>s+p.pending,0);
+ $('teamRows').innerHTML=entries.length?entries.map(p=>{const d=snapshot(p);return `<tr data-code="${p.code}" tabindex="0" aria-label="فتح تفاصيل ${txt(p.name)}"><td><span class="person"><span class="person-avatar">${txt(p.name[0])}</span><span><span class="person-name">${txt(p.name)}</span><span class="person-meta">${txt(p.code)} · ${txt(p.title)}</span></span></span></td><td><span class="${d.annualRemaining<=2?'value-alert':'value-strong'}">${format(d.annualRemaining)} يوم</span></td><td class="value-muted">${format(d.subRemaining)} يوم</td><td class="value-muted">${format(d.cashDays)} يوم</td><td><button class="open-link" type="button" data-open="${p.code}">عرض السجل</button></td></tr>`;}).join(''):'<tr><td colspan="5" class="no-results">لا توجد نتائج مطابقة للبحث.</td></tr>';
+ $('tableCaption').textContent=`عرض ${entries.length} من ${personnel.length} موظفًا — بيانات توضيحية`;
+}
+function stats(items,two=false){return `<div class="stat-grid${two?' two':''}">`+items.map(v=>`<div class="stat-card${v.emphasis?' highlight':''}"><small>${v.label}</small><strong>${format(v.value)} <em>${v.unit||'يوم'}</em></strong></div>`).join('')+'</div>';}
+function historyPanel(title,hint,headers,rows){return `<div class="panel"><div class="panel-top"><div><h3 class="detail-table-title">${title}</h3><p class="help-line">${hint}</p></div></div><div class="table-wrap"><table><thead><tr>${headers.map(x=>'<th scope="col">'+x+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</tbody></table></div><div class="table-bottom">تواريخ وأرقام افتراضية لشرح شكل السجل</div></div>`;}
+function renderDetail(){if(!selected)return;const p=snapshot(selected);$('detailTitle').textContent=p.name;$('detailInitial').textContent=p.name[0];$('detailMeta').textContent=p.title+' · '+p.code;$('detailYear').textContent=year;
+ for(const tab of document.querySelectorAll('.tab'))tab.setAttribute('aria-selected',String(tab.dataset.tab===activeTab));
+ let html='';
+ if(activeTab==='annual'){
+ html=stats([{label:'رصيد السنة',value:p.annual},{label:'المستخدم',value:p.used},{label:'المتبقي',value:p.annualRemaining,emphasis:true}]);
+ const leave1=Math.min(p.used,3),leave2=+(p.used-leave1).toFixed(1);
+ html+=historyPanel('سجل الإجازات السنوية','الإجازات المعتمدة فقط تُخصم من الرصيد',['الفترة','نوع الحركة','المدة','الحالة'],[
+ [`05 / 02 / ${year} – 07 / 02 / ${year}`,'إجازة سنوية',format(leave1)+' أيام','<span class="kind">معتمدة</span>'],
+ [`10 / 08 / ${year} – 14 / 08 / ${year}`,'إجازة سنوية',format(leave2)+' يوم','<span class="kind">معتمدة</span>']]);
+ html+='<div class="note-line">ℹ️ رصيد السنة هو إجمالي الأيام المخصصة للسنة، وليس المتبقي. الرقم الذي يهم عند طلب الإجازة هو «المتبقي».</div>';
+ }else if(activeTab==='sub'){
+ html=stats([{label:'المكتسب',value:p.subEarned},{label:'المستخدم',value:p.subUsed},{label:'المتبقي',value:p.subRemaining,emphasis:true}]);
+ const hour1=Math.min(p.subEarned,1)*8,hour2=Math.max(0,p.subEarned-1)*8;
+ html+=historyPanel('سجل الحضور مقابل بدل','الحضور الإضافي خارج الوردية أو في يوم الراحة — ليس الحضور العادي',['التاريخ','عدد الساعات','بدل مكتسب','حالة الطلب'],[
+ [`10 / 10 / ${year}`,format(hour1)+' ساعات','<span class="plus">+'+format(hour1/8)+' يوم</span>','<span class="kind">معتمد</span>'],
+ [`16 / 10 / ${year}`,format(hour2)+' ساعات','<span class="plus">+'+format(hour2/8)+' يوم</span>','<span class="kind">معتمد</span>']]);
+ html+='<div class="note-line">ℹ️ 8 ساعات إضافية = يوم بدل، و4 ساعات = نصف يوم. استخدام إجازة بدل يخصم من المتبقي بعد موافقة الـOwner.</div>';
+ }else{
+ html=stats([{label:'أيام العمل الإضافي',value:p.cashDays},{label:'الساعات المسجلة',value:p.cashHours,unit:'ساعة'}],true);
+ const first=Math.min(p.cashHours,8),second=Math.max(0,p.cashHours-first);
+ html+=historyPanel('سجل العمل الإضافي المالي','أيام وساعات العمل خارج الوردية أو في أيام الراحة بمقابل مالي',['التاريخ','عدد الساعات','نوع التعويض','الحالة'],[
+ [`06 / 03 / ${year}`,format(first)+' ساعات','<span class="kind cash">مقابل مالي</span>','<span class="kind">معتمد</span>'],
+ [`18 / 07 / ${year}`,format(second)+' ساعات','<span class="kind cash">مقابل مالي</span>','<span class="kind">معتمد</span>']]);
+ html+='<div class="note-line">ℹ️ أيام الحضور الإضافي هنا تُحسب حسب أيام العمل الفعلية، والساعات تُعرض مستقلة. الإضافي المالي لا يضيف أو يخصم من رصيد الإجازات.</div>';
+ }
+ $('detailBody').innerHTML=html;
+}
+function detail(code){const person=personnel.find(p=>p.code===code);if(!person)return;selected=person;activeTab='annual';$('teamView').hidden=true;$('detailView').hidden=false;$('topTitle').textContent='تفاصيل رصيد الموظف';$('pageCrumb').textContent='أرصدة الفريق / '+person.name;renderDetail();window.scrollTo({top:0,behavior:'instant'});}
+function goBack(){selected=null;$('detailView').hidden=true;$('teamView').hidden=false;$('topTitle').textContent='أرصدة الفريق';$('pageCrumb').textContent='أرصدة الفريق';window.scrollTo({top:0,behavior:'instant'});}
+$('teamRows').addEventListener('click',e=>{const code=e.target.closest('[data-code]')?.dataset.code;if(code)detail(code);});
+$('teamRows').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const code=e.target.closest('[data-code]')?.dataset.code;if(code){e.preventDefault();detail(code);}}});
+$('backBtn').addEventListener('click',goBack);
+function switchAdminTab(name){
+ const isBalances=name==='balances';selected=null;
+ $('accountsView').hidden=isBalances;$('teamView').hidden=!isBalances;$('detailView').hidden=true;
+ $('adminAccountsTab').classList.toggle('is-selected',!isBalances);$('adminAccountsTab').setAttribute('aria-selected',String(!isBalances));
+ $('adminBalancesTab').classList.toggle('is-selected',isBalances);$('adminBalancesTab').setAttribute('aria-selected',String(isBalances));
+ $('pageCrumb').textContent=isBalances?'أرصدة الفريق':'حسابات المستخدمين';
+ $('topTitle').textContent=isBalances?'أرصدة الفريق':'الإدارة';
+ window.scrollTo({top:0,behavior:'instant'});closeMenu();
+}
+$('adminAccountsTab').addEventListener('click',()=>switchAdminTab('accounts'));
+$('adminBalancesTab').addEventListener('click',()=>switchAdminTab('balances'));
+$('adminLink').addEventListener('click',()=>switchAdminTab('accounts'));
+$('adminUser').addEventListener('change',event=>{
+ const data={"MT-001":['الصيانة الكهربائية','فني صيانة كهربائية','technician',28,16],"MT-002":['الصيانة الميكانيكية','فني صيانة ميكانيكية','technician',28,12],"MT-003":['الصيانة الكهربائية','مهندس كهرباء وتحكم','engineer',28,24]};
+ const e=data[event.target.value];if(!e)return;['adminDepartment','adminJob','adminRole','adminLeave','adminSubHours'].forEach((id,i)=>$(id).value=e[i]);
+});
+$('search').addEventListener('input',renderRows);
+$('year').addEventListener('change',e=>{year=e.target.value;renderRows();if(selected)renderDetail();});
+for(const tab of document.querySelectorAll('.tab'))tab.addEventListener('click',()=>{activeTab=tab.dataset.tab;renderDetail();});
+function openMenu(){$('sidebar').classList.add('open');$('veil').classList.add('show');$('menuToggle').setAttribute('aria-expanded','true');$('closeMenu').focus();}
+function closeMenu(){$('sidebar').classList.remove('open');$('veil').classList.remove('show');$('menuToggle').setAttribute('aria-expanded','false');}
+$('menuToggle').addEventListener('click',()=>$('sidebar').classList.contains('open')?closeMenu():openMenu());
+$('closeMenu').addEventListener('click',closeMenu);$('veil').addEventListener('click',closeMenu);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMenu();});
+renderRows();switchAdminTab('accounts');
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/maintrack-047-integration-20261022
+      - feature/maintrack-team-balances-from-047-20261024
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,6 +31,11 @@ jobs:
           node --check ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/tests/test_047_static.cjs
           node --test ops/maintrack/inventory/frontend/inventory-loader.test.mjs ops/maintrack/tests/test_047_worker_equivalence.test.mjs ops/maintrack/tests/test_047_hybrid_search.test.mjs ops/maintrack/tests/test_047_approved_inventory.test.mjs ops/maintrack/tests/test_047_mail_payload.test.cjs ops/maintrack/inventory/frontend/inventory-client.test.mjs ops/maintrack/inventory/frontend/inventory-presentation.test.mjs
+      - name: Test read-only Team Ledger on disposable PostgreSQL WASM
+        run: |
+          npm ci --prefix android/maintrack-app --no-audit --no-fund
+          npm install --prefix audit-output/team-ledger-test-runtime @electric-sql/pglite@0.3.14 --ignore-scripts --no-audit --no-fund
+          LEDGER_PG_PACKAGE="$GITHUB_WORKSPACE/audit-output/team-ledger-test-runtime/package.json" node --test ops/maintrack/team-ledger/test/ledger.test.mjs ops/maintrack/team-ledger/test/api.test.mjs ops/maintrack/team-ledger/test/regression.test.mjs
       - name: Install locked XLSX dependencies (no install scripts; isolated runner only)
         run: npm ci --prefix ops/maintrack/inventory/backend --ignore-scripts --no-audit --no-fund
       - name: Verify Inventory API bearer auth, CORS, owner RBAC, invalid-session rejection (synthetic only)
@@ -68,14 +74,20 @@ jobs:
         run: npm --prefix android/maintrack-app/tests-browser ci --no-audit --no-fund
       - name: Install Chromium
         run: npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
+      - name: Prepare synthetic full-host ledger review without live services
+        run: |
+          npm install --prefix audit-output/team-ledger-test-runtime @electric-sql/pglite@0.3.14 --ignore-scripts --no-audit --no-fund
+          LEDGER_PG_PACKAGE="$GITHUB_WORKSPACE/audit-output/team-ledger-test-runtime/package.json" node ops/maintrack/team-ledger/scripts/prepare-review.mjs audit-output/team-ledger-static-review
       - name: Verify four mobile viewport clearances without live API or login
-        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs ops/maintrack/tests/test_047_inventory.browser.mjs ops/maintrack/tests/test_047_menu_roles.browser.mjs ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs ops/maintrack/tests/test_047_inventory_loading.browser.mjs
+        run: node --test ops/maintrack/tests/test_047_mobile.browser.mjs ops/maintrack/tests/test_047_inventory.browser.mjs ops/maintrack/tests/test_047_menu_roles.browser.mjs ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs ops/maintrack/tests/test_047_inventory_loading.browser.mjs ops/maintrack/team-ledger/test/ui.browser.mjs ops/maintrack/team-ledger/test/full-app.browser.mjs
       - name: Save mobile QA screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: MainTrack-047-MT02-Mobile-Screenshots
-          path: audit-output/maintrack-047-mobile/*.png
+          path: |
+            audit-output/maintrack-047-mobile/*.png
+            audit-output/team-ledger-screenshots/*.png
           if-no-files-found: warn
           retention-days: 5
 

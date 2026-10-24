@@ -23,3 +23,10 @@ Business sources: `ops/maintrack/inventory/backend/src/domain.mjs` (roles), `inv
 - Keep original result HTML and screenshot parity at equal viewport and synthetic data. Test both 390px and 1280px.
 - Preserve Owner upload → complete server diff → explicit confirmation → publish. Make every diff row available; restore stages a review and never auto-publishes.
 - Clear the iframe and its data when leaving inventory/logging out. Keep credentials in the parent client.
+
+## Owner Team Ledger
+- Existing `show('admin')` remains navigation owner; Accounts is default; no sidebar addition.
+- `team-ledger.js` owns Owner ledger tabs, bounded server pages, 300ms transient search, explicit clear/refresh and inline live status. No polling, URL employee IDs or persistent data caches.
+- Existing transport `api()` and opaque-session backend authorization are reused. New read handlers require `users.manage`; personal summary remains self-only.
+- Current balance cards use canonical accountSummary projection; year filters activity and does not invent historical opening balances.
+- Native year select intentionally reuses platform-owned popup behavior. Details are inline pages with a back button, not modal overlays. Table transforms to reference cards on phones.
