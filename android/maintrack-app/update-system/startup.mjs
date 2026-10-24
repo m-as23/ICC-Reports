@@ -4,12 +4,10 @@ import { Capacitor } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import {createBootHealth} from './boot-health.mjs';
 import {inspectQueueData} from './data-contract.mjs';
+import {isMainTrackShellReady} from './shell-readiness.mjs';
 if (Capacitor.isNativePlatform()) {
   const health = createBootHealth({
-    isShellReady: () => document.readyState !== 'loading'
-      && !!globalThis.MainTrackLocalWork && globalThis.__MainTrackV7Fix === true
-      && globalThis.__MainTrackV6Integrated === true
-      && ['login','form','dashboard','v7FormStatus','v7RefreshLists','v6Dock'].every(id => !!document.getElementById(id)),
+    isShellReady: () => isMainTrackShellReady(document,globalThis),
     isDataCompatible: () => !inspectQueueData(globalThis.localStorage).unknownQueue,
     notifyReady: async () => {
       await CapacitorUpdater.notifyAppReady();

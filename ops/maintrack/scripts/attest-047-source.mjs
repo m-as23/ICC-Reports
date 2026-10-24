@@ -24,6 +24,13 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'ops/maintrack/security/final-047-ota-source.json',
+ 'ops/maintrack/scripts/sign-final-047-ota.mjs',
+ 'ops/maintrack/tests/final-047-ota.test.mjs',
+ 'android/maintrack-app/update-system/startup.mjs',
+ 'android/maintrack-app/update-system/shell-readiness.mjs',
+ 'android/maintrack-app/tests/final-shell-readiness.test.mjs',
+ 'android/maintrack-app/tests/update-startup.test.mjs',
  'ops/maintrack/scripts/check-final-047-qa.mjs',
  'ops/maintrack/tests/final-047-qa.test.mjs',
  'ops/maintrack/tests/test_verify_native_final_407_build.py',

@@ -17,6 +17,10 @@ test('Final 047 derives identical reviewed Web/native assets with final routes a
   assert.ok(inv.includes('/maintrack-inventory-final-047'));assert.ok(!inv.includes('/maintrack-inventory-047-qa'));
   assert.ok(inv.includes('"tdnkeskczcsukcujwinu:final047:"'));assert.ok(!inv.includes('"tdnkeskczcsukcujwinu:"'));
   assert.match(await fs.readFile(path.join(target,'web/index.html'),'utf8'),/MainTrack 0.4.7 Final/);
+  const nativeHtml=await fs.readFile(path.join(target,'native/www/index.html'),'utf8');
+  assert.match(nativeHtml,/stage15-pilot-update\.js/);assert.match(nativeHtml,/connect-src[^;]*https:\/\/raw\.githubusercontent\.com/);
+  const panel=await fs.readFile(path.join(target,'native/www/secure-assets/stage15-pilot-update.js'),'utf8');
+  assert.ok(panel.includes('release.json'));assert.ok(panel.includes('mt-update-manual'));
   for(const rel of ['inventory-047.js','team-ledger.js','secure-assets/index-inline-1.js'])assert.deepEqual(await fs.readFile(path.join(target,'web',rel)),await fs.readFile(path.join(target,'native/www',rel)));
   await verifyFinal047(target);
   await fs.appendFile(path.join(target,'native/www/inventory-047.js'),'/*tamper*/');

@@ -7,6 +7,6 @@ test('native readiness requires a locally loaded shell and remains isolated from
  assert.match(source,/CapacitorUpdater\.notifyAppReady\(\)/);
  assert.match(source,/Capacitor\.isNativePlatform\(\)/);
  assert.match(source,/createBootHealth/);
- assert.match(source,/__MainTrackV7Fix/);
+ assert.match(source,/isMainTrackShellReady\(document,globalThis\)/);
  assert.doesNotMatch(source,/fetch\(|download\(|setUpdateUrl\(|getLatest\(/);
 });

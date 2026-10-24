@@ -9,6 +9,10 @@ on:
       - 'ops/maintrack/security/owner-047-preview-source.json'
       - 'ops/maintrack/tests/prepare-final-047.test.mjs'
       - 'ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs'
+      - 'android/maintrack-app/update-system/startup.mjs'
+      - 'android/maintrack-app/update-system/shell-readiness.mjs'
+      - 'ops/maintrack/security/final-047-ota-source.json'
+      - 'ops/maintrack/scripts/sign-final-047-ota.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,7 +47,7 @@ jobs:
           mkdir -p audit-output
           node ops/maintrack/tests/test_047_static.cjs
           node ops/maintrack/scripts/audit-release-workflows.mjs
-          node --test ops/maintrack/tests/prepare-047-owner-preview.test.mjs ops/maintrack/tests/prepare-final-047.test.mjs ops/maintrack/tests/final-047-qa.test.mjs
+          node --test ops/maintrack/tests/prepare-047-owner-preview.test.mjs ops/maintrack/tests/prepare-final-047.test.mjs ops/maintrack/tests/final-047-qa.test.mjs ops/maintrack/tests/final-047-ota.test.mjs
           python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_407_build.py -v
           python3 -m unittest discover -s ops/maintrack/tests -p test_verify_native_final_407_build.py -v
           node --input-type=module <<'JS'
@@ -165,6 +169,11 @@ jobs:
           "$TOOLS/zipalign" -p -f 4 audit-output/final-047/apk/MainTrack-0.4.7-407-UNSIGNED.apk "$RUNNER_TEMP/047-aligned.apk"
           "$TOOLS/apksigner" sign --ks "$KEYFILE" --ks-key-alias "$MT_ANDROID_KEY_ALIAS" --ks-pass env:MT_ANDROID_KEYSTORE_PASSWORD --key-pass env:MT_ANDROID_KEY_PASSWORD --v2-signing-enabled true --v3-signing-enabled true --out release-output/MainTrack-0.4.7-407-FINAL.apk "$RUNNER_TEMP/047-aligned.apk"
           python3 ops/maintrack/scripts/verify-native-final-407-build.py --mode signed --apk release-output/MainTrack-0.4.7-407-FINAL.apk --sdk-build-tools "$TOOLS" --provenance release-output/MainTrack-047-APK-Provenance.json
+      - name: Sign exact Final OTA baseline metadata without publishing
+        env:
+          MT_OTA_PRIVATE_KEY_PEM: ${{ secrets.MT_OTA_PRIVATE_KEY_PEM }}
+          MT_OTA_PRIVATE_KEY_PASSWORD: ${{ secrets.MT_OTA_PRIVATE_KEY_PASSWORD }}
+        run: node ops/maintrack/scripts/sign-final-047-ota.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: MainTrack-0.4.7-407-SIGNED-FINAL

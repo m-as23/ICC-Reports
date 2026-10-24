@@ -3,15 +3,17 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
 import {prepare047,verify047Parity} from './prepare-047-owner-preview.mjs';
 import {inventory} from './prepare-native-405-qa.mjs';
 import {sha256,QA_API} from './prepare-qa-api-client.mjs';
+import {validatePilotConfig} from '../../../android/maintrack-app/update-system/pilot-session.mjs';
 const root=path.resolve(import.meta.dirname,'../../..');
 export const defaultTarget=path.join(root,'audit-output/final-047');
 const finalApi=QA_API.replace('maintrack-unified-four-qa','maintrack-final-047');
 const oldInventory='https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/maintrack-inventory-047-qa';
 const finalInventory=oldInventory.replace('maintrack-inventory-047-qa','maintrack-inventory-final-047');
-function transform(rel,bytes){
+function transform(rel,bytes,native=false){
  let s=bytes.toString('utf8');
  if(rel==='secure-assets/index-inline-1.js'){
   assert.equal(s.split(QA_API).length-1,1,'FINAL_SINGLE_API_REQUIRED');s=s.replace(QA_API,finalApi);
@@ -25,10 +27,25 @@ function transform(rel,bytes){
   s=s.replace('"tdnkeskczcsukcujwinu:"','"tdnkeskczcsukcujwinu:final047:"');
  }else if(rel==='index.html'){
   assert.equal(s.split('MainTrack 0.4.7 — Owner Preview').length-1,1,'FINAL_TITLE_REQUIRED');s=s.replace('MainTrack 0.4.7 — Owner Preview','MainTrack 0.4.7 Final');
+  if(native){
+   const csp="connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co;";
+   assert.equal(s.split(csp).length-1,1,'FINAL_UPDATE_CSP_REQUIRED');
+   s=s.replace(csp,"connect-src 'self' https://tdnkeskczcsukcujwinu.supabase.co https://raw.githubusercontent.com;");
+   s=s.replace('</body>','<script src="secure-assets/stage15-pilot-update.js"></script></body>');
+  }
  }else if(rel==='manifest.webmanifest'){
   const m=JSON.parse(s);assert.equal(m.name,'MainTrack 0.4.7 — Owner Preview');m.name='MainTrack 0.4.7 Final';s=JSON.stringify(m)+'\n';
  }else return bytes;
  return Buffer.from(s);
+}
+async function updateAssets(){
+ const config=validatePilotConfig(JSON.parse(await fs.readFile(path.join(root,'android/maintrack-app/release/owner-public.json'),'utf8')));
+ const require=createRequire(path.join(root,'android/maintrack-app/package.json'));
+ const result=await require('esbuild').build({entryPoints:[path.join(root,'android/maintrack-app/update-system/pilot-entry.mjs')],bundle:true,write:false,format:'iife',platform:'browser',target:'es2022',minify:true,logLevel:'silent',define:{__MAINTRACK_PILOT_CONFIG__:JSON.stringify(config)}});
+ return new Map([
+  ['secure-assets/stage15-pilot-update.js',Buffer.from(result.outputFiles[0].contents)],
+  ['secure-assets/stage15-pilot-update.css',await fs.readFile(path.join(root,'android/maintrack-app/update-system/pilot-panel.css'))]
+ ]);
 }
 export async function prepareFinal047({target=defaultTarget}={}){
  assert.ok(path.resolve(target).startsWith(path.join(root,'audit-output')+path.sep),'FINAL_OUTPUT_MUST_BE_ISOLATED');
@@ -38,11 +55,13 @@ export async function prepareFinal047({target=defaultTarget}={}){
  const original=await prepare047({target:base});
  for(const folder of ['web','native/www']){
   await fs.cp(path.join(base,folder),path.join(target,folder),{recursive:true});
-  for(const rel of await inventory(path.join(base,folder)))await fs.writeFile(path.join(target,folder,rel),transform(rel,await fs.readFile(path.join(base,folder,rel))));
+  for(const rel of await inventory(path.join(base,folder)))await fs.writeFile(path.join(target,folder,rel),transform(rel,await fs.readFile(path.join(base,folder,rel)),folder==='native/www'));
  }
+ const extras=await updateAssets();const generated=[...original.generated];
+ for(const [rel,bytes] of extras){await fs.writeFile(path.join(target,'native/www',rel),bytes);generated.push({path:rel,sha256:sha256(bytes),bytes:bytes.length})}
  const sharedAssets=[];
  for(const rel of original.sharedAssets.map(x=>x.path))sharedAssets.push({path:rel,sha256:sha256(await fs.readFile(path.join(target,'web',rel)))});
- const report={...original,channel:'FINAL_047',backend:'maintrack-final-047',inventoryBackend:'maintrack-inventory-final-047',cutoverExecuted:false,sharedAssets};
+ const report={...original,channel:'FINAL_047',backend:'maintrack-final-047',inventoryBackend:'maintrack-inventory-final-047',cutoverExecuted:false,sharedAssets,generated};
  await fs.writeFile(path.join(target,'provenance.json'),JSON.stringify(report,null,2)+'\n');
  return verifyFinal047(target);
 }
@@ -54,16 +73,19 @@ export async function verifyFinal047(target=defaultTarget){
  assert.equal(report.certificateSha256,original.certificateSha256);assert.equal(report.cutoverExecuted,false);
  assert.equal(report.employeeRollout,false);assert.equal(report.otaPublished,false);
  assert.equal(report.backend,'maintrack-final-047');assert.equal(report.inventoryBackend,'maintrack-inventory-final-047');
- assert.deepEqual(report.generated,original.generated);
+ const extras=await updateAssets();
+ assert.deepEqual(report.generated,[...original.generated,...[...extras].map(([path,bytes])=>({path,sha256:sha256(bytes),bytes:bytes.length}))]);
  assert.deepEqual(report.sharedAssets.map(x=>x.path),original.sharedAssets.map(x=>x.path));
  for(const folder of ['web','native/www']){
-  assert.deepEqual(await inventory(path.join(target,folder)),await inventory(path.join(base,folder)),'FINAL_FILE_LIST_MISMATCH');
+  const baseNames=await inventory(path.join(base,folder));
+  assert.deepEqual((await inventory(path.join(target,folder))).sort(),[...baseNames,...(folder==='native/www'?[...extras.keys()]:[])].sort(),'FINAL_FILE_LIST_MISMATCH');
   for(const rel of await inventory(path.join(base,folder))){
-   const expected=transform(rel,await fs.readFile(path.join(base,folder,rel)));
+   const expected=transform(rel,await fs.readFile(path.join(base,folder,rel)),folder==='native/www');
    assert.deepEqual(await fs.readFile(path.join(target,folder,rel)),expected,'FINAL_ASSET_MISMATCH: '+folder+'/'+rel);
    if(folder==='web')assert.equal(report.sharedAssets.find(x=>x.path===rel).sha256,sha256(expected),'FINAL_MANIFEST_MISMATCH');
   }
  }
+ for(const [rel,bytes] of extras)assert.deepEqual(await fs.readFile(path.join(target,'native/www',rel)),bytes,'FINAL_UPDATE_ASSET_MISMATCH');
  return report;
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
