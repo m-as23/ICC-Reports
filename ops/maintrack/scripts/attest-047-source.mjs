@@ -24,6 +24,11 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ "supabase/functions/maintrack-unified-four-qa/index.ts",
+ "supabase/functions/maintrack-unified-four-qa/deno.json",
+ "supabase/functions/maintrack-unified-four-qa/ledger-service.mjs",
+ "ops/maintrack/team-ledger/staging-adoption.json",
+
  'ops/maintrack/team-ledger/test/origin-candidate.test.mjs',
  'ops/maintrack/team-ledger/test/workflow.test.mjs',
  "docs/superpowers/plans/2026-10-24-team-balances.md",

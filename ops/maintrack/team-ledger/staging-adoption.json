@@ -1,0 +1,39 @@
+{
+  "approvedByOwner": true,
+  "scope": "STAGING_ONLY",
+  "sourceCommit": "e7470991ab2c4eb01318ad83dbec972774f8b7b0",
+  "sharedFunctionVersion": 22,
+  "inventoryFunctionVersion": 21,
+  "approvedOrigin": "https://maintrack-final-security-ntkx35xm8-mohamedashrefsrag-5918.vercel.app",
+  "databaseMigration": false,
+  "dataWritesByThisTask": false,
+  "productionChanged": false,
+  "mainMerged": false,
+  "otaPublished": false,
+  "verifiedEmployeeProjections": 15,
+  "allCurrentBalancesIdentical": true,
+  "liveSignedInAcceptance": "NOT_RUN",
+  "physicalAndroidInstall": "NOT_RUN",
+  "sourceFiles": [
+    {
+      "path": "supabase/functions/maintrack-inventory-047-qa/entry.mjs",
+      "sha256": "a860de58efa8e1f47346e11a101007ae6474f0901cd717f133a5f6373bb47ddf"
+    },
+    {
+      "path": "supabase/functions/maintrack-inventory-047-qa/index.ts",
+      "sha256": "e2df14a006f83bb734c9fe03ab82f75ebede69f9854ee84752b236324dc8040b"
+    },
+    {
+      "path": "supabase/functions/maintrack-unified-four-qa/deno.json",
+      "sha256": "44fa1a62151cd1977a5e2091cc77e646f015e77c66a48532b41449021ae81ba0"
+    },
+    {
+      "path": "supabase/functions/maintrack-unified-four-qa/index.ts",
+      "sha256": "5020b7def95a73cb726480b89ebb9952ed7f6452dc6ba78324db5509976e4f0f"
+    },
+    {
+      "path": "supabase/functions/maintrack-unified-four-qa/ledger-service.mjs",
+      "sha256": "90629f9fb74eb77afa1b116c81398cefc50ffc99a7c2729e6fb81e798f0d3dd1"
+    }
+  ]
+}
