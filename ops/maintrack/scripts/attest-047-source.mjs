@@ -24,6 +24,15 @@ assert.match(head,/^[0-9a-f]{40}$/);
 assert.equal(run('merge-base',BASE,head),BASE,'CANDIDATE_NOT_BASED_ON_046');
 const changed=run('diff','--name-only',BASE,head,'--').split('\n').filter(Boolean);
 const allow=new Set([
+ 'docs/superpowers/specs/2026-10-24-final-047-release-verification.md',
+ 'docs/superpowers/plans/2026-10-24-final-047-cutover.md',
+ 'ops/maintrack/tests/prepare-final-047.test.mjs',
+ 'ops/maintrack/scripts/prepare-final-047.mjs',
+ 'ops/maintrack/scripts/verify-native-final-407-build.py',
+ '.github/workflows/maintrack-final-apk-047.yml',
+ 'ops/maintrack/security/release-surface-register.json',
+ 'ops/maintrack/scripts/audit-release-workflows.mjs',
+
  'docs/superpowers/plans/2026-10-24-inventory-cache-numerals.md',
  'docs/superpowers/specs/2026-10-24-cache-numerals-qa.md',
  'ops/maintrack/inventory/frontend/inventory-storage.mjs',

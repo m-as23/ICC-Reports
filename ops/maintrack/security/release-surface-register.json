@@ -27,7 +27,8 @@
     "maintrack-stage22-044-owner-lab-publish.yml",
     "maintrack-stage22-owner-key-signonly.yml",
     "maintrack-unified-four-owner-key-preflight.yml",
-    "maintrack-owner-qa-apk-047.yml"
+    "maintrack-owner-qa-apk-047.yml",
+    "maintrack-final-apk-047.yml"
   ],
   "securityBaseline": {
     "githubRulesetsObserved": 0,
@@ -73,6 +74,15 @@
     "sourceBranch": "feature/maintrack-047-integration-20261022",
     "environment": "maintrack-android-release",
     "scope": "OWNER_PREVIEW_ONLY",
+    "nativeVersionCode": 407,
+    "employeeRollout": false,
+    "signedArtifactOnly": true
+  },
+  "ownerApproved047FinalSigningWorkflow": {
+    "path": ".github/workflows/maintrack-final-apk-047.yml",
+    "sourceBranch": "release/maintrack-047-final-20261024",
+    "environment": "maintrack-android-release",
+    "scope": "FINAL_ARTIFACT_BUILD_ONLY_NO_AUTOMATIC_CUTOVER",
     "nativeVersionCode": 407,
     "employeeRollout": false,
     "signedArtifactOnly": true

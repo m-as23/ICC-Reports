@@ -5,6 +5,7 @@ on:
       - ops/maintrack-044-production-foundation-20261018
       - 'feature/**'
       - 'fix/**'
+      - release/maintrack-047-final-20261024
   pull_request:
     branches:
       - ops/maintrack-044-production-foundation-20261018
@@ -26,11 +27,11 @@ jobs:
       # No legacy source hash/lock or release check is relaxed.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024') && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
+          ref: ${{ (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024' || github.ref == 'refs/heads/release/maintrack-047-final-20261024') && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
           persist-credentials: false
           fetch-depth: 0
       - name: Fail closed if legacy test checkout differs from the pinned 0.4.6 source
-        if: (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024')
+        if: (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024' || github.ref == 'refs/heads/release/maintrack-047-final-20261024')
         run: test "$(git rev-parse HEAD)" = '1248211b662981e3e7db27ac0a61ca4d23862ca1'
       - uses: actions/setup-node@v4
         with:
@@ -110,10 +111,10 @@ jobs:
       # No legacy source hash/lock or release check is relaxed.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024') && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
+          ref: ${{ (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024' || github.ref == 'refs/heads/release/maintrack-047-final-20261024') && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
           persist-credentials: false
       - name: Fail closed if legacy test checkout differs from the pinned 0.4.6 source
-        if: (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024')
+        if: (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024' || github.ref == 'refs/heads/release/maintrack-047-final-20261024')
         run: test "$(git rev-parse HEAD)" = '1248211b662981e3e7db27ac0a61ca4d23862ca1'
       - uses: actions/setup-node@v4
         with:
@@ -138,10 +139,10 @@ jobs:
       # No legacy source hash/lock or release check is relaxed.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024') && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
+          ref: ${{ (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024' || github.ref == 'refs/heads/release/maintrack-047-final-20261024') && '1248211b662981e3e7db27ac0a61ca4d23862ca1' || github.sha }}
           persist-credentials: false
       - name: Fail closed if legacy test checkout differs from the pinned 0.4.6 source
-        if: (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024')
+        if: (github.ref == 'refs/heads/feature/maintrack-047-integration-20261022' || github.ref == 'refs/heads/feature/maintrack-team-balances-from-047-20261024' || github.ref == 'refs/heads/fix/maintrack-047-inventory-cache-numerals-20261024' || github.ref == 'refs/heads/release/maintrack-047-final-20261024')
         run: test "$(git rev-parse HEAD)" = '1248211b662981e3e7db27ac0a61ca4d23862ca1'
       - uses: actions/setup-node@v4
         with:
