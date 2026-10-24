@@ -1,0 +1,71 @@
+name: MainTrack 0.4.10 isolated security and latency audit
+on:
+  push:
+    branches: [audit/maintrack-0410-security-performance-20261025]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-0410-security-audit
+  cancel-in-progress: false
+jobs:
+  final-handler-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 97b0f61a4a1661bb4cfcaa90bc242cbe9cf12964
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix baseline/android/maintrack-app --ignore-scripts --no-audit --no-fund
+      - run: npm install --prefix baseline/audit-output/test-runtime @electric-sql/pglite@0.3.14 --ignore-scripts --no-audit --no-fund
+      - name: Audit actual Final API with synthetic PostgreSQL; known defects fail visibly
+        env:
+          MT_AUDIT_SOURCE_ROOT: ${{ github.workspace }}/baseline
+          LEDGER_PG_PACKAGE: ${{ github.workspace }}/baseline/audit-output/test-runtime/package.json
+        run: |
+          mkdir -p audit-evidence
+          set -o pipefail
+          node --test --test-reporter=tap ops/maintrack/security-tests/final-api.audit.test.mjs | tee audit-evidence/final-api-audit.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MainTrack-0410-security-audit-evidence
+          path: audit-evidence
+          retention-days: 7
+  browser-delay-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 97b0f61a4a1661bb4cfcaa90bc242cbe9cf12964
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix android/maintrack-app --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix android/maintrack-app/tests-browser --ignore-scripts --no-audit --no-fund
+      - run: npx --prefix android/maintrack-app/tests-browser playwright install --with-deps chromium
+      - run: node ops/maintrack/scripts/prepare-final-047.mjs --prepare
+      - name: Actual Final browser caching, delay, CPU throttling, recovery and activation guards
+        env:
+          MT047_ASSET_DIR: ${{ github.workspace }}/audit-output/final-047/web
+        run: |
+          mkdir -p audit-evidence
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 ops/maintrack/tests/test_047_inventory_cache.browser.mjs ops/maintrack/tests/test_047_inventory_loading.browser.mjs ops/maintrack/tests/credential-policy.browser.mjs android/maintrack-app/tests-browser/pilot-panel.browser.test.mjs | tee audit-evidence/browser.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MainTrack-0410-browser-delay-evidence
+          path: audit-evidence
+          retention-days: 7
