@@ -31,6 +31,7 @@
 - [x] Regenerate bundles and exact candidate asset manifest, keep historical locks untouched; extend scoped QA routing to this exact branch.
 - [x] Run focused Node/browser regressions, native/session/OTA safety tests and shared Web/native preparation parity.
 - [x] Independent whole-change review; resolve important findings and rerun affected checks.
-- [x] Commit/push isolated branch and draft PR against the team-ledger base. Prepare and deploy a separate synthetic-data preview only (no live-origin/backend changes), inspect its served assets and provide review links.
+- [x] Commit/push isolated branch and draft PR against the team-ledger base (PR #24).
+- [ ] Deploy a separate synthetic-data preview and inspect served assets: BLOCKED by Vercel connection permissions (403 for project creation and Preview deployment on the existing review project). CLI fallback is unavailable. No deployment was created or alias moved.
 
 Progress and measured limitations are recorded in `audit-output/cache-numerals-progress.md` and the committed QA report.
