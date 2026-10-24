@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 const reviewedSha='d2b9213a17db285343abe0eaf454e422d7a9bbe6576cefb23ed064220dcf9642';
-export async function prepareCandidate({baseline,target}){
+export async function prepareCandidate({baseline,target,previewOrigin}){
+ if(previewOrigin&&previewOrigin!=='https://maintrack-final-security-ntkx35xm8-mohamedashrefsrag-5918.vercel.app')throw Error('UNREVIEWED_PREVIEW_ORIGIN');
  const original=await fs.readFile(baseline,'utf8'),sha=createHash('sha256').update(original).digest('hex');
  if(sha!==reviewedSha)throw Error('UNREVIEWED_LIVE_BASELINE');
  const start=original.indexOf('async function accountSummary(u){'),end=original.indexOf('\nfunction cairoLocalMinute',start);
@@ -18,8 +19,9 @@ async function teamLedgerRead(u,b,detail=false){
 `;
  let candidate="import {createTeamLedger} from './ledger-service.mjs';\n"+original.slice(0,start)+adapter+original.slice(end);
  candidate=candidate.replace("case 'accountSummary':return accountSummary(u);","case 'accountSummary':return accountSummary(u);\n case 'teamBalances':return teamLedgerRead(u,b);\n case 'teamBalanceDetail':return teamLedgerRead(u,b,true);");
+ if(previewOrigin)candidate=candidate.replace('const MT_ALLOWED_ORIGINS=new Set([','const MT_ALLOWED_ORIGINS=new Set(['+JSON.stringify(previewOrigin)+',');
  await fs.mkdir(target,{recursive:true});await fs.writeFile(path.join(target,'index.ts'),candidate);await fs.copyFile(path.join(import.meta.dirname,'ledger-service.mjs'),path.join(target,'ledger-service.mjs'));
  await fs.writeFile(path.join(target,'deno.json'),'{"imports":{},"compilerOptions":{}}\n');
- const report={baselineSha256:sha,candidateSha256:createHash('sha256').update(candidate).digest('hex'),originalAuthAndOriginsUnchanged:true,newActions:['teamBalances','teamBalanceDetail'],databaseMigration:false,deployed:false};
+ const report={baselineSha256:sha,candidateSha256:createHash('sha256').update(candidate).digest('hex'),originalAuthUnchanged:true,existingOriginsRetained:true,originAdded:previewOrigin||null,newActions:['teamBalances','teamBalanceDetail'],databaseMigration:false,deployed:false};
  await fs.writeFile(path.join(target,'review.json'),JSON.stringify(report,null,2));return report;
 }
