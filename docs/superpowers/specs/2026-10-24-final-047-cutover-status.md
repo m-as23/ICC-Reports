@@ -1,4 +1,4 @@
-# MainTrack 0.4.7 Final — published software, clean-data cutover pending
+# MainTrack 0.4.7 Final — database cutover complete; archive cleanup pending
 
 ## Published and verified
 
@@ -29,7 +29,7 @@ Live probes passed for all six. This proves retirement of these identified servi
 
 The release QA workflow now probes Final health/auth and old-route retirement, rather than expecting a retired QA API to remain healthy. No main branch merge or separate Production database migration occurred.
 
-## Clean launch is not yet complete
+## Database reset completed by Owner
 
 Owner explicitly authorized discarding all current test application data. A prepared transaction is in `ops/maintrack/final-047-reset.sql`. It replaces all old users with a new `OWNER`, preserves the active `PILOT01` password hash without reading it into logs, and forces first-login password change. Reports, requests, balances, sessions, catalog and inventory test rows are cleared; schema migrations, mail configuration and standard status/category choices remain.
 
@@ -37,12 +37,25 @@ Both the live rollback-only attempt and the subsequent actual reset request retu
 
 The reset has two passing disposable PGlite tests: successful bootstrap/cleanup/configuration retention, and rollback on missing Owner or an unexpected dependency. These use simplified fixtures and do not establish compatibility with every live trigger/default/FK. An independent reviewer checked the destructive scope; inventory is locked before generation capture; no CASCADE is used. Storage keys are captured before truncation and returned for scoped cleanup.
 
-### Required remaining action
+### Verified Owner execution
 
-Run the exact reviewed reset transaction once in the MainTrack-Staging SQL Editor, then verify the resulting `OWNER`, empty test tables and forced password change. It is fail-closed on rerun because `PILOT01` no longer exists after success.
+The Owner executed the reviewed SQL through the Supabase SQL Editor. Returned cutover time: `2026-10-24T17:34:37.041135+00:00` (20:34:37 Cairo). Independent database verification found exactly one active user, `OWNER`, role Owner, with first-login password change required. Reports, leave/overtime requests, sessions, inventory items/versions and sections all contained zero rows. The old users, including temporary release-test accounts, are gone. Do not rerun the reset on new operational data.
 
-After database reset, remove only pre-cutover XLSX test archive objects through the Storage API; four existed at inspection. Do not delete Storage metadata directly with SQL. Confirm against captured keys/cutover time before removal so a new operational upload is preserved.
+All eight CI checks on maintenance commit `bbff5ff0c5690cb367346437210822f5a16bf66c` succeeded, including Final health/auth and six-route retirement. The APK runtime remains pinned to `16a0475b782a5d041f63c59a81a30e4692967e8e`.
+
+### Remaining scoped archive deletion
+
+Four pre-cutover private XLSX objects still exist in `maintrack-inventory-archive-staging`:
+
+- `inventory/imports/6090cd35-6964-4870-bdda-ef7dc0b6ef56.xlsx`
+- `inventory/imports/40fefb2c-a69d-4867-8039-1683174eb74c.xlsx`
+- `inventory/imports/b58d48e1-9c8c-4490-99f1-891d440f038d.xlsx`
+- `inventory/imports/627330b7-567c-40b6-8e10-8a4e5327c9ad.xlsx`
+
+A proposed temporary, nonce-authenticated cleanup Edge Function was rejected by automatic approval review because it would deploy a public endpoint with JWT verification disabled and service-role Storage deletion capability. No cleanup function was deployed; this was independently confirmed through the function inventory. Its temporary local credential was removed. No workaround to that rejected implementation was attempted.
+
+Use direct Storage deletion of these exact four objects through the Dashboard or an authorized direct Storage tool. Preserve new uploads. Do not delete Storage metadata with SQL.
 
 For the Owner's existing test handset, clear prelaunch local app data once when adopting the fresh account, after installing the original-package Final update. This is distinct from future compatible updates, which preserve operational reports/queues.
 
-**Verdict:** Final software is published and signed; fresh operational-data launch remains blocked on completion and verification of the authorized data reset and archive cleanup.
+**Verdict:** Ready with known limitations — Final software, fresh database and old-client retirement are verified. Four authorized old archive objects remain pending direct Storage deletion. Actual handset installation and first-login password change remain user actions.
