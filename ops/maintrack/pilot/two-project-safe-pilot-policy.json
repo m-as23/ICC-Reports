@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "name": "MainTrack Two-Project Owner Pilot Path",
+  "state": "PREPARATION_ONLY_RELEASE_BLOCKED",
+  "decisionDate": "2026-10-20",
+  "resources": {
+    "currentApplication": {
+      "name": "MainTrack-Staging",
+      "ref": "tdnkeskczcsukcujwinu",
+      "usage": "CURRENT_OPERATION_AND_FUTURE_EXPLICITLY_APPROVED_LIMITED_PILOT"
+    },
+    "isolatedQa": {
+      "name": "MainTrack-RBAC-QA-Isolated",
+      "ref": "szhstrafzkxzstjdcynl",
+      "usage": "SYNTHETIC_AUTOMATED_QA_ONLY"
+    },
+    "independentProduction": {
+      "ref": null,
+      "state": "DEFERRED_UNAVAILABLE_ON_TWO_FREE_PROJECT_LIMIT"
+    },
+    "noThirdProjectRequiredForCurrentQa": true,
+    "retainBothCurrentProjects": true
+  },
+  "safety": {
+    "allowAutomaticEmployeeRollout": false,
+    "allowAutomaticProductionPromotion": false,
+    "allowStagingEmployeeDataMutation": false,
+    "allowStagingDestructiveSchemaChanges": false,
+    "allowChangingCanonicalWebApi": false,
+    "allowApkPublication": false,
+    "allowRepurposingOrPausingQa": false,
+    "allowRepurposingOrPausingStaging": false,
+    "allowDisablingProductionReleaseGate": false,
+    "allowCopyingEmployeeDataToQa": false
+  },
+  "limitedPilotBeforeDeployment": {
+    "state": "BLOCKED_PENDING_OWNER_APPROVAL",
+    "candidateScope": "CURRENT_STAGING_BACKEND_ONLY_AFTER_EXPLICIT_ROLLBACK_AND_BACKUP_REVIEW",
+    "requirements": [
+      {
+        "id": "employee-staging-backup",
+        "status": "pending",
+        "evidence": "Encrypted/exported recoverable backup of ACTUAL Staging employee data, NOT synthetic QA snapshots"
+      },
+      {
+        "id": "restore-in-independent-safe-target",
+        "status": "pending",
+        "evidence": "Document recovery of actual backup without editing active Staging or copying employee data into unapproved QA"
+      },
+      {
+        "id": "32-action-client-backend-parity",
+        "status": "pending",
+        "evidence": "Reviewed exact API/browser URLs, real functional smoke and backwards compatibility"
+      },
+      {
+        "id": "owner-android-upgrade-preservation",
+        "status": "pending",
+        "evidence": "Signed same-certificate APK, preserved login and local reports, safe OTA rollback on physical owner device"
+      },
+      {
+        "id": "pilot-observability-and-limits",
+        "status": "pending",
+        "evidence": "Named pilot cohort, bounded testing window, error monitoring, rollback steps and owner approvals"
+      },
+      {
+        "id": "owner-explicit-limited-pilot-approval",
+        "status": "pending",
+        "evidence": "Owner signs off exact build SHA, URL, APK signing digest and controlled limited participants"
+      }
+    ]
+  },
+  "legacyEmployeeReleaseGate": "ops/maintrack/employee-release-gates.json",
+  "existingEmployeeReleaseStateMustRemain": "PRELAUNCH_BLOCKED",
+  "note": "Not authorizing an employee release or reclassifying Staging as an isolated Production environment."
+}
