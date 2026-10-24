@@ -8,6 +8,7 @@ on:
       - 'ops/maintrack/scripts/verify-native-final-407-build.py'
       - 'ops/maintrack/security/owner-047-preview-source.json'
       - 'ops/maintrack/tests/prepare-final-047.test.mjs'
+      - 'ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs'
   workflow_dispatch:
 permissions:
   contents: read

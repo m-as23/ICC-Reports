@@ -51,6 +51,9 @@ for(const width of [390,1280])for(const role of ['owner','technician'])test('App
   await page.goto(base+'/harness.html');await page.evaluate(()=>document.getElementById('inventory').style.display='block');
   const frame=page.frameLocator('#inv47Frame');
   await frame.locator('#query:enabled').waitFor();
+  // The HTML input starts enabled before integration initialization. Wait for
+  // committed stock, rather than mistaking the initial DOM for a ready search.
+  await frame.locator('#inventoryFreshness').filter({hasText:'٢٠٢٦'}).waitFor();
   assert.equal(await frame.locator('#query').inputValue(),'');assert.equal(await frame.locator('#welcome').isVisible(),true);
   assert.match(await frame.locator('.freshness-row').textContent(),/آخر تحديث لرصيد قطع الغيار/);assert.doesNotMatch(await frame.locator('.content').textContent(),/approved.xlsx/);
   const outEmpty=path.join(root,'audit-output/maintrack-047-mobile');await fs.mkdir(outEmpty,{recursive:true});await page.screenshot({path:path.join(outEmpty,'approved-empty-'+role+'-'+width+'.png')});
