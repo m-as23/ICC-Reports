@@ -7,6 +7,11 @@ test('real Final login preserves numeric strings and old passwords; password rul
  try{
   await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('#lcode').waitFor({state:'visible'});
   assert.equal(await page.locator('#lcode').getAttribute('placeholder'),'1111');assert.equal(await page.locator('#lcode').getAttribute('inputmode'),'numeric');
+  await page.locator('#mtForgotPw').click();assert.equal(await page.locator('#wa').isVisible(),false);
+  await page.locator('#lcode').fill('0011');await page.locator('#lpw').fill('NeverSendThis1');await page.locator('#mtForgotPw').click();
+  assert.equal(await page.locator('#wa').isVisible(),true);let wa=new URL(await page.locator('#wa').getAttribute('href'));assert.equal(wa.hostname,'wa.me');assert.equal(wa.pathname,'/201270437241');assert.ok(wa.searchParams.get('text').endsWith('0011'));assert.ok(!wa.href.includes('NeverSendThis1'));assert.equal(requests.length,0);
+  await page.locator('#lcode').fill('0022');wa=new URL(await page.locator('#wa').getAttribute('href'));assert.ok(wa.searchParams.get('text').endsWith('0022'));
+  await page.locator('#lcode').fill('bad-code');assert.equal(await page.locator('#wa').isVisible(),false);
   await page.locator('#lcode').fill('PILOT01');await page.locator('#lpw').fill('Old!Password');await page.locator('#lgo').click();assert.equal(requests.filter(x=>x.action==='login').length,0);
   await page.locator('#lcode').fill('0011');await page.locator('#lgo').click();await page.locator('#np').waitFor({state:'visible'});
   const login=requests.find(x=>x.action==='login');assert.equal(login.code,'0011');assert.equal(login.pw,'Old!Password');
