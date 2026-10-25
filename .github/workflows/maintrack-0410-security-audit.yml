@@ -2,6 +2,10 @@ name: MainTrack 0.4.10 isolated security and latency audit
 on:
   push:
     branches: [audit/maintrack-0410-security-performance-20261025]
+    paths:
+      - '.github/workflows/maintrack-0410-security-audit.yml'
+      - 'ops/maintrack/security-tests/final-api.audit.test.mjs'
+      - 'supabase/functions/maintrack-final-047/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,7 +22,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 97b0f61a4a1661bb4cfcaa90bc242cbe9cf12964
+          ref: ${{ github.sha }}
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -26,7 +30,7 @@ jobs:
           node-version: '22'
       - run: npm ci --prefix baseline/android/maintrack-app --ignore-scripts --no-audit --no-fund
       - run: npm install --prefix baseline/audit-output/test-runtime @electric-sql/pglite@0.3.14 --ignore-scripts --no-audit --no-fund
-      - name: Audit actual Final API with synthetic PostgreSQL; known defects fail visibly
+      - name: Audit candidate Final API with synthetic PostgreSQL; regressions fail visibly
         env:
           MT_AUDIT_SOURCE_ROOT: ${{ github.workspace }}/baseline
           LEDGER_PG_PACKAGE: ${{ github.workspace }}/baseline/audit-output/test-runtime/package.json

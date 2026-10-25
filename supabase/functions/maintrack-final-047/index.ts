@@ -12,6 +12,24 @@ const sha=v=>createHash('sha256').update(v).digest('hex');
 const response=(o,status=200,rid='')=>new Response(JSON.stringify(o),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','vary':'Origin','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'authorization,content-type,x-request-id','x-request-id':rid}});
 class AppError extends Error{constructor(code,status=400){super(code);this.code=code;this.status=status;}}
 const die=(code,status)=>{throw new AppError(code,status);};
+async function boundedJson(req){
+ const maximum=65536;
+ if(Number(req.headers.get('content-length')||0)>maximum){void req.body?.cancel().catch(()=>{});die('PAYLOAD_TOO_LARGE',413);}
+ if(!req.body)die('INVALID_PAYLOAD');
+ const reader=req.body.getReader(),chunks=[];let size=0;
+ try{
+  while(true){
+   const {done,value}=await reader.read();if(done)break;
+   size+=value.byteLength;
+   if(size>maximum){void reader.cancel().catch(()=>{});die('PAYLOAD_TOO_LARGE',413);}
+   chunks.push(value);
+  }
+ }catch(e){if(e instanceof AppError)throw e;die('INVALID_PAYLOAD');}
+ finally{reader.releaseLock();}
+ const bytes=new Uint8Array(size);let offset=0;
+ for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+ try{return await new Response(bytes).json();}catch{die('INVALID_PAYLOAD');}
+}
 const row=async(q,p=[])=>((await pool.query(q,p)).rows[0]||null);
 const first=async(c,q,p=[])=>((await c.query(q,p)).rows[0]||null);
 async function transaction(fn){const c=await pool.connect();try{await c.query('BEGIN');const r=await fn(c);await c.query('COMMIT');return r;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
@@ -33,7 +51,7 @@ async function mtGlobalLoginGuard(){
  const result=await row(sql);
  if(Number(result?.attempts||0)>300)die('RATE_LIMIT',429);
 }
-async function login(b){await mtGlobalLoginGuard();const code=b.code;if(!validEmployeeCode(code))die('INVALID_CODE');const password=String(b.pw||'');
+async function login(b){const code=b.code;if(!validEmployeeCode(code))die('INVALID_CODE');await mtGlobalLoginGuard();const password=String(b.pw||'');
  const blocked=await row('SELECT blocked_until FROM mt_login_attempts WHERE employee_code=$1',[code]);
  if(blocked?.blocked_until&&new Date(blocked.blocked_until)>new Date())die('LOCKED',429);
  const u=await row("SELECT id,employee_code,name,role::text AS role,active,token_version,must_change,(password_hash=extensions.crypt($2,password_hash)) AS matched FROM mt_users WHERE employee_code=$1",[code,password]);
@@ -615,7 +633,7 @@ Deno.serve(async req=>{
   return response({error:'NOT_FOUND'},404,rid);
  }
  if(req.method!=='POST'||!p.endsWith('/api'))return response({error:'METHOD_NOT_ALLOWED'},405,rid);
- try{if(Number(req.headers.get('content-length')||0)>65536)die('PAYLOAD_TOO_LARGE',413);const b=await req.json();if(!b||typeof b!=='object'||Array.isArray(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
+ try{const b=await boundedJson(req);if(!b||typeof b!=='object'||Array.isArray(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
  catch(e){const c=e instanceof AppError?e.code:'INTERNAL_ERROR',s=e instanceof AppError?e.status:500;console.error(JSON.stringify({status:c,ms:Date.now()-started,rid}));return response({error:c},s,rid);}
 });
 

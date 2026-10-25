@@ -18,8 +18,9 @@ before(async()=>{
  db=new PGlite();
  await db.exec('CREATE TABLE mt_users(id uuid PRIMARY KEY,employee_code text,name text,role text,active boolean,token_version int,must_change boolean,password_hash text); CREATE TABLE mt_sessions(token_hash text,user_id uuid,token_version int,expires_at timestamptz);');
  await db.exec('CREATE TABLE mt_login_rate_guard(key_hash text PRIMARY KEY,window_start timestamptz,attempts int,updated_at timestamptz);');
+ await db.exec("CREATE TABLE mt_login_attempts(employee_code text PRIMARY KEY,fail_count int,updated_at timestamptz,blocked_until timestamptz); CREATE SCHEMA extensions; CREATE FUNCTION extensions.crypt(text,text) RETURNS text LANGUAGE sql AS $$ SELECT $1 $$;");
  for(const [n,role,active,must,version,expiry] of [[1,'owner',true,false,1,3600],[2,'technician',true,false,1,3600],[3,'engineer',true,false,1,3600],[4,'owner',false,false,1,3600],[5,'owner',true,false,2,3600],[6,'owner',true,false,1,-60],[7,'owner',true,true,1,3600],[8,'owner',true,false,1,3600]]){
-  await db.query('INSERT INTO mt_users VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[uid(n),String(1000+n),'Synthetic '+n,role,active,version,must,'synthetic-unused']);
+  await db.query('INSERT INTO mt_users VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[uid(n),String(1000+n),'Synthetic '+n,role,active,version,must,'Synthetic1']);
   await db.query("INSERT INTO mt_sessions VALUES($1,$2,1,now()+$3*interval '1 second')",[createHash('sha256').update(String(n).repeat(64)).digest('hex'),uid(n),expiry]);
  }
  const query=(sql,args)=>db.query(sql,args);
@@ -54,15 +55,38 @@ test('Owner cannot demote a second Owner through employee editor',async()=>{
 test('untrusted origin is rejected before auth and has no CORS grant',async()=>{const response=await request({headers:{Origin:'https://attacker.invalid'}});assert.equal(response.status,403);assert.equal(response.headers.get('access-control-allow-origin'),null);});
 test('valid response has no-store and nosniff and contains no session credential',async()=>{const response=await request();assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(response.headers.get('x-content-type-options'),'nosniff');assert.ok(!(await response.text()).includes('1'.repeat(64)));assert.ok(logs.every(x=>!x.includes('1'.repeat(64))));});
 test('declared oversized request is rejected',async()=>{assert.equal((await request({headers:{'Content-Length':'70000'}})).status,413);});
-test('AUDIT P2: actual body size is bounded when Content-Length is absent',async()=>{
+test('actual body size is bounded when Content-Length is absent',async()=>{
  const body=JSON.stringify({action:'session',padding:'x'.repeat(70000)});assert.ok(Buffer.byteLength(body)>65536);
  assert.equal((await request({body})).status,413,'Oversized body must be bounded independently of Content-Length');
 });
-test('AUDIT P2: malformed JSON is a client error rather than server failure',async()=>{assert.equal((await request({body:'{"action":'})).status,400,'Malformed JSON must not create a false server-error signal');});
-test('AUDIT P2: malformed codes cannot exhaust the shared login budget for all users',async()=>{
+test('malformed JSON is a client error rather than server failure',async()=>{const r=await request({body:'{"action":'});assert.equal(r.status,400,'Malformed JSON must not create a false server-error signal');assert.equal((await r.json()).error,'INVALID_PAYLOAD');});
+test('malformed codes cannot exhaust the shared login budget for all users',async()=>{
  // 301 requests ONLY against in-process handler + synthetic local database.
  // No network, password hashes or real employee codes are involved.
  for(let i=0;i<301;i++)await request({body:JSON.stringify({action:'login',code:'invalid-code',pw:'synthetic'})});
  const response=await request({body:JSON.stringify({action:'login',code:'1001',pw:'Synthetic1'})});
- assert.notEqual(response.status,429,'Malformed unauthenticated traffic must not lock every employee out of login');
+ assert.equal(response.status,200,'Malformed unauthenticated traffic must not lock every employee out of login');
+ assert.match((await response.json()).token,/^[a-f0-9]{64}$/);
+ assert.equal((await db.query('SELECT attempts FROM mt_login_rate_guard')).rows[0].attempts,1);
+});
+test('valid-code global limit still rejects traffic after 300 attempts',async()=>{
+ await db.exec('UPDATE mt_login_rate_guard SET attempts=300');
+ const r=await request({body:JSON.stringify({action:'login',code:'1001',pw:'Synthetic1'})});assert.equal(r.status,429);assert.equal((await r.json()).error,'RATE_LIMIT');
+ await db.exec('DELETE FROM mt_login_rate_guard');
+});
+test('five incorrect passwords retain the per-account lock',async()=>{
+ for(let i=0;i<5;i++){const r=await request({body:JSON.stringify({action:'login',code:'1001',pw:'Wrong123'})});assert.equal(r.status,401);}
+ const r=await request({body:JSON.stringify({action:'login',code:'1001',pw:'Synthetic1'})});assert.equal(r.status,429);assert.equal((await r.json()).error,'LOCKED');
+});
+test('UTF-8 bytes and an understated Content-Length cannot bypass the body cap',async()=>{
+ const r=await request({body:JSON.stringify({action:'session',padding:'ع'.repeat(34000)}),headers:{'Content-Length':'5'}});assert.equal(r.status,413);
+});
+test('exactly 64 KiB remains accepted, one byte more is denied',async()=>{
+ const empty=JSON.stringify({action:'session',padding:''});const body=JSON.stringify({action:'session',padding:'x'.repeat(65536-Buffer.byteLength(empty))});assert.equal(Buffer.byteLength(body),65536);
+ assert.equal((await request({body})).status,200);assert.equal((await request({body:body+' '})).status,413);
+});
+test('chunked oversized body is stopped and its reader is cancelled',async()=>{
+ let cancelled=false;let chunks=0;
+ const body=new ReadableStream({pull(c){chunks++;if(chunks>5)return c.close();c.enqueue(new Uint8Array(20000).fill(32));},cancel(){cancelled=true;}});
+ const r=await handler(new Request('https://isolated.invalid/api',{method:'POST',headers:{Origin:origin},body,duplex:'half'}));assert.equal(r.status,413);assert.equal(cancelled,true);assert.ok(chunks<10);
 });
