@@ -1,0 +1,10 @@
+cache.json
+reports/
+evidence/
+lab/
+__pycache__/
+tests/__pycache__/
+reference/
+APPROVAL-*.json
+runtime-evidence.json
+historical-baseline.json
