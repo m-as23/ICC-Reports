@@ -33,7 +33,7 @@ async function mtGlobalLoginGuard(){
  const result=await row(sql);
  if(Number(result?.attempts||0)>300)die('RATE_LIMIT',429);
 }
-async function login(b){await mtGlobalLoginGuard();const code=b.code;if(!validEmployeeCode(code))die('INVALID_CODE');const password=String(b.pw||'');
+async function login(b){const code=b.code;if(!validEmployeeCode(code))die('INVALID_CODE');await mtGlobalLoginGuard();const password=String(b.pw||'');
  const blocked=await row('SELECT blocked_until FROM mt_login_attempts WHERE employee_code=$1',[code]);
  if(blocked?.blocked_until&&new Date(blocked.blocked_until)>new Date())die('LOCKED',429);
  const u=await row("SELECT id,employee_code,name,role::text AS role,active,token_version,must_change,(password_hash=extensions.crypt($2,password_hash)) AS matched FROM mt_users WHERE employee_code=$1",[code,password]);

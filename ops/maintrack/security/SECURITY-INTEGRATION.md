@@ -16,6 +16,8 @@ Regression local commands use PATH or MAINTRACK_NODE. Release mode additionally 
 
 Operational Web provenance remains unproven: Production Vercel listing returned 403; the legacy accepted deployment metadata has no Git commit, and its file response was truncated. Operational Supabase source was readable. Do not equate an alias/project name with a verified deployment commit. Logout is not permanently deployed after QA baseline restoration.
 
+Source comparison found one Login ordering difference: the reference invokes the shared rate guard before validating employee-code syntax; operational and restored QA validate syntax first. This candidate explicitly preserves the deployed ordering so malformed codes do not consume that shared budget. A negative test reproduced the reference behavior before the one-line correction; valid Login, issue, auth and dispatch contracts remain unchanged. No APK rebuild is needed for this server-only alignment.
+
 Local checks:
 ```
 python security-regression/run.py --mode local
