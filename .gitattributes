@@ -1,0 +1,2 @@
+# Byte-locked assets must be checked out exactly, including on Windows.
+web/maintrack/public/** -text

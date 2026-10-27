@@ -1,0 +1,14 @@
+{
+  "applied": false,
+  "productionDeploymentAuthorized": false,
+  "targetBranches": ["main", "release/maintrack-047-final-20261024"],
+  "requiredChecks": ["MainTrack security local / security-local", "MainTrack logout regression / logout-contract", "candidate-bound-security-release-evidence"],
+  "requiredApprovingReviews": 1,
+  "requireCodeOwnerReview": true,
+  "requireUpToDateBranch": true,
+  "deploymentEnvironment": "maintrack-production-approval",
+  "requiredEnvironmentReviewer": "repository owner",
+  "preventSelfReview": true,
+  "cloudScheduleEnabled": false,
+  "notes": "Review proposal only. candidate-bound-security-release-evidence must run release_gate.py using independently reviewed QA evidence and the exact source/APK; it is intentionally not configured as a local-CI success check. No branch protection/environment settings were applied."
+}
