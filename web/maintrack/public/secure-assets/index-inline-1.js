@@ -43,6 +43,17 @@ const API_DEFAULT_TIMEOUT_MS=25000;
 function requestMetric(action,ms,status){
   try { console.info('[MainTrack API]',JSON.stringify({action,ms:Math.round(ms),status})); }catch(e){}
 }
+async function logoutCurrentSession(){
+ const token=S&&S.token;
+ if(!token)return {confirmed:false};
+ logout();const localClear=mtSessionWrites;
+ let confirmed=false;
+ try{const r=await post({action:'logout',token});confirmed=r.ok===true&&r.revoked===true;}
+ catch(e){/* Unknown network outcome is not server-side confirmation. Never retry here. */}
+ await localClear;
+ if(!S)note(confirmed?'تم تسجيل الخروج وإبطال الجلسة على الخادم.':'تم الخروج محليًا، لكن لم يتأكد إبطال الجلسة على الخادم.',confirmed?'ok':'err');
+ return {confirmed};
+}
 async function post(b){
   const action=String(b.action||'unknown');
   const timeout=API_TIMEOUT_MS[action]||API_DEFAULT_TIMEOUT_MS;
@@ -343,7 +354,7 @@ $('lcode').oninput=()=>{if(helpKind)help(helpKind);};
 $('lgo').onclick=async()=>{if($('lgo').disabled)return;const code=norm($('lcode').value.trim()),pw=$('lpw').value;if(!code){note('اكتب كود الموظف','err');$('lcode').focus();return;}if(!pw){note('اكتب الباسورد','err');$('lpw').focus();return;}$('lgo').disabled=true;note('جاري الدخول...','ok');try{const d=await post({action:'login',code:code,pw:pw});if(d.error){if(HELP[d.error]){note(HELP[d.error].m,'err');return help(d.error);}return note(d.error,'err');}await save(d);$('lpw').value='';helpKind=null;$('fbox').style.display='none';note('');if(d.must)return showChange(true);start(true);}catch(e){note(netMsg(e),'err');}finally{$('lgo').disabled=false;}};
 $('cgo').onclick=async()=>{if($('np').value!==$('np2').value)return note('الباسورد الجديد غير متطابق','err');try{const d=await post({action:'change',token:S.token,old:$('op').value,pw:$('np').value});if(d.error==='AUTH')return logout();if(d.error)return note(d.error,'err');await save(d);['op','np','np2'].forEach(k=>$(k).value='');await start(true);note('تم حفظ الباسورد','ok');}catch(e){note(netMsg(e),'err');}};
 $('cback').onclick=()=>{note('');show('form');};
-$('out').onclick=()=>{if(getQ().length&&!confirm('فيه بلاغات في الانتظار لم تُرسل. هتفضل محفوظة لحد ما تدخل بنفس الكود. تكمل؟'))return;logout();};
+$('out').onclick=async()=>{if($('out').disabled)return;if(getQ().length&&!confirm('فيه بلاغات في الانتظار لم تُرسل. هتفضل محفوظة لحد ما تدخل بنفس الكود. تكمل؟'))return;$('out').disabled=true;try{await logoutCurrentSession();}finally{$('out').disabled=false;}};
 $('section').onchange=()=>{const s=$('section').value;fill($('machine'),D.machines.filter(r=>r[0]===s).map(r=>r[1]),'اختر الماكينة');fill($('comp'),D.parts.filter(r=>r[0]===s).map(r=>r[1]),'اختر الجزء');};
 $('send').onclick=()=>{if(!canReport())return note('غير مسموح لك بتسجيل بلاغات','err');const f={};ALL.forEach(k=>f[k]=$(k).value.trim());let bad=0;REQ.forEach(k=>{const miss=!f[k];$(k).classList.toggle('bad',miss);if(miss)bad++;});if(bad){note('كمّل الخانات المعلّمة بالأحمر','err');window.scrollTo(0,0);return;}f.u=S.code;f.cid=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());setQ(getQ().concat([f]));ALL.forEach(k=>{if(k!=='date')$(k).value='';});fill($('machine'),[],'اختر القسم أولا');fill($('comp'),[],'اختر القسم أولا');note('تم تسجيل البلاغ على الجهاز، جاري الإرسال...','ok');window.scrollTo(0,0);flush().then(load);};
 $('now').onclick=()=>{setQ(getQ().map(x=>{delete x.err;return x;}));flush();};
