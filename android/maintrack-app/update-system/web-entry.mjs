@@ -8,8 +8,7 @@ if (!globalThis.Capacitor?.isNativePlatform?.()) {
   const check = document.createElement('button'); check.type = 'button'; check.textContent = 'التحقق من التحديث';
   const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'تحديث متاح'; apply.hidden = true;
   bar.append(status, apply); document.body.append(bar);
-  const settings = document.getElementById('profile');
-  if (settings) {check.className = 'btn'; settings.append(check);}
+  // Check automatically on launch/foreground and each 30-minute interval; no manual profile button.
   const session = createWebSession({origin:location.origin, currentCommit:config.commit,
     localWork:globalThis.MainTrackLocalWork,
     fetchRelease:async () => {
