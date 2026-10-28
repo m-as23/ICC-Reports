@@ -4,6 +4,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createReviewInventoryRuntime} from '../src/create-review-runtime.mjs';
 import {fixture} from './import-xlsx.test.mjs';
+import {createInventoryService} from '../src/inventory-service.mjs';
+import {parseInventoryXlsx} from '../src/import-xlsx.mjs';
+
+test('Real parser drafts through an in-memory store without changing an existing approved version',async()=>{
+ const approved=Object.freeze({versionId:'9',items:Object.freeze([Object.freeze({code:'OLD',quantity:7,location:'A'})])});
+ const before=JSON.stringify(approved);let pending;
+ const store={
+  snapshot:async()=>approved,
+  stage:async input=>{pending=input;return {draftId:'10',baseVersionId:'9'};},
+  diff:async()=>({draftId:'10',baseVersionId:'9',fileSha256:pending.fileSha256,total:pending.total,counts:{NEW:120},details:pending.items,requiresExplicitReview:true})
+ };
+ const service=createInventoryService({verifySession:async()=>({authenticated:true,active:true,role:'owner',userId:'synthetic-owner'}),store,parseXlsx:parseInventoryXlsx});
+ const originalFetch=globalThis.fetch;globalThis.fetch=()=>{throw Error('NETWORK_FORBIDDEN');};
+ try{
+  const draft=await service.execute({action:'inventoryDraft',bytes:await fixture(),filename:'synthetic.xlsx',session:'a'.repeat(64)});
+  assert.equal(draft.summary.total,120);assert.equal(pending.items[0].quantity,0);assert.equal(pending.items[0].location,'R-1');
+  assert.equal(await service.execute({action:'inventorySnapshot',session:'a'.repeat(64)}),approved);
+  assert.equal(JSON.stringify(approved),before);
+ }finally{globalThis.fetch=originalFetch;}
+});
 
 function environment(){
  const files=new Map(),events=[];

@@ -5,11 +5,11 @@
   "type": "module",
   "description": "Isolated MainTrack 0.4.7 inventory importer QA; never deployed",
   "scripts": {
-    "test:parser": "node --test test/import-xlsx.test.mjs test/private-bucket.test.mjs test/import-service.test.mjs"
+    "test:parser": "node --test test/import-xlsx.test.mjs test/private-bucket.test.mjs test/import-service.test.mjs test/yauzl-security.test.mjs"
   },
   "dependencies": {
     "exceljs": "4.4.0",
-    "yauzl": "3.2.0"
+    "yauzl": "3.2.1"
   },
   "devDependencies": {
     "pg": "8.13.3"
