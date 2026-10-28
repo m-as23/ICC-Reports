@@ -233,7 +233,7 @@ DO $cron_grants$
 BEGIN
  IF EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_cron') THEN
   GRANT USAGE ON SCHEMA cron TO maintrack_qa_cleanup_worker;
-  GRANT EXECUTE ON FUNCTION cron.schedule(text,text,text),cron.alter_job(bigint,text,text,text,text,boolean) TO maintrack_qa_cleanup_worker;
+  GRANT EXECUTE ON FUNCTION cron.schedule(text,text,text) TO maintrack_qa_cleanup_worker;
  END IF;
 END $cron_grants$;
 -- Cron command is one top-level CALL. Its login must have an independently
