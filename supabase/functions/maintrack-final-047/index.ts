@@ -1,4 +1,4 @@
-import {withLoginBudget,trustedLoginSource,LoginRateError} from './login-rate-limit.mjs';
+import {withLoginBudget,LoginRateError} from './login-rate-limit.mjs';
 function validEmployeeCode(value){return typeof value==='string'&&/^[0-9]{1,32}$/.test(value);}
 function validNewPassword(value){return typeof value==='string'&&value.length>=8&&value.length<=64&&/^[A-Za-z0-9]+$/.test(value)&&/[A-Za-z]/.test(value)&&/[0-9]/.test(value);}
 function temporaryPassword(randomBytes){
@@ -32,7 +32,9 @@ async function login(b,source){const code=b.code;if(!validEmployeeCode(code))die
  const blocked=await first(c,'SELECT blocked_until FROM mt_login_attempts WHERE employee_code=$1',[code]);
  if(blocked?.blocked_until&&new Date(blocked.blocked_until)>new Date())die('LOCKED',429);
  const u=await first(c,"SELECT id,employee_code,name,role::text AS role,active,token_version,must_change,(password_hash=extensions.crypt($2,password_hash)) AS matched FROM mt_users WHERE employee_code=$1",[code,password]);
- if(!u||!u.active||!u.matched){
+ // Unknown codes never create attacker-selected persistent counters.
+ if(!u)die('BAD_PW',401);
+ if(!u.active||!u.matched){
   await c.query("INSERT INTO mt_login_attempts(employee_code,fail_count,updated_at) VALUES($1,1,now()) ON CONFLICT(employee_code) DO UPDATE SET fail_count=CASE WHEN mt_login_attempts.updated_at<=now()-interval '5 minutes' THEN 1 ELSE LEAST(mt_login_attempts.fail_count+1,5) END,updated_at=now(),blocked_until=CASE WHEN (CASE WHEN mt_login_attempts.updated_at<=now()-interval '5 minutes' THEN 1 ELSE mt_login_attempts.fail_count+1 END)>=5 THEN now()+interval '5 minutes' ELSE NULL END",[code]);die('BAD_PW',401);
  }
  await c.query('DELETE FROM mt_login_attempts WHERE employee_code=$1',[code]);return issue(u,c);
@@ -593,7 +595,7 @@ const MT_ALLOWED_ORIGINS=new Set(["https://maintrack-final-security-ntkx35xm8-mo
  'https://maintrack-final-security-648d62s5y-mohamedashrefsrag-5918.vercel.app', // QA-only exact deployment hostname; remove before release
 'https://localhost'
 ]);
-Deno.serve(async (req,info)=>{
+Deno.serve(async (req)=>{
  const url=new URL(req.url),p=url.pathname,rid=String(req.headers.get('x-request-id')||randomUUID()).slice(0,65),started=Date.now();
  const mtOrigin=req.headers.get('origin')||'',mtAllowed=!mtOrigin||MT_ALLOWED_ORIGINS.has(mtOrigin);
  const response=(body:any,status=200,requestId='')=>{
@@ -618,7 +620,7 @@ Deno.serve(async (req,info)=>{
   return response({error:'NOT_FOUND'},404,rid);
  }
  if(req.method!=='POST'||!p.endsWith('/api'))return response({error:'METHOD_NOT_ALLOWED'},405,rid);
- try{if(Number(req.headers.get('content-length')||0)>65536)die('PAYLOAD_TOO_LARGE',413);const b=await req.json();if(!b||typeof b!=='object'||Array.isArray(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b,trustedLoginSource(info,key=>Deno.env.get(key))):a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
+ try{if(Number(req.headers.get('content-length')||0)>65536)die('PAYLOAD_TOO_LARGE',413);const b=await req.json();if(!b||typeof b!=='object'||Array.isArray(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
  catch(e){const c=(e instanceof AppError||e instanceof LoginRateError)?e.code:'INTERNAL_ERROR',s=(e instanceof AppError||e instanceof LoginRateError)?e.status:500;console.error(JSON.stringify({status:c,ms:Date.now()-started,rid}));return response({error:c},s,rid);}
 });
 

@@ -11,7 +11,7 @@ class FindingClosureTests(unittest.TestCase):
  bind_cleanup=gate_fixture.GateTests.bind_cleanup
  result=gate_fixture.GateTests.result
  def test_missing_login_or_excel_closure_proof_blocks_release(self):
-  for case in ('login-rate-isolation','login-trusted-ingress','excel-dependency-review'):
+  for case in ('login-rate-isolation','login-admission-policy','excel-dependency-review'):
    with self.subTest(case=case):
     record=copy.deepcopy(self.record);record['cases'].pop(case,None)
     self.assertEqual(self.result(record),'NO-GO')

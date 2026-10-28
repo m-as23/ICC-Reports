@@ -103,7 +103,10 @@
         "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
         "ops/maintrack/tests/login-rate-limit.test.mjs",
         "ops/maintrack/inventory/backend/package.json",
-        "ops/maintrack/inventory/backend/package-lock.json"
+        "ops/maintrack/inventory/backend/package-lock.json",
+        "ops/maintrack/tests/login-hosted-admission.test.mjs",
+        "ops/maintrack/security/qa-login-lease.mjs",
+        "ops/maintrack/tests/qa-login-lease.test.mjs"
       ],
       "command": [
         "{python}",
@@ -460,14 +463,17 @@
       "reason": "Artifact-bound native certificate rejection evidence required. A distinct instrumented lab APK does not certify the frozen candidate or operational APK."
     },
     {
-      "id": "login-trusted-ingress",
+      "id": "login-admission-policy",
       "required": true,
       "mode": "qa",
       "inputs": [
         "supabase/functions/maintrack-final-047/index.ts",
-        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
+        "ops/maintrack/tests/login-hosted-admission.test.mjs",
+        "ops/maintrack/security/qa-login-lease.mjs",
+        "ops/maintrack/tests/qa-login-lease.test.mjs"
       ],
-      "reason": "Requires verified hosted ingress source binding and controlled multi-source/spoofed-header acceptance evidence; direct-transport local tests cannot certify Supabase gateway attribution."
+      "reason": "Requires approved source-independent account admission policy and actual QA Login/header-spoof/lock isolation evidence. No hosted client-IP attribution is claimed or required as an authentication identity; no Direct Transport mode may be enabled."
     }
   ]
 }
