@@ -44,9 +44,36 @@ jobs:
           test "$CLEANUP_CONTAINER_ID" != ""
           fixture_ip=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CLEANUP_CONTAINER_ID")
           echo "MAINTRACK_CLEANUP_SERVER_IP=$fixture_ip" >> "$GITHUB_ENV"
+          fixture_image=$(docker inspect --format '{{.Image}}' "$CLEANUP_CONTAINER_ID")
+          echo "MAINTRACK_CLEANUP_IMAGE=$fixture_image" >> "$GITHUB_ENV"
           psql -X --no-password -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_cleanup_ci IS 'MAINTRACK_CLEANUP_EPHEMERAL_V2'"
+      - name: Bind reuse to the runtime versions
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,subprocess,sys
+          versions={'python':sys.version,'node':subprocess.check_output(['node','--version'],text=True).strip(),'postgresImage':os.environ['MAINTRACK_CLEANUP_IMAGE'],'runnerImage':os.environ.get('ImageVersion','unknown')}
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('MAINTRACK_CACHE_RUNTIME='+hashlib.sha256(json.dumps(versions,sort_keys=True).encode()).hexdigest()+'\n')
+          PY
+      - name: Restore same-PR component proofs
+        id: component-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            security-regression/cache.json
+            security-regression/evidence
+          key: ${{ runner.os }}-maintrack-security-v3-${{ env.MAINTRACK_CACHE_RUNTIME }}-${{ github.ref }}-${{ github.sha }}-${{ github.run_attempt }}
+          restore-keys: ${{ runner.os }}-maintrack-security-v3-${{ env.MAINTRACK_CACHE_RUNTIME }}-${{ github.ref }}-
       - name: Run bounded local security checks
         run: python security-regression/run.py --mode local --output security-regression/reports/ci.json
+      - name: Preserve component proofs without authorizing release
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            security-regression/cache.json
+            security-regression/evidence
+          key: ${{ steps.component-cache.outputs.cache-primary-key }}
       - name: Retain the single run report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

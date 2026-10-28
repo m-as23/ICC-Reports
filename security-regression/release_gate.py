@@ -13,7 +13,7 @@ def cleanup_proven(root,entries,commit,artifact):
             proof=json.loads(data)
             if not isinstance(proof,dict) or proof.get('kind')!='maintrack-server-cleanup-v1':continue
             if proof.get('projectRef')!='szhstrafzkxzstjdcynl' or proof.get('sourceCommit')!=commit or proof.get('artifactSha256')!=artifact:continue
-            if not all(proof.get(key) is True for key in ('serverClock','admissionClosed','sessionsInactive','baselineVerified','archivesRetained','serverSchedulerProven','controllerFailureExercised')):continue
+            if not all(proof.get(key) is True for key in ('serverClock','admissionClosed','sessionsInactive','baselineVerified','archivesRetained','serverSchedulerProven','controllerFailureExercised','storageObjectsReconciled','schedulerStopped','serverTimeoutProven')):continue
             times=[datetime.datetime.fromisoformat(proof[key].replace('Z','+00:00')) for key in ('startedAt','admitUntil','deadline','verifiedAt')]
             if any(t.tzinfo is None for t in times):continue
             start,admit,deadline,verified=times

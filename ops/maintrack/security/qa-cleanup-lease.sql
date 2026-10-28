@@ -87,13 +87,34 @@ CREATE FUNCTION maintrack_qa_lease.lock_inventory() RETURNS void LANGUAGE plpgsq
 BEGIN
  LOCK TABLE qa_security_inventory_20261025.active,qa_security_inventory_20261025.versions,qa_security_inventory_20261025.items IN SHARE MODE;
 END $fn$;
+-- Disable only this lease's job; retain metadata as evidence. No HTTP/MCP.
+CREATE FUNCTION maintrack_qa_lease.stop_job(p_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+DECLARE j bigint;
+BEGIN
+ SELECT job_id INTO STRICT j FROM maintrack_qa_lease.runs WHERE id=p_id;
+ IF j IS NULL THEN RETURN; END IF;
+ IF EXISTS(SELECT 1 FROM cron.job WHERE jobid=j AND (jobname IS DISTINCT FROM 'mtqa_'||p_id::text OR username IS DISTINCT FROM session_user::text OR database IS DISTINCT FROM current_database())) THEN RAISE EXCEPTION 'QA_JOB_OWNERSHIP_MISMATCH'; END IF;
+ UPDATE cron.job SET active=false WHERE jobid=j AND jobname='mtqa_'||p_id::text AND username=session_user::text AND database=current_database();
+ IF EXISTS(SELECT 1 FROM cron.job WHERE jobid=j AND active) THEN RAISE EXCEPTION 'QA_JOB_STILL_ACTIVE'; END IF;
+END $fn$;
 CREATE PROCEDURE maintrack_qa_lease.sweep(p_id uuid) LANGUAGE plpgsql SECURITY INVOKER AS $fn$
 DECLARE r maintrack_qa_lease.runs; base jsonb; source_digest text; n int; err text;
 BEGIN
  IF NOT pg_catalog.pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') THEN RAISE EXCEPTION 'QA_WORKER_REQUIRED' USING ERRCODE='42501'; END IF;
  IF NOT pg_catalog.pg_try_advisory_lock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)) THEN RETURN; END IF;
  SELECT * INTO STRICT r FROM maintrack_qa_lease.runs WHERE id=p_id FOR UPDATE;
- IF r.verified THEN PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)); COMMIT; RETURN; END IF;
+ IF r.verified OR r.attempts>=2 THEN
+  COMMIT;
+  BEGIN
+   SET LOCAL lock_timeout='2s';
+   PERFORM maintrack_qa_lease.stop_job(p_id);
+  EXCEPTION WHEN query_canceled OR OTHERS THEN
+   GET STACKED DIAGNOSTICS err=RETURNED_SQLSTATE;
+   INSERT INTO maintrack_qa_lease.events(run_id,kind,detail) VALUES(p_id,'SCHEDULER_MAINTENANCE_FAILED',pg_catalog.jsonb_build_object('sqlstate',err));
+  END;
+  COMMIT;
+  PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)); RETURN;
+ END IF;
  UPDATE maintrack_qa_lease.runs SET heartbeat_at=pg_catalog.clock_timestamp() WHERE id=p_id;
  IF r.state='PREPARED' AND pg_catalog.clock_timestamp()<r.expires_at THEN
   INSERT INTO maintrack_qa_lease.events(run_id,kind) VALUES(p_id,'WORKER_HEARTBEAT');
@@ -101,7 +122,6 @@ BEGIN
   PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)); RETURN;
  END IF;
  IF r.state='ARMED' AND pg_catalog.clock_timestamp()<r.admit_until THEN COMMIT; PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)); RETURN; END IF;
- IF r.attempts>=2 THEN COMMIT; PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)); RETURN; END IF;
  UPDATE maintrack_qa_lease.runs SET attempts=attempts+1,state='CLEANING',late=pg_catalog.clock_timestamp()>expires_at WHERE id=p_id;
  INSERT INTO maintrack_qa_lease.events(run_id,kind) VALUES(p_id,'ATTEMPT_DURABLE');
  COMMIT;
@@ -147,7 +167,8 @@ BEGIN
  END IF;
  -- Cleanup result is already committed; scheduler failure cannot undo it.
  BEGIN
-  IF r.job_id IS NOT NULL AND EXISTS(SELECT 1 FROM maintrack_qa_lease.runs WHERE id=p_id AND (verified OR attempts>=2)) THEN EXECUTE 'SELECT cron.unschedule($1)' USING r.job_id; END IF;
+  SET LOCAL lock_timeout='2s';
+  IF r.job_id IS NOT NULL AND EXISTS(SELECT 1 FROM maintrack_qa_lease.runs WHERE id=p_id AND (verified OR attempts>=2)) THEN PERFORM maintrack_qa_lease.stop_job(p_id); END IF;
  EXCEPTION WHEN query_canceled OR OTHERS THEN
   GET STACKED DIAGNOSTICS err=RETURNED_SQLSTATE;
   INSERT INTO maintrack_qa_lease.events(run_id,kind,detail) VALUES(p_id,'SCHEDULER_MAINTENANCE_FAILED',pg_catalog.jsonb_build_object('sqlstate',err));
@@ -199,6 +220,7 @@ GRANT SELECT(token_hash,expires_at),UPDATE(expires_at) ON qa_security_final_2026
 GRANT EXECUTE ON FUNCTION maintrack_qa_lease.prepare(uuid,text),maintrack_qa_lease.arm(uuid,text,text,jsonb,integer,integer) TO maintrack_qa_cleanup_worker;
 GRANT EXECUTE ON PROCEDURE maintrack_qa_lease.sweep(uuid) TO maintrack_qa_cleanup_worker;
 GRANT EXECUTE ON FUNCTION maintrack_qa_lease.lock_inventory() TO maintrack_qa_cleanup_worker;
+GRANT EXECUTE ON FUNCTION maintrack_qa_lease.stop_job(uuid) TO maintrack_qa_cleanup_worker;
 -- Cron schema/function privileges must be confirmed for the actual postgres job
 -- owner before prepare. No runtime receives lease schema usage or worker membership.
 GRANT INSERT ON maintrack_qa_lease.runs TO maintrack_qa_cleanup_worker;
@@ -207,7 +229,7 @@ DO $cron_grants$
 BEGIN
  IF EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_cron') THEN
   GRANT USAGE ON SCHEMA cron TO maintrack_qa_cleanup_worker;
-  GRANT EXECUTE ON FUNCTION cron.schedule(text,text,text),cron.unschedule(bigint) TO maintrack_qa_cleanup_worker;
+  GRANT EXECUTE ON FUNCTION cron.schedule(text,text,text) TO maintrack_qa_cleanup_worker;
  END IF;
 END $cron_grants$;
 -- Cron command is one top-level CALL. Its login must have an independently
@@ -220,7 +242,8 @@ END $cron_grants$;
 GRANT SELECT ON qa_security_final_20261025.qa_scope TO maintrack_qa_cleanup_worker;
 -- REVIEW BLOCKERS beyond SQL verification:
 -- pg_cron delivery/connection timeout and maintenance permissions need live proof.
--- A failed terminal unschedule is recorded; terminal calls do not retry maintenance.
+-- A failed stop is recorded without undoing cleanup; COMPLETE alone never proves
+-- schedulerStopped. Actual pg_cron job deactivation still requires live evidence.
 -- Storage orphan cleanup (upload succeeds, backend dies before draft creation) is
 -- unverified and cannot be performed by this SQL. SQL PASS is not full Cleanup PASS;
 -- cloud XLSX admission must stay closed until Storage scope/resolution is approved.

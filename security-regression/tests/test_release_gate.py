@@ -7,7 +7,7 @@ class GateTests(unittest.TestCase):
   self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=pathlib.Path(self.temp.name);(self.root/'proof.json').write_text('{"synthetic":true}')
   self.commit='a'*40;self.apk='b'*64;ev={'path':'proof.json','sha256':hashlib.sha256((self.root/'proof.json').read_bytes()).hexdigest()}
   self.record={'schema':1,'sourceCommit':self.commit,'artifactSha256':self.apk,'productionSourceProven':True,'independentApproval':True,'findings':[],'cases':{x:{'status':'PASS','sourceCommit':self.commit,'artifactSha256':self.apk,'evidence':[ev.copy()]} for x in REQUIRED}}
-  self.cleanup={'kind':'maintrack-server-cleanup-v1','projectRef':'szhstrafzkxzstjdcynl','sourceCommit':self.commit,'artifactSha256':self.apk,'serverClock':True,'admissionClosed':True,'sessionsInactive':True,'baselineVerified':True,'archivesRetained':True,'serverSchedulerProven':True,'controllerFailureExercised':True,'startedAt':'2026-10-28T03:00:00Z','admitUntil':'2026-10-28T03:03:00Z','deadline':'2026-10-28T03:07:00Z','verifiedAt':'2026-10-28T03:04:00Z'}
+  self.cleanup={'kind':'maintrack-server-cleanup-v1','projectRef':'szhstrafzkxzstjdcynl','sourceCommit':self.commit,'artifactSha256':self.apk,'serverClock':True,'admissionClosed':True,'sessionsInactive':True,'baselineVerified':True,'archivesRetained':True,'serverSchedulerProven':True,'controllerFailureExercised':True,'storageObjectsReconciled':True,'schedulerStopped':True,'serverTimeoutProven':True,'startedAt':'2026-10-28T03:00:00Z','admitUntil':'2026-10-28T03:03:00Z','deadline':'2026-10-28T03:07:00Z','verifiedAt':'2026-10-28T03:04:00Z'}
   self.bind_cleanup(self.cleanup)
  def bind_cleanup(self,proof):
   data=json.dumps(proof).encode();(self.root/'cleanup.json').write_bytes(data)
@@ -50,7 +50,7 @@ class GateTests(unittest.TestCase):
   self.bind_cleanup({'admissionClosed':True})
   self.assertEqual(self.result(),'NO-GO')
  def test_each_missing_server_cleanup_guarantee_blocks(self):
-  for key in ('serverClock','admissionClosed','sessionsInactive','baselineVerified','archivesRetained','serverSchedulerProven','controllerFailureExercised'):
+  for key in ('serverClock','admissionClosed','sessionsInactive','baselineVerified','archivesRetained','serverSchedulerProven','controllerFailureExercised','storageObjectsReconciled','schedulerStopped','serverTimeoutProven'):
    p=copy.deepcopy(self.cleanup);p[key]=False;self.bind_cleanup(p);self.assertEqual(self.result(),'NO-GO',key)
  def test_cleanup_invalid_times_project_and_binding_block(self):
   for key,value in [('startedAt','bad'),('admitUntil','2026-10-28T04:00:00Z'),('deadline','2026-10-28T06:00:00Z'),('verifiedAt','2026-10-28T03:04:00'),('projectRef','other'),('sourceCommit','c'*40),('artifactSha256','c'*64)]:

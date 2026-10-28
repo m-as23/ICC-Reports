@@ -24,7 +24,8 @@ class CleanupPostgres(unittest.TestCase):
   ipaddress.ip_address(expected_ip)
   p=self.psql("SELECT current_user,pg_catalog.shobj_description(oid,'pg_database'),inet_server_addr()='"+expected_ip+"'::inet FROM pg_database WHERE datname=current_database();")
   self.assertEqual(p.stdout.strip(),'mt_lab_admin|'+MARKER+'|t')
-  self.psql("DROP SCHEMA IF EXISTS maintrack_qa_lease CASCADE; DROP SCHEMA IF EXISTS qa_security_final_20261025 CASCADE; DROP SCHEMA IF EXISTS qa_security_inventory_20261025 CASCADE; DROP ROLE IF EXISTS maintrack_qa_cleanup_worker;")
+  self.assertEqual(self.psql("SELECT count(*) FROM pg_extension WHERE extname='pg_cron';").stdout.strip(),'0','Never reset a fixture containing real pg_cron')
+  self.psql("DROP SCHEMA IF EXISTS maintrack_qa_lease CASCADE; DROP SCHEMA IF EXISTS qa_security_final_20261025 CASCADE; DROP SCHEMA IF EXISTS qa_security_inventory_20261025 CASCADE; DROP SCHEMA IF EXISTS cron CASCADE; DROP ROLE IF EXISTS maintrack_qa_cleanup_worker;")
   self.psql(FIXTURE.read_text(encoding='utf-8-sig')+SQL.read_text(encoding='utf-8-sig'))
  def seed(self,admit='-1 second',expiry='2 minutes',state='ARMED',heartbeat=False,job='NULL'):
   return self.psql(f"INSERT INTO maintrack_qa_lease.runs(id,project_ref,started_at,admit_until,expires_at,state,baseline,heartbeat_at,job_id) VALUES('{RUN}','szhstrafzkxzstjdcynl',clock_timestamp()-interval '1 minute',clock_timestamp()+interval '{admit}',clock_timestamp()+interval '{expiry}','{state}',maintrack_qa_lease.snapshot(),{'clock_timestamp()' if heartbeat else 'NULL'},{job});")
@@ -78,6 +79,18 @@ class CleanupPostgres(unittest.TestCase):
   self.assertEqual(self.psql('SELECT last_error FROM maintrack_qa_lease.runs;').stdout.strip(),'57014')
  def test_scheduler_maintenance_failure_cannot_undo_cleanup(self):
   self.seed(job='42');self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
+  self.assertEqual(self.psql("SELECT count(*) FROM maintrack_qa_lease.events WHERE kind='SCHEDULER_MAINTENANCE_FAILED';").stdout.strip(),'1')
+ def test_own_job_is_disabled_after_cleanup_and_after_recovered_worker_crash(self):
+  # Metadata-table fixture only; this does not emulate/claim real Cron delivery.
+  self.psql("CREATE SCHEMA cron; CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text,username text,database text,active boolean); INSERT INTO cron.job VALUES(42,'mtqa_"+RUN+"','postgres',current_database(),true);")
+  self.seed(job='42');self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
+  self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'f')
+  self.psql('UPDATE cron.job SET active=true WHERE jobid=42;')
+  self.sweep();self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'f')
+ def test_job_ownership_mismatch_never_stops_another_job(self):
+  self.psql("CREATE SCHEMA cron; CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text,username text,database text,active boolean); INSERT INTO cron.job VALUES(42,'unrelated','other',current_database(),true);")
+  self.seed(job='42');self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
+  self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'t')
   self.assertEqual(self.psql("SELECT count(*) FROM maintrack_qa_lease.events WHERE kind='SCHEDULER_MAINTENANCE_FAILED';").stdout.strip(),'1')
  def test_late_completion_stays_late(self):
   self.seed('-2 seconds','-1 second');self.sweep();self.assertEqual(self.psql('SELECT verified,late FROM maintrack_qa_lease.runs;').stdout.strip(),'t|t')
