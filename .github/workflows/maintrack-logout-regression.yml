@@ -1,0 +1,23 @@
+name: MainTrack logout regression
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/maintrack-final-047/**'
+      - 'web/maintrack/public/secure-assets/index-inline-1.js'
+      - 'ops/maintrack/inventory/backend/src/maintrack-session-adapter.mjs'
+      - 'remediation/logout/tests/**'
+      - 'ops/maintrack/scripts/security-client-overlay.mjs'
+      - 'ops/maintrack/tests/security-overlay.test.mjs'
+      - '.github/workflows/maintrack-logout-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  logout-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: node --test remediation/logout/tests/logout.test.mjs ops/maintrack/tests/security-overlay.test.mjs

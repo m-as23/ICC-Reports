@@ -33,7 +33,7 @@ async function mtGlobalLoginGuard(){
  const result=await row(sql);
  if(Number(result?.attempts||0)>300)die('RATE_LIMIT',429);
 }
-async function login(b){await mtGlobalLoginGuard();const code=b.code;if(!validEmployeeCode(code))die('INVALID_CODE');const password=String(b.pw||'');
+async function login(b){const code=b.code;if(!validEmployeeCode(code))die('INVALID_CODE');await mtGlobalLoginGuard();const password=String(b.pw||'');
  const blocked=await row('SELECT blocked_until FROM mt_login_attempts WHERE employee_code=$1',[code]);
  if(blocked?.blocked_until&&new Date(blocked.blocked_until)>new Date())die('LOCKED',429);
  const u=await row("SELECT id,employee_code,name,role::text AS role,active,token_version,must_change,(password_hash=extensions.crypt($2,password_hash)) AS matched FROM mt_users WHERE employee_code=$1",[code,password]);
@@ -41,6 +41,13 @@ async function login(b){await mtGlobalLoginGuard();const code=b.code;if(!validEm
   await pool.query("INSERT INTO mt_login_attempts(employee_code,fail_count,updated_at) VALUES($1,1,now()) ON CONFLICT(employee_code) DO UPDATE SET fail_count=CASE WHEN mt_login_attempts.updated_at<now()-interval '5 minutes' THEN 1 ELSE mt_login_attempts.fail_count+1 END,updated_at=now(),blocked_until=CASE WHEN (CASE WHEN mt_login_attempts.updated_at<now()-interval '5 minutes' THEN 1 ELSE mt_login_attempts.fail_count+1 END)>=5 THEN now()+interval '5 minutes' ELSE NULL END",[code]);die('BAD_PW',401);
  }
  await pool.query('DELETE FROM mt_login_attempts WHERE employee_code=$1',[code]);return issue(u);
+}
+async function revokeCurrentSession(req){
+ const token=String(req.headers.get('authorization')||'').replace(/^Bearer /,'');
+ if(!/^[a-f0-9]{64}$/.test(token))die('AUTH',401);
+ // Delete only the presented session. Repetition is safe even after its row is gone.
+ await pool.query('DELETE FROM mt_sessions WHERE token_hash=$1',[sha(token)]);
+ return {ok:true,revoked:true};
 }
 async function auth(req){const token=String(req.headers.get('authorization')||'').replace(/^Bearer /,'');
  if(!/^[a-f0-9]{64}$/.test(token))die('AUTH',401);
@@ -615,7 +622,8 @@ Deno.serve(async req=>{
   return response({error:'NOT_FOUND'},404,rid);
  }
  if(req.method!=='POST'||!p.endsWith('/api'))return response({error:'METHOD_NOT_ALLOWED'},405,rid);
- try{if(Number(req.headers.get('content-length')||0)>65536)die('PAYLOAD_TOO_LARGE',413);const b=await req.json();if(!b||typeof b!=='object'||Array.isArray(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
+ try{if(Number(req.headers.get('content-length')||0)>65536)die('PAYLOAD_TOO_LARGE',413);const b=await req.json();if(!b||typeof b!=='object'||Array.isArray(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
  catch(e){const c=e instanceof AppError?e.code:'INTERNAL_ERROR',s=e instanceof AppError?e.status:500;console.error(JSON.stringify({status:c,ms:Date.now()-started,rid}));return response({error:c},s,rid);}
 });
+
 
