@@ -31,7 +31,10 @@ class CleanupPostgres(unittest.TestCase):
  def worker(self,body,ok=True):return self.psql('SET SESSION AUTHORIZATION postgres;\n'+body,ok)
  def sweep(self):return self.worker(f"CALL maintrack_qa_lease.sweep('{RUN}');")
  def runtime(self,body,ok=True):return self.psql('SET SESSION AUTHORIZATION mt_lease_test_actor;\n'+body,ok)
- def state(self):return self.psql('SELECT state,verified,attempts FROM maintrack_qa_lease.runs;').stdout.strip()
+ def state(self):
+  result=self.psql('SELECT state,verified,attempts FROM maintrack_qa_lease.runs;').stdout.strip()
+  if result.startswith('FAILED'):print('Owned fixture worker SQLSTATE:',self.psql('SELECT last_error FROM maintrack_qa_lease.runs;').stdout.strip())
+  return result
  def test_worker_is_non_superuser_and_can_commit_recovery(self):
   self.seed();self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
   self.assertEqual(self.psql("SELECT rolsuper FROM pg_roles WHERE rolname='postgres';").stdout.strip(),'f')
@@ -72,6 +75,7 @@ class CleanupPostgres(unittest.TestCase):
  def test_query_canceled_does_not_erase_attempt_or_session_expiry(self):
   self.seed();self.psql("CREATE FUNCTION maintrack_qa_lease.inject_cancel() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'injected cancellation' USING ERRCODE='57014'; END$$; CREATE TRIGGER injected_cancel BEFORE UPDATE ON qa_security_inventory_20261025.versions FOR EACH STATEMENT EXECUTE FUNCTION maintrack_qa_lease.inject_cancel();")
   self.sweep();self.assertEqual(self.state(),'FAILED|f|1');self.sweep();self.sweep();self.assertEqual(self.state(),'FAILED|f|2')
+  self.assertEqual(self.psql('SELECT last_error FROM maintrack_qa_lease.runs;').stdout.strip(),'57014')
  def test_scheduler_maintenance_failure_cannot_undo_cleanup(self):
   self.seed(job='42');self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
   self.assertEqual(self.psql("SELECT count(*) FROM maintrack_qa_lease.events WHERE kind='SCHEDULER_MAINTENANCE_FAILED';").stdout.strip(),'1')
@@ -92,6 +96,7 @@ class CleanupPostgres(unittest.TestCase):
   self.seed();self.psql("CREATE FUNCTION maintrack_qa_lease.inject_sleep() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_sleep(2); RETURN NULL; END$$; CREATE TRIGGER injected_sleep BEFORE UPDATE ON qa_security_inventory_20261025.versions FOR EACH STATEMENT EXECUTE FUNCTION maintrack_qa_lease.inject_sleep();")
   self.worker(f"SET statement_timeout='200ms'; CALL maintrack_qa_lease.sweep('{RUN}');")
   self.assertEqual(self.state(),'FAILED|f|1')
+  self.assertEqual(self.psql('SELECT last_error FROM maintrack_qa_lease.runs;').stdout.strip(),'57014')
  def test_inflight_writer_prevents_false_verified_cleanup(self):
   self.seed('1 second');self.runtime("INSERT INTO qa_security_inventory_20261025.versions(id,status) VALUES(3,'draft'); INSERT INTO qa_security_inventory_20261025.items VALUES(3,'QA-NEW',1);")
   env=dict(os.environ,PGAPPNAME='maintrack_cleanup_owned_writer')
@@ -105,6 +110,7 @@ class CleanupPostgres(unittest.TestCase):
     time.sleep(0.05)
    self.assertTrue(seen,'writer never acquired its table lock')
    time.sleep(1.1);self.sweep();self.assertEqual(self.state(),'FAILED|f|1')
+   self.assertEqual(self.psql('SELECT last_error FROM maintrack_qa_lease.runs;').stdout.strip(),'55P03')
    out,err=proc.communicate(timeout=8);self.assertEqual(proc.returncode,0,err)
    self.sweep();self.assertEqual(self.state(),'COMPLETE|t|2')
   finally:

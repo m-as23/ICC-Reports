@@ -83,6 +83,10 @@ BEGIN
 END $install$;
 -- This procedure MUST be a top-level CALL, using the private member login. It is
 -- SECURITY INVOKER with no SET clause so transaction control is legal.
+CREATE FUNCTION maintrack_qa_lease.lock_inventory() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
+BEGIN
+ LOCK TABLE qa_security_inventory_20261025.active,qa_security_inventory_20261025.versions,qa_security_inventory_20261025.items IN SHARE MODE;
+END $fn$;
 CREATE PROCEDURE maintrack_qa_lease.sweep(p_id uuid) LANGUAGE plpgsql SECURITY INVOKER AS $fn$
 DECLARE r maintrack_qa_lease.runs; base jsonb; source_digest text; n int; err text;
 BEGIN
@@ -116,7 +120,8 @@ BEGIN
    SET LOCAL lock_timeout='2s';
    -- Wait for in-flight writers before observing rollback state. These locks
    -- conflict with their RowExclusive locks and remain through verification.
-   LOCK TABLE qa_security_inventory_20261025.active,qa_security_inventory_20261025.versions,qa_security_inventory_20261025.items IN SHARE MODE;
+   -- Private definer obtains the lock without granting item UPDATE/MAINTAIN.
+   PERFORM maintrack_qa_lease.lock_inventory();
    PERFORM 1 FROM qa_security_inventory_20261025.active WHERE singleton FOR UPDATE;
    base:=r.baseline;
    IF EXISTS(SELECT 1 FROM qa_security_inventory_20261025.versions v WHERE NOT EXISTS(SELECT 1 FROM pg_catalog.jsonb_array_elements(base->'versions')o WHERE (o->>'id')::bigint=v.id) AND NOT EXISTS(SELECT 1 FROM maintrack_qa_lease.own_versions o WHERE o.run_id=p_id AND o.version_id=v.id)) THEN RAISE EXCEPTION 'QA_UNOWNED_VERSION'; END IF;
@@ -193,6 +198,7 @@ GRANT SELECT ON qa_security_inventory_20261025.items TO maintrack_qa_cleanup_wor
 GRANT SELECT(token_hash,expires_at),UPDATE(expires_at) ON qa_security_final_20261025.mt_sessions TO maintrack_qa_cleanup_worker;
 GRANT EXECUTE ON FUNCTION maintrack_qa_lease.prepare(uuid,text),maintrack_qa_lease.arm(uuid,text,text,jsonb,integer,integer) TO maintrack_qa_cleanup_worker;
 GRANT EXECUTE ON PROCEDURE maintrack_qa_lease.sweep(uuid) TO maintrack_qa_cleanup_worker;
+GRANT EXECUTE ON FUNCTION maintrack_qa_lease.lock_inventory() TO maintrack_qa_cleanup_worker;
 -- Cron schema/function privileges must be confirmed for the actual postgres job
 -- owner before prepare. No runtime receives lease schema usage or worker membership.
 GRANT INSERT ON maintrack_qa_lease.runs TO maintrack_qa_cleanup_worker;
