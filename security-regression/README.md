@@ -18,6 +18,8 @@ Cleanup proof must also explicitly verify server timeout, final scheduler stop a
 
 `python security-regression/cleanup_postgres.py` runs only against an explicitly marked, newly created loopback fixture (see tests). Without one it exits 78/BLOCKED, never passes skipped SQL tests. No installed PostgreSQL database is reset. Its fixture-owned schemas/roles may be reset only after the database ownership marker is verified. No credential columns or real data are used.
 
+Actual QA preflight on 2026-10-28 proved Cron delivery/120-second timeout but rejected direct `cron.job` UPDATE with42501. Admission stayed closed; no sessions/data fixtures were created. The one job was removed using `cron.unschedule`, baseline hashes matched and subsequent ticks did not execute. The candidate now uses the documented `cron.alter_job(...,active := false)` API with the same exact ownership checks; its managed-permission regression is local only. This correction was not deployed/retested in that closed window. Preserve the cloud FAIL and Terminal Sweep NOT TESTED.
+
 Historical evidence remains under `evidence/online` and is indexed separately with hashes. The old 54/80 value is admitted HTTP requests, not passed/failed tests. Previously passed tests are not relabeled as fresh executions. Scope, identity, APK hash and parity limits accompany each result.
 
 This package adds no production deployment, signing material, backend, paid service or merge authorization. PR #25 remains separately reviewed and unmerged. Preserve append-only audit evidence; clean only exact run-tagged fixtures and restore original QA data using server-side rollback material, never export original password hashes.

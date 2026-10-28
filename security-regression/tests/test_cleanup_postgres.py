@@ -82,16 +82,27 @@ class CleanupPostgres(unittest.TestCase):
   self.assertEqual(self.psql("SELECT count(*) FROM maintrack_qa_lease.events WHERE kind='SCHEDULER_MAINTENANCE_FAILED';").stdout.strip(),'1')
  def test_own_job_is_disabled_after_cleanup_and_after_recovered_worker_crash(self):
   # Metadata-table fixture only; this does not emulate/claim real Cron delivery.
-  self.psql("CREATE SCHEMA cron; CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text,username text,database text,active boolean); INSERT INTO cron.job VALUES(42,'mtqa_"+RUN+"','postgres',current_database(),true);")
+  self.cron_metadata_fixture('mtqa_'+RUN,'postgres')
   self.seed(job='42');self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
   self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'f')
   self.psql('UPDATE cron.job SET active=true WHERE jobid=42;')
   self.sweep();self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'f')
  def test_job_ownership_mismatch_never_stops_another_job(self):
-  self.psql("CREATE SCHEMA cron; CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text,username text,database text,active boolean); INSERT INTO cron.job VALUES(42,'unrelated','other',current_database(),true);")
+  self.cron_metadata_fixture('unrelated','other')
   self.seed(job='42');self.sweep();self.assertEqual(self.state(),'COMPLETE|t|1')
   self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'t')
   self.assertEqual(self.psql("SELECT count(*) FROM maintrack_qa_lease.events WHERE kind='SCHEDULER_MAINTENANCE_FAILED';").stdout.strip(),'1')
+ def cron_metadata_fixture(self,name,user):
+  # Mirror metadata permissions/API only; never claim a real scheduler here.
+  self.psql("CREATE SCHEMA cron; CREATE TABLE cron.job(jobid bigint PRIMARY KEY,jobname text,username text,database text,active boolean); INSERT INTO cron.job VALUES(42,'"+name+"','"+user+"',current_database(),true); GRANT USAGE ON SCHEMA cron TO postgres; GRANT SELECT ON cron.job TO postgres; GRANT USAGE,CREATE ON SCHEMA maintrack_qa_lease TO postgres; ALTER FUNCTION maintrack_qa_lease.stop_job(uuid) OWNER TO postgres; CREATE FUNCTION cron.alter_job(job_id bigint,schedule text DEFAULT NULL,command text DEFAULT NULL,database text DEFAULT NULL,username text DEFAULT NULL,active boolean DEFAULT NULL) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$BEGIN UPDATE cron.job c SET active=COALESCE($6,c.active) WHERE c.jobid=$1; END$$;")
+ def test_managed_metadata_denies_direct_update_but_api_stops_owned_job(self):
+  self.cron_metadata_fixture('mtqa_'+RUN,'postgres');self.seed(job='42')
+  denied=self.worker('UPDATE cron.job SET active=false WHERE jobid=42;',False)
+  self.assertIn('permission denied for table job',denied.stderr)
+  self.worker(f"SELECT maintrack_qa_lease.stop_job('{RUN}');")
+  self.assertEqual(self.psql('SELECT active FROM cron.job WHERE jobid=42;').stdout.strip(),'f')
+  self.psql('DELETE FROM cron.job WHERE jobid=42;')
+  self.worker(f"SELECT maintrack_qa_lease.stop_job('{RUN}');")
  def test_late_completion_stays_late(self):
   self.seed('-2 seconds','-1 second');self.sweep();self.assertEqual(self.psql('SELECT verified,late FROM maintrack_qa_lease.runs;').stdout.strip(),'t|t')
  def test_expiry_alone_is_not_cleanup(self):

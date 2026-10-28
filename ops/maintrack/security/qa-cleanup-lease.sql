@@ -93,8 +93,10 @@ DECLARE j bigint;
 BEGIN
  SELECT job_id INTO STRICT j FROM maintrack_qa_lease.runs WHERE id=p_id;
  IF j IS NULL THEN RETURN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM cron.job WHERE jobid=j) THEN RETURN; END IF;
  IF EXISTS(SELECT 1 FROM cron.job WHERE jobid=j AND (jobname IS DISTINCT FROM 'mtqa_'||p_id::text OR username IS DISTINCT FROM session_user::text OR database IS DISTINCT FROM current_database())) THEN RAISE EXCEPTION 'QA_JOB_OWNERSHIP_MISMATCH'; END IF;
- UPDATE cron.job SET active=false WHERE jobid=j AND jobname='mtqa_'||p_id::text AND username=session_user::text AND database=current_database();
+ -- Managed Supabase denies direct metadata UPDATE, even to postgres. Use API.
+ PERFORM cron.alter_job(j,active := false);
  IF EXISTS(SELECT 1 FROM cron.job WHERE jobid=j AND active) THEN RAISE EXCEPTION 'QA_JOB_STILL_ACTIVE'; END IF;
 END $fn$;
 CREATE PROCEDURE maintrack_qa_lease.sweep(p_id uuid) LANGUAGE plpgsql SECURITY INVOKER AS $fn$
@@ -231,7 +233,7 @@ DO $cron_grants$
 BEGIN
  IF EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_cron') THEN
   GRANT USAGE ON SCHEMA cron TO maintrack_qa_cleanup_worker;
-  GRANT EXECUTE ON FUNCTION cron.schedule(text,text,text) TO maintrack_qa_cleanup_worker;
+  GRANT EXECUTE ON FUNCTION cron.schedule(text,text,text),cron.alter_job(bigint,text,text,text,text,boolean) TO maintrack_qa_cleanup_worker;
  END IF;
 END $cron_grants$;
 -- Cron command is one top-level CALL. Its login must have an independently
