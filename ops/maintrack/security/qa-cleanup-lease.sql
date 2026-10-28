@@ -117,7 +117,7 @@ BEGIN
  END IF;
  UPDATE maintrack_qa_lease.runs SET heartbeat_at=pg_catalog.clock_timestamp() WHERE id=p_id;
  IF r.state='PREPARED' AND pg_catalog.clock_timestamp()<r.expires_at THEN
-  INSERT INTO maintrack_qa_lease.events(run_id,kind) VALUES(p_id,'WORKER_HEARTBEAT');
+  INSERT INTO maintrack_qa_lease.events(run_id,kind,detail) VALUES(p_id,'WORKER_HEARTBEAT',pg_catalog.jsonb_build_object('statementTimeoutMs',(SELECT setting::bigint FROM pg_catalog.pg_settings WHERE name='statement_timeout'),'login',session_user::text));
   COMMIT;
   PERFORM pg_catalog.pg_advisory_unlock(pg_catalog.hashtext('maintrack_qa_lease'),pg_catalog.hashtext(p_id::text)); RETURN;
  END IF;
@@ -189,12 +189,14 @@ BEGIN
  RETURN job;
 END $fn$;
 CREATE FUNCTION maintrack_qa_lease.arm(p_id uuid,p_scope_sha text,p_cap_sha text,p_specs jsonb,p_admit_seconds int DEFAULT 180,p_deadline_seconds int DEFAULT 420) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $fn$
-DECLARE r maintrack_qa_lease.runs; began timestamptz:=clock_timestamp(); spec jsonb; actor uuid; actor_version int;
+DECLARE r maintrack_qa_lease.runs; began timestamptz:=clock_timestamp(); spec jsonb; actor uuid; actor_version int; timeout_ms bigint;
 BEGIN
  IF NOT pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') THEN RAISE EXCEPTION 'QA_WORKER_REQUIRED'; END IF;
  IF p_admit_seconds IS NULL OR p_deadline_seconds IS NULL OR p_scope_sha IS NULL OR p_cap_sha IS NULL OR p_specs IS NULL OR jsonb_typeof(p_specs)<>'array' OR p_admit_seconds NOT BETWEEN 60 AND 1200 OR p_deadline_seconds<p_admit_seconds+120 OR p_deadline_seconds>2700 OR p_scope_sha!~'^[a-f0-9]{64}$' OR p_cap_sha!~'^[a-f0-9]{64}$' OR jsonb_array_length(p_specs) NOT BETWEEN 1 AND 3 THEN RAISE EXCEPTION 'INVALID_APPROVED_LEASE'; END IF;
  SELECT * INTO STRICT r FROM maintrack_qa_lease.runs WHERE id=p_id FOR UPDATE;
  IF r.state<>'PREPARED' OR r.heartbeat_at IS NULL OR r.heartbeat_at<began-interval '90 seconds' OR began>=r.expires_at OR maintrack_qa_lease.snapshot() IS DISTINCT FROM r.baseline THEN RAISE EXCEPTION 'WORKER_HEARTBEAT_OR_BASELINE_INVALID'; END IF;
+ SELECT (detail->>'statementTimeoutMs')::bigint INTO timeout_ms FROM maintrack_qa_lease.events WHERE run_id=p_id AND kind='WORKER_HEARTBEAT' AND detail->>'login'='postgres' ORDER BY id DESC LIMIT 1;
+ IF timeout_ms IS NULL OR timeout_ms NOT BETWEEN 1 AND 120000 OR p_deadline_seconds<p_admit_seconds+2*((timeout_ms+999)/1000)+180 THEN RAISE EXCEPTION 'WORKER_TIMEOUT_OR_RECOVERY_RESERVE_INVALID'; END IF;
  IF NOT EXISTS(SELECT 1 FROM qa_security_final_20261025.qa_scope WHERE singleton AND preparation='SECURITY_FINAL_20261025' AND project_ref=r.project_ref) OR NOT EXISTS(SELECT 1 FROM qa_security_final_20261025.qa_control WHERE singleton AND NOT active_tests_authorized) THEN RAISE EXCEPTION 'QA_BINDING_OR_BASELINE_INVALID'; END IF;
  FOR spec IN SELECT * FROM jsonb_array_elements(p_specs) LOOP
   IF spec->>'code' IS NULL OR spec->>'tokenHash' IS NULL OR spec->>'code' NOT IN('90000001','90000002','90000003') OR (spec->>'tokenHash')!~'^[a-f0-9]{64}$' THEN RAISE EXCEPTION 'UNAPPROVED_SYNTHETIC_SESSION'; END IF;

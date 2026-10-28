@@ -29,7 +29,7 @@ class CleanupPostgres(unittest.TestCase):
   self.psql(FIXTURE.read_text(encoding='utf-8-sig')+SQL.read_text(encoding='utf-8-sig'))
  def seed(self,admit='-1 second',expiry='2 minutes',state='ARMED',heartbeat=False,job='NULL'):
   return self.psql(f"INSERT INTO maintrack_qa_lease.runs(id,project_ref,started_at,admit_until,expires_at,state,baseline,heartbeat_at,job_id) VALUES('{RUN}','szhstrafzkxzstjdcynl',clock_timestamp()-interval '1 minute',clock_timestamp()+interval '{admit}',clock_timestamp()+interval '{expiry}','{state}',maintrack_qa_lease.snapshot(),{'clock_timestamp()' if heartbeat else 'NULL'},{job});")
- def worker(self,body,ok=True):return self.psql('SET SESSION AUTHORIZATION postgres;\n'+body,ok)
+ def worker(self,body,ok=True):return self.psql("SET statement_timeout='10s'; SET SESSION AUTHORIZATION postgres;\n"+body,ok)
  def sweep(self):return self.worker(f"CALL maintrack_qa_lease.sweep('{RUN}');")
  def runtime(self,body,ok=True):return self.psql('SET SESSION AUTHORIZATION mt_lease_test_actor;\n'+body,ok)
  def state(self):
@@ -102,6 +102,14 @@ class CleanupPostgres(unittest.TestCase):
   self.assertIn('WORKER_HEARTBEAT_OR_BASELINE_INVALID',self.worker(arm,False).stderr)
   self.sweep();self.worker(arm)
   self.assertEqual(self.psql('SELECT s.expires_at=r.admit_until FROM qa_security_final_20261025.mt_sessions s CROSS JOIN maintrack_qa_lease.runs r;').stdout.strip(),'t')
+ def test_unbounded_or_insufficient_worker_timeout_reserve_blocks_admission(self):
+  self.seed('1 minute','5 minutes','PREPARED')
+  self.worker(f"SET statement_timeout=0; CALL maintrack_qa_lease.sweep('{RUN}');")
+  arm=f"SELECT maintrack_qa_lease.arm('{RUN}',repeat('a',64),repeat('b',64),'[{{\"code\":\"90000001\",\"tokenHash\":\"{'c'*64}\"}}]');"
+  self.assertIn('WORKER_TIMEOUT_OR_RECOVERY_RESERVE_INVALID',self.worker(arm,False).stderr)
+  self.worker(f"SET statement_timeout='120s'; CALL maintrack_qa_lease.sweep('{RUN}');")
+  self.assertIn('WORKER_TIMEOUT_OR_RECOVERY_RESERVE_INVALID',self.worker(arm,False).stderr)
+  self.assertEqual(self.psql('SELECT active_tests_authorized FROM qa_security_final_20261025.qa_control;').stdout.strip(),'f')
  def test_prepare_rejects_wrong_project_and_missing_scheduler(self):
   self.assertIn('QA_BINDING_OR_BASELINE_INVALID',self.worker(f"SELECT maintrack_qa_lease.prepare('{RUN}','wrong');",False).stderr)
   self.assertIn('SERVER_SCHEDULER_UNAVAILABLE',self.worker(f"SELECT maintrack_qa_lease.prepare('{RUN}','szhstrafzkxzstjdcynl');",False).stderr)
