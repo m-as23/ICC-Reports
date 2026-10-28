@@ -40,7 +40,7 @@ def build(output):
     # Always rebuild from the locked source. Never package a previously modified QA www.
     subprocess.run(['node','scripts/snapshot.mjs'], cwd=ROOT, check=True)
     snapshot = json.loads((ROOT/'snapshot.lock.json').read_text())
-    expected = {a['path'] for a in snapshot['assets']} | {'secure-assets/stage13-native-ready.js','secure-assets/stage14-local-work.js'}
+    expected = {a['path'] for a in snapshot['assets']} | {'secure-assets/stage13-native-ready.js','secure-assets/stage14-local-work.js','secure-assets/account-v2.js','secure-assets/account-v2.css'}
     files = {p.relative_to(ROOT/'www').as_posix():p for p in (ROOT/'www').rglob('*') if p.is_file()}
     assert set(files) == expected, 'unexpected or missing resource: no QA harness allowed'
     assert not any(p.is_symlink() for p in files.values()), 'symlink source'

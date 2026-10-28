@@ -48,6 +48,20 @@ const localWork=await fs.readFile(workFile);
 if(!index.includes('</body>'))throw Error('MISSING_BODY');
 index=index.replace('</body>','<script src="secure-assets/stage14-local-work.js"></script></body>');
 await fs.writeFile(indexFile,index);
+// Feature-layer injection occurs only AFTER immutable assets have passed all SHA checks.
+// This preserves the approved Stage11 files and the existing Stage14 OTA bootstrap.
+const accountAssetDir=path.join(root,'update-system');
+const accountTemplate=await fs.readFile(path.join(accountAssetDir,'account-v2.template.html'),'utf8');
+if(!accountTemplate.startsWith('<template id="mt-account-v2-template">'))throw Error('INVALID_ACCOUNT_TEMPLATE');
+const accountOutput=path.join(www,'secure-assets','account-v2.js');
+await build({entryPoints:[path.join(accountAssetDir,'account-v2.mjs')],outfile:accountOutput,
+  bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true,logLevel:'silent'});
+await fs.copyFile(path.join(accountAssetDir,'account-v2.css'),path.join(www,'secure-assets','account-v2.css'));
+let accountHtml=await fs.readFile(indexFile,'utf8');
+if(!accountHtml.includes('</head>')||!accountHtml.includes('</body>'))throw Error('INVALID_ACCOUNT_SHELL');
+accountHtml=accountHtml.replace('</head>','<link rel="stylesheet" href="secure-assets/account-v2.css"></head>');
+accountHtml=accountHtml.replace('</body>',accountTemplate+'<script src="secure-assets/account-v2.js"></script></body>');
+await fs.writeFile(indexFile,accountHtml);
 const meta={source:'web/maintrack/public',sourceCommit:'immutable-stage11-accepted',nativeIndex:source.nativeIndex,bootstrap:{sha256:sha(bootstrap),bytes:bootstrap.length},localWork:{sha256:sha(localWork),bytes:localWork.length},assets:source.assets};
 await fs.writeFile(path.join(root,'snapshot.lock.json'),JSON.stringify(meta,null,2)+'\n');
 console.log('PASS unified Web and Android content: '+source.assets.length+' resources. No network requests, no remote source fetch.');

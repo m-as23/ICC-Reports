@@ -1,0 +1,56 @@
+name: MainTrack Account V2 — isolated UI & hour arithmetic
+on:
+  push:
+    branches:
+      - feature/account-hours-redesign-20261017
+    paths:
+      - 'android/maintrack-app/update-system/account-*'
+      - 'android/maintrack-app/scripts/snapshot.mjs'
+      - 'android/maintrack-app/tests/account-v2.test.mjs'
+      - 'android/maintrack-app/scripts/release-candidate.py'
+      - '.github/workflows/maintrack-account-v2-ci.yml'
+  pull_request:
+    branches:
+      - android/stage14-ota-native-lab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  account-static-and-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android/maintrack-app
+    steps:
+      - name: Checkout this non-production branch
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android/maintrack-app/package-lock.json
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify existing and new arithmetic tests
+        run: npm test
+      - name: Build immutable snapshot plus account overlay
+        run: npm run build:web
+      - name: Verify new account output and unchanged security assumptions
+        run: |
+          test -s www/secure-assets/account-v2.js
+          test -s www/secure-assets/account-v2.css
+          grep -q 'mt-account-v2-template' www/index.html
+          grep -q 'account-v2.js' www/index.html
+          grep -q "maintrack-stage9-security-api/api" www/secure-assets/index-inline-1.js
+          grep -q "Content-Security-Policy" www/index.html
+          if grep -q 'unsafe-inline' www/secure-assets/account-v2.js; then
+            echo "Unexpected script-src relaxation"; exit 1
+          fi
+      - name: Confirm locked source untouched
+        run: |
+          cmp ../../web/maintrack/source-lock.json approved-assets.lock.json
+      - name: No deployment, no database migration, no OTA activation
+        run: echo "PASS review-only build"
