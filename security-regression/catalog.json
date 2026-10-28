@@ -82,7 +82,8 @@
         "web/maintrack/public/**/*",
         "web/maintrack/public/*",
         "ops/maintrack/inventory/backend/src/*.mjs",
-        "ops/maintrack/security/owner-047-preview-source.json"
+        "ops/maintrack/security/owner-047-preview-source.json",
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
       ],
       "command": [
         "{python}",
@@ -91,6 +92,49 @@
         "security-regression/node_tests.py"
       ],
       "timeout": 35
+    },
+    {
+      "id": "login-rate-local",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "security-regression/finding_tests.py",
+        "supabase/functions/maintrack-final-047/index.ts",
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
+        "ops/maintrack/tests/login-rate-limit.test.mjs",
+        "ops/maintrack/inventory/backend/package.json",
+        "ops/maintrack/inventory/backend/package-lock.json"
+      ],
+      "command": [
+        "{python}",
+        "-X",
+        "utf8",
+        "security-regression/finding_tests.py",
+        "login"
+      ],
+      "timeout": 45
+    },
+    {
+      "id": "excel-dependency-local",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "security-regression/finding_tests.py",
+        "ops/maintrack/inventory/backend/package.json",
+        "ops/maintrack/inventory/backend/package-lock.json",
+        "ops/maintrack/inventory/backend/src/*.mjs",
+        "ops/maintrack/inventory/backend/test/import-xlsx.test.mjs",
+        "ops/maintrack/inventory/backend/test/import-service.test.mjs",
+        "ops/maintrack/inventory/backend/test/yauzl-security.test.mjs"
+      ],
+      "command": [
+        "{python}",
+        "-X",
+        "utf8",
+        "security-regression/finding_tests.py",
+        "excel"
+      ],
+      "timeout": 45
     },
     {
       "id": "password-authentication",
@@ -286,7 +330,9 @@
         "Scan-QA-WebView-Storage.mjs",
         "ops/maintrack/scripts/security-client-overlay.mjs",
         "ops/maintrack/scripts/prepare-security-rc.mjs",
-        "security-regression/release_gate.py"
+        "security-regression/release_gate.py",
+        "ops/maintrack/inventory/backend/package.json",
+        "ops/maintrack/inventory/backend/package-lock.json"
       ],
       "reason": "Bounded synthetic draft/publish/restore with baseline comparison"
     },
@@ -385,7 +431,9 @@
         "Scan-QA-WebView-Storage.mjs",
         "ops/maintrack/scripts/security-client-overlay.mjs",
         "ops/maintrack/scripts/prepare-security-rc.mjs",
-        "security-regression/release_gate.py"
+        "security-regression/release_gate.py",
+        "ops/maintrack/inventory/backend/package.json",
+        "ops/maintrack/inventory/backend/package-lock.json"
       ],
       "reason": "Instrumented debug QA APK does not certify the operational binary's transport/updater/signing path"
     },
@@ -395,7 +443,9 @@
       "mode": "qa",
       "inputs": [
         "ops/maintrack/inventory/backend/src/*.mjs",
-        "ops/maintrack/security/qa-cleanup-lease.sql"
+        "ops/maintrack/security/qa-cleanup-lease.sql",
+        "ops/maintrack/inventory/backend/package.json",
+        "ops/maintrack/inventory/backend/package-lock.json"
       ],
       "reason": "Real XLSX new-item upload/review/Owner publish and baseline recovery require a separately approved QA lease; local parser/service assertions cannot replace it."
     },
@@ -408,6 +458,16 @@
         "android/maintrack-app/update-system/**"
       ],
       "reason": "Artifact-bound native certificate rejection evidence required. A distinct instrumented lab APK does not certify the frozen candidate or operational APK."
+    },
+    {
+      "id": "login-trusted-ingress",
+      "required": true,
+      "mode": "qa",
+      "inputs": [
+        "supabase/functions/maintrack-final-047/index.ts",
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
+      ],
+      "reason": "Requires verified hosted ingress source binding and controlled multi-source/spoofed-header acceptance evidence; direct-transport local tests cannot certify Supabase gateway attribution."
     }
   ]
 }

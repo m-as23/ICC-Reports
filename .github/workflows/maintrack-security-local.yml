@@ -47,6 +47,13 @@ jobs:
           fixture_image=$(docker inspect --format '{{.Image}}' "$CLEANUP_CONTAINER_ID")
           echo "MAINTRACK_CLEANUP_IMAGE=$fixture_image" >> "$GITHUB_ENV"
           psql -X --no-password -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_cleanup_ci IS 'MAINTRACK_CLEANUP_EPHEMERAL_V2'"
+      - name: Install locked local parser dependencies without lifecycle scripts
+        run: npm --prefix ops/maintrack/inventory/backend ci --ignore-scripts --no-audit --no-fund
+      - name: Create the separate owned disposable login fixture
+        run: |
+          createdb --no-password maintrack_auth_local
+          psql -X --no-password -d maintrack_auth_local -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_auth_local IS 'MAINTRACK_LOGIN_LOCAL_EPHEMERAL_V1'"
+          echo "LOGIN_PG_URL=postgresql://mt_lab_admin@127.0.0.1:5432/maintrack_auth_local" >> "$GITHUB_ENV"
       - name: Bind reuse to the runtime versions
         run: |
           python - <<'PY'

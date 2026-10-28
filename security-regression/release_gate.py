@@ -1,6 +1,6 @@
 """Offline, fail-closed release evidence gate. Never authorizes deployment by itself."""
 import argparse,datetime,hashlib,json,pathlib,re,subprocess
-REQUIRED=('logout-core-401','logout-inventory-401','other-session-survives','unauthorized-access','owner-permissions','engineer-permissions','technician-permissions','inventory-authenticated-writes','inventory-xlsx-new-item','ep001-authenticated-shell','android-integrated-runtime','android-tls-rejection','ota-operational-parity','qa-production-diff-reviewed','qa-cleanup')
+REQUIRED=('login-rate-isolation','login-trusted-ingress','excel-dependency-review','logout-core-401','logout-inventory-401','other-session-survives','unauthorized-access','owner-permissions','engineer-permissions','technician-permissions','inventory-authenticated-writes','inventory-xlsx-new-item','ep001-authenticated-shell','android-integrated-runtime','android-tls-rejection','ota-operational-parity','qa-production-diff-reviewed','qa-cleanup')
 
 def cleanup_proven(root,entries,commit,artifact):
     """A closed admission window alone never proves cleanup or its deadline."""
