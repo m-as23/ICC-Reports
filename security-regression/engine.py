@@ -100,4 +100,4 @@ def execute_bounded(command,cwd,timeout):
   process.wait(timeout=10)
  reader.join(timeout=2);output=bytes(tail).decode('utf-8',errors='replace')[-6000:]
  if not reader.is_alive():process.stdout.close()
- return {'status':'BLOCKED' if timed_out or overflow.is_set() else 'PASS' if process.returncode==0 else 'FAIL','exit_code':process.returncode,'timed_out':timed_out,'output_limit_exceeded':overflow.is_set(),'duration_seconds':round(time.monotonic()-started,3),'output':redact(output)}
+ return {'status':'BLOCKED' if timed_out or overflow.is_set() or process.returncode==78 else 'PASS' if process.returncode==0 else 'FAIL','exit_code':process.returncode,'timed_out':timed_out,'output_limit_exceeded':overflow.is_set(),'duration_seconds':round(time.monotonic()-started,3),'output':redact(output)}

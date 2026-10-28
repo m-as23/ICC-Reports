@@ -75,6 +75,9 @@ class RegressionSafety(unittest.TestCase):
  def test_nonzero_command_is_failure(self):
   r=execute_bounded([sys.executable,'-c','raise SystemExit(3)'],self.root,3)
   self.assertEqual(r['status'],'FAIL')
+ def test_missing_owned_fixture_is_blocked_not_pass_or_failure(self):
+  r=execute_bounded([sys.executable,'-c','raise SystemExit(78)'],self.root,3)
+  self.assertEqual(r['status'],'BLOCKED')
  def test_no_shell_interpolation(self):
   r=execute_bounded([sys.executable,'-c','import sys;print(sys.argv[1])','literal;$(no-execution)'],self.root,3)
   self.assertEqual(r['status'],'PASS');self.assertIn('literal;$(no-execution)',r['output'])

@@ -11,7 +11,8 @@
         "security-regression/run.py",
         "security-regression/catalog.json",
         "security-regression/release_gate.py",
-        "security-regression/node_tests.py"
+        "security-regression/node_tests.py",
+        "ops/maintrack/security/qa-cleanup-lease.sql"
       ],
       "command": [
         "{python}",
@@ -27,6 +28,25 @@
         "-v"
       ],
       "timeout": 30
+    },
+    {
+      "id": "cleanup-postgres",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "ops/maintrack/security/qa-cleanup-lease.sql",
+        "security-regression/cleanup_postgres.py",
+        "security-regression/tests/cleanup_fixture.sql",
+        "security-regression/tests/test_cleanup_postgres.py",
+        ".github/workflows/maintrack-security-local.yml"
+      ],
+      "command": [
+        "{python}",
+        "-X",
+        "utf8",
+        "security-regression/cleanup_postgres.py"
+      ],
+      "timeout": 110
     },
     {
       "id": "inventory-service-unit",
@@ -368,6 +388,26 @@
         "security-regression/release_gate.py"
       ],
       "reason": "Instrumented debug QA APK does not certify the operational binary's transport/updater/signing path"
+    },
+    {
+      "id": "inventory-xlsx-new-item",
+      "required": true,
+      "mode": "qa",
+      "inputs": [
+        "ops/maintrack/inventory/backend/src/*.mjs",
+        "ops/maintrack/security/qa-cleanup-lease.sql"
+      ],
+      "reason": "Real XLSX new-item upload/review/Owner publish and baseline recovery require a separately approved QA lease; local parser/service assertions cannot replace it."
+    },
+    {
+      "id": "android-tls-rejection",
+      "required": true,
+      "mode": "android",
+      "inputs": [
+        "android/maintrack-app/app/src/**",
+        "android/maintrack-app/update-system/**"
+      ],
+      "reason": "Artifact-bound native certificate rejection evidence required. A distinct instrumented lab APK does not certify the frozen candidate or operational APK."
     }
   ]
 }

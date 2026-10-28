@@ -11,6 +11,25 @@ jobs:
   security-local:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    services:
+      cleanup-postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mt_lab_admin
+          POSTGRES_DB: maintrack_cleanup_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --memory=256m --cpus=1
+          --health-cmd="pg_isready -U mt_lab_admin -d maintrack_cleanup_ci"
+          --health-interval=5s --health-timeout=3s --health-retries=5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: mt_lab_admin
+      PGDATABASE: maintrack_cleanup_ci
+      MAINTRACK_CLEANUP_OWNED: MAINTRACK_CLEANUP_EPHEMERAL_V2
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -18,6 +37,14 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
+      - name: Mark the owned disposable SQL fixture
+        env:
+          CLEANUP_CONTAINER_ID: ${{ job.services.cleanup-postgres.id }}
+        run: |
+          test "$CLEANUP_CONTAINER_ID" != ""
+          fixture_ip=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CLEANUP_CONTAINER_ID")
+          echo "MAINTRACK_CLEANUP_SERVER_IP=$fixture_ip" >> "$GITHUB_ENV"
+          psql -X --no-password -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_cleanup_ci IS 'MAINTRACK_CLEANUP_EPHEMERAL_V2'"
       - name: Run bounded local security checks
         run: python security-regression/run.py --mode local --output security-regression/reports/ci.json
       - name: Retain the single run report
