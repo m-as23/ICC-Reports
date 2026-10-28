@@ -1,0 +1,251 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {DISCOVERY_INTERVAL} from '../update-system/discovery.mjs';
+
+const root=path.resolve(import.meta.dirname,'../../..');
+const read=relative=>fs.readFile(path.join(root,relative),'utf8');
+const htmlFile='web/maintrack/public/index.html';
+const scriptFile='web/maintrack/public/secure-assets/index-inline-1.js';
+const apiFile='supabase/functions/maintrack-stage9-security-api/index.ts';
+const schemaFile='db/applied/maintrack-unified-four-staging.sql';
+
+test('web and Android discovery cadence stays 30 minutes',()=>{
+ assert.equal(DISCOVERY_INTERVAL,30*60*1000);
+});
+
+test('web update control remains update-only, not manual profile check',async()=>{
+ const source=await read('android/maintrack-app/update-system/web-entry.mjs');
+ assert.ok(source.includes('createDiscovery({check:inspect})'));
+ assert.ok(source.includes('apply.hidden = !next'));
+ assert.ok(!source.includes('settings.append(check)'));
+});
+
+test('browser source remains parseable and navigation clears old errors',async()=>{
+ const js=await read(scriptFile);
+ assert.doesNotThrow(()=>new Function(js));
+ assert.ok(js.includes("if(window.__maintrackActiveView!==v)note('','');"));
+ assert.ok(js.includes('INVALID_SECTION_MACHINE_COMPONENT'));
+ assert.ok(js.includes('localizedError(t)'));
+});
+
+test('technician dashboard is restricted at API and client boundary',async()=>{
+ const api=await read(apiFile),js=await read(scriptFile);
+ const section=api.slice(api.indexOf("if(u.role==='technician')return"),api.indexOf('items.sort(',api.indexOf("if(u.role==='technician')return")));
+ assert.ok(section.includes('categoryTable:tab(categories)'));
+ for(const forbidden of ['machineTable','sectionTable','recent:','mttr:'])assert.ok(!section.includes(forbidden));
+ assert.ok(js.includes("S.role==='technician'"));
+ assert.ok(js.includes('setDashboardRoleView()'));
+});
+
+test('annual and compensatory leave permit 4h half-day',async()=>{
+ const api=await read(apiFile),sql=await read(schemaFile),html=await read(htmlFile);
+ assert.ok(api.includes("!['annual','compensatory'].includes(type)"));
+ assert.ok(api.includes("const days=half?0.5:daySpan"));
+ assert.ok(api.includes("if(type==='compensatory'&&start!==end)die('LEAVE_POLICY_PENDING')"));
+ assert.ok(sql.includes("duration_kind='HALF_DAY' AND start_date=end_date AND days=0.5"));
+ assert.ok(html.includes('id="leaveDuration"'));
+ assert.ok(html.includes('value="compensatory"'));
+});
+
+test('substitute credit/deduction only after owner approval',async()=>{
+ const api=await read(apiFile),sql=await read(schemaFile);
+ const ot=api.slice(api.indexOf('async function overtimeDecision('),api.indexOf('async function dispatch('));
+ assert.ok(ot.includes("permit(u,'leave.approve')"));
+ assert.ok(ot.includes("decision==='APPROVED'&&r.compensation_kind==='SUBSTITUTE'"));
+ assert.ok(ot.includes("INSERT INTO mt_substitute_time_ledger"));
+ const leave=api.slice(api.indexOf('async function decision('),api.indexOf('async function notifications('));
+ assert.ok(leave.includes("permit(u,'leave.approve')"));
+ assert.ok(leave.includes("delta_minutes,leave_id,approved_by"));
+ assert.ok(sql.includes('mt_sub_time_leave_uq'));
+ assert.ok(sql.includes('mt_sub_time_overtime_uq'));
+});
+
+test('contact editor is removed only from UI',async()=>{
+ const html=await read(htmlFile),js=await read(scriptFile);
+ for(const id of ['profilePhone','profilePreferred','saveProfile'])assert.ok(!html.includes('id="'+id+'"'));
+ assert.ok(!js.includes("$('saveProfile').onclick"));
+ assert.ok(html.includes('id="profileCode"'));
+ for(const id of ['leaveBalance','annualTotal','annualUsed','substituteBalance','substituteEarned','substituteUsed','otFinancial'])assert.ok(html.includes('id="'+id+'"'));
+});
+
+test('staging backend TypeScript source retains valid JavaScript grammar',async()=>{
+ const ts=await read(apiFile);
+ const plain=ts.replace(/^import[^\n]+$/gm,'').replace(/body:any/g,'body').replace(/h:Record<string,string>/g,'h');
+ assert.doesNotThrow(()=>new Function(plain));
+});
+
+test('single-day compensatory leave supports 4h and 8h, but never unapproved spans',async()=>{
+ const api=await read(apiFile),js=await read(scriptFile);
+ const migration=await read('db/applied/maintrack-compensatory-full-day-staging.sql');
+ assert.ok(api.includes("if(type==='compensatory'&&start!==end)die('LEAVE_POLICY_PENDING')"));
+ assert.ok(api.includes('useMinutes=Math.round(Number(req.days)*480)'));
+ assert.ok(migration.includes('start_date=end_date AND days IN (0.5,1)'));
+ assert.ok(!js.includes("disabled=substitute"));
+});
+
+test('pending annual and substitute requests reserve balances without debiting early',async()=>{
+ const api=await read(apiFile);
+ assert.ok(api.includes("status='PENDING'"));
+ assert.ok(api.includes('reserved.annual'));
+ assert.ok(api.includes('reserved.substitute'));
+ assert.ok(api.includes('Number(bank.minutes)<useMinutes'));
+});
+
+test('employee overtime entry and history use explicit Arabic 12h controls',async()=>{
+ const html=await read(htmlFile),js=await read(scriptFile);
+ for(const name of ['otFrom','otTo']){
+  for(const part of ['Hour','Minute','Period'])assert.ok(html.includes('id="'+name+part+'"'));
+  assert.ok(!html.includes('id="'+name+'"'));
+ }
+ assert.ok(html.includes('الإجازات والعمل الإضافي'));
+ assert.ok(html.indexOf('id="overtimeCard"')>html.indexOf('id="profile"'));
+ assert.ok(!html.includes('<section id="leave"'));
+ assert.ok(html.includes('id="accountOvertimeDetails"'));
+ assert.ok(js.includes('showOvertimeClock(r.from)'));
+ assert.ok(js.includes('readOvertimeClock'));
+ for(const id of ['historyFilterLeave','historyFilterFinancial','historyFilterSubstitute'])assert.ok(html.includes('id="'+id+'"'));
+});
+
+test('owner overtime KPIs require approval role and count unique employee-days',async()=>{
+ const api=await read(apiFile),js=await read(scriptFile),html=await read(htmlFile);
+ const endpoint=api.slice(api.indexOf('async function overtimeSummary('),api.indexOf('async function overtimeRequest('));
+ assert.ok(endpoint.includes("permit(u,'leave.approve')"));
+ assert.ok(endpoint.includes('COUNT(DISTINCT (o.requester_id,o.work_date))'));
+ assert.ok(endpoint.includes("o.status='APPROVED'"));
+ assert.ok(api.includes("case 'overtimeSummary':return overtimeSummary(u,b)"));
+ for(const f of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','otOwnerKind','otOwnerDistinctDays','otOwnerApprovedHours'])assert.ok(html.includes('id="'+f+'"'));
+ assert.ok(js.includes("api('overtimeSummary',ownerOvertimeFilters())"));
+ assert.ok(js.includes("api('overtimeInbox')"),'one unfiltered pending inbox');
+ assert.ok(js.includes("api('leaveInbox')"),'leave and overtime are merged');
+});
+
+test('approved account layout: available leave dominates and financial overtime is equivalent DAYS',async()=>{
+ const html=await read(htmlFile),js=await read(scriptFile),api=await read(apiFile);
+ assert.ok(html.includes('id="accountLeaveDetails"'));
+ assert.ok(html.includes('id="accountOvertimeDetails"'));
+ assert.ok(html.includes('id="accountHistoryDetails"'));
+ assert.ok(html.includes('إجمالي أيام العمل الإضافي المعتمدة'));
+ assert.ok(!html.includes('<section id="leave"'));
+ assert.ok(js.includes("api('accountSummary')"));
+ assert.ok(js.includes("d.financialApprovedDays"));
+ assert.ok(api.includes("case 'accountSummary':return accountSummary(u)"));
+ assert.ok(api.includes("Number(financial.rows[0].n)/480"));
+ assert.ok(!js.includes("$('otFinancial').textContent=fmt(data.financialApprovedHours,2)"));
+});
+test('full-day substitute, legacy subtype compatibility and no future unworked overtime',async()=>{
+ const api=await read(apiFile),html=await read(htmlFile);
+ assert.ok(html.includes('value="AFTER_SHIFT"'));
+ assert.ok(html.includes('value="INDEPENDENT_DAY"'));
+ assert.ok(api.includes("const workKind=String(b.workKind||'UNSPECIFIED')"));
+ assert.ok(api.includes("workKind==='UNSPECIFIED'?{}:{workKind}"));
+ assert.ok(api.includes('FUTURE_OVERTIME_NOT_ALLOWED'));
+ assert.ok(api.includes("if(decision==='APPROVED')validateCompletedOvertime"));
+ assert.ok(api.includes('o.work_kind'));
+});
+test('three previous request filters and owner approval logic remain present',async()=>{
+ const js=await read(scriptFile);
+ assert.ok(js.includes("setAccountHistoryFilter(filter)"));
+ for(const v of ["'historyFilterLeave'","'historyFilterFinancial'","'historyFilterSubstitute'"])assert.ok(js.includes(v));
+ assert.ok(js.includes("api(kind==='overtime'?'overtimeDecision':'leaveDecision'"));
+});
+
+test('real Cairo overtime guard rejects future work and accepts completed overnight time',async()=>{
+ const api=await read(apiFile);
+ const start=api.indexOf('function cairoLocalMinute('),end=api.indexOf('async function overtimeRequest(',start);
+ assert.ok(start>=0&&end>start);
+ const methods=new Function('die','mins',api.slice(start,end)+'return {overtimeEndLocal,validateCompletedOvertime,cairoLocalMinute};')(
+  code=>{throw Error(code)},v=>Number(v.slice(0,2))*60+Number(v.slice(3,5))
+ );
+ assert.equal(methods.overtimeEndLocal('2026-10-15','23:00:00','03:00:00'),'2026-10-16T03:00');
+ assert.equal(methods.overtimeEndLocal('2026-10-15','15:00:00','19:00:00'),'2026-10-15T19:00');
+ assert.doesNotThrow(()=>methods.validateCompletedOvertime('2025-01-01','23:00:00','03:00:00'));
+ assert.throws(()=>methods.validateCompletedOvertime('2098-12-31','23:00:00','03:00:00'),/FUTURE_OVERTIME_NOT_ALLOWED/);
+ assert.equal(methods.cairoLocalMinute(new Date('2026-10-15T12:00:00Z')),'2026-10-15T15:00');
+});
+test('real owner balance summary displays remaining, earned and financial equivalent days',async()=>{
+ const api=await read(apiFile);
+ const start=api.indexOf('async function accountSummary(u){'),end=api.indexOf('function cairoLocalMinute(',start);
+ assert.ok(start>=0&&end>start);
+ let financialMinutes=2880;
+ const pool={query:async sql=>{
+  if(sql.includes('mt_leave_ledger'))return {rows:[{n:6}]};
+  if(sql.includes('mt_substitute_time_ledger'))return {rows:[{n:1920}]};
+  if(sql.includes('mt_overtime_requests'))return {rows:[{n:financialMinutes}]};
+  throw Error('Unexpected query');
+ }};
+ const fn=new Function('permit','profile','pool','readSubstituteMinutes','round',api.slice(start,end)+'return accountSummary;')(
+  ()=>{},async()=>({profile:{name:'QA',leaveBalance:22}}),pool,async()=>2160,n=>Math.round(n*100)/100
+ );
+ const d=await fn({id:'qa'});
+ assert.equal(d.annualTotalDays,28);
+ assert.equal(d.annualUsedDays,6);
+ assert.equal(d.annualAvailableDays,22);
+ assert.equal(d.substituteEarnedDays,8.5);
+ assert.equal(d.substituteUsedDays,4);
+ assert.equal(d.substituteAvailableDays,4.5);
+ assert.equal(d.financialApprovedDays,6);
+ financialMinutes=240;
+ assert.equal((await fn({id:'qa'})).financialApprovedDays,0.5);
+});
+
+test('future overtime returns Arabic and browser blocks unfinished periods before request',async()=>{
+ const js=await read(scriptFile),html=await read(htmlFile);
+ assert.ok(js.includes("FUTURE_OVERTIME_NOT_ALLOWED:'لا يمكن تسجيل وقت إضافي"));
+ assert.ok(js.includes("if(!overtimeHasEnded(workDate,from,to))"));
+ assert.ok(js.includes("const overtimeEndLocal="));
+ assert.ok(js.includes("timeZone:'Africa/Cairo'"));
+ assert.ok(html.includes('id="otDateHint"'));
+ assert.ok(html.includes('id="otFeedback"'));
+ const a=js.indexOf('const cairoLocalMinute='),b=js.indexOf('let overtimeHistory=[];',a);
+ const methods=new Function('$',js.slice(a,b)+'return {cairoLocalMinute,overtimeEndLocal,overtimeHasEnded};')(()=>({max:''}));
+ const now=new Date('2026-10-17T19:07:00Z');
+ assert.equal(methods.cairoLocalMinute(now),'2026-10-17T22:07');
+ assert.equal(methods.overtimeHasEnded('2026-10-18','07:00','15:00',now),false);
+ assert.equal(methods.overtimeHasEnded('2026-10-17','07:00','15:00',now),true);
+ assert.equal(methods.overtimeHasEnded('2026-10-17','23:00','03:00',now),false);
+ assert.equal(methods.overtimeHasEnded('2026-10-16','23:00','03:00',now),true);
+});
+
+test('owner overtime approval notification matches staging DB type constraint',async()=>{
+ const api=await read(apiFile);
+ const sql=await read('db/applied/maintrack_overtime_notifications_staging.sql');
+ assert.ok(api.includes("'overtimeDecision'"));
+ assert.ok(api.includes("INSERT INTO mt_notifications(recipient_id,source_id,type,title,description,target)"));
+ assert.ok(sql.includes("CHECK (type IN ('report','leaveDecision','leaveBalance','overtimeDecision'))"));
+ assert.ok(sql.includes("COMMIT;"));
+});
+test('one Owner inbox, archive-only filters, persistent notification archive and decision routing',async()=>{
+ const js=await read(scriptFile),html=await read(htmlFile);
+ assert.ok(html.includes('id="ownerPendingRows"'));
+ assert.ok(html.includes('id="ownerHistoryRows"'));
+ assert.ok(html.indexOf('id="ownerPendingRows"')<html.indexOf('id="ownerHistoryRows"'));
+ assert.ok(html.indexOf('id="ownerHistoryRows"')>html.indexOf('id="ownerHistoryStatus"'));
+ for(const id of ['otOwnerYear','otOwnerMonth','otOwnerEmployee','ownerHistoryType','ownerHistoryStatus']){
+  assert.ok(html.includes('id="'+id+'"'));
+ }
+ for(const name of ['ownerRequestSnapshot','ownerRequestCard','renderOwnerHistory','ownerHistoryMatches','refreshOwnerHub','ownerGoToRequest']){
+  assert.ok(js.includes('function '+name+'(')||js.includes('async function '+name+'('));
+ }
+ assert.ok(js.includes("r.status==='PENDING'"));
+ assert.ok(js.includes("ownerSnapshotCache.history.filter(ownerHistoryMatches)"));
+ assert.ok(js.includes("ownerFeed.pending.length"));
+ assert.ok(js.includes("ownerFeed?.history"));
+ assert.ok(js.includes('invalidateOwnerSnapshot()'));
+ assert.ok(js.includes("api(kind==='overtime'?'overtimeDecision':'leaveDecision'"));
+ assert.ok(!html.includes('id="otApprovalRows"'));
+ assert.ok(!html.includes('id="approvalRows"'));
+});
+
+test('Owner approval details remain explicit, text safe and decision feedback inline',async()=>{
+ const js=await read(scriptFile);
+ for(const phrase of ["function approvalCardBase(","function approvalDetails(","function approvalCompleted(", "['تاريخ العمل',r.date]",
+ "['بداية الإضافي',showOvertimeClock(r.from)]","['تاريخ البداية',r.start]","['تاريخ النهاية',r.end]","['نوع التعويض',kind]"]){
+  assert.ok(js.includes(phrase),phrase);
+ }
+ assert.ok(js.includes("role','status'"));
+ assert.ok(js.includes('buttons.forEach(b=>b.disabled=true)'));
+ assert.ok(js.includes('buttons.forEach(b=>b.disabled=false)'));
+ assert.ok(js.includes("textContent=String(value)"));
+});

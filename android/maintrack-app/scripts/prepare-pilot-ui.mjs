@@ -14,6 +14,9 @@ if (branch !== 'android/stage14-ota-native-lab' && !(process.env.GITHUB_REF === 
   && process.env.GITHUB_SHA === head)) throw Error('ISOLATED_BRANCH_REQUIRED');
 const config = validatePilotConfig(JSON.parse(await fs.readFile(path.resolve(process.argv[3]), 'utf8')));
 execFileSync(process.execPath, ['scripts/snapshot.mjs'], {cwd:root, stdio:'inherit'});
+await build({entryPoints:[path.join(root,'update-system/native-session-entry.mjs')],
+  outfile:path.join(root,'www/secure-assets/stage20-native-session.js'),
+  bundle:true,format:'iife',platform:'browser',target:'es2022',minify:true});
 await build({entryPoints:[path.join(root, 'update-system/pilot-entry.mjs')],
   outfile:path.join(root, 'www/secure-assets/stage15-pilot-update.js'), bundle:true,
   format:'iife', platform:'browser', target:'es2022', minify:true,
@@ -21,6 +24,7 @@ await build({entryPoints:[path.join(root, 'update-system/pilot-entry.mjs')],
 await fs.copyFile(path.join(root, 'update-system/pilot-panel.css'), path.join(root, 'www/secure-assets/stage15-pilot-update.css'));
 const file = path.join(root, 'www/index.html');
 let index = removePilotNote(await fs.readFile(file, 'utf8'));
+index=index.replace('<head>','<head>\n<script src="secure-assets/stage20-native-session.js"></script>');
 const origin = new URL(config.manifestUrl).origin;
 const pattern = /connect-src 'self' https:\/\/tdnkeskczcsukcujwinu\.supabase\.co;/;
 if (!pattern.test(index)) throw Error('UNEXPECTED_GENERATED_CSP');

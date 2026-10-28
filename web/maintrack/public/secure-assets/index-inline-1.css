@@ -205,3 +205,146 @@ body.auth-screen #change{background:linear-gradient(135deg,#122d43,#091c31)!impo
 @media(max-width:380px){body.auth-screen .auth-stage{width:calc(100% - 16px)}body.auth-screen .auth-showcase{padding:15px 17px}body.auth-screen main#login.auth-card{padding:22px 17px!important}}
 @media(prefers-reduced-motion:reduce){body.auth-screen #login *{transition:none!important}}
 
+
+/* Unified My Account / leave & overtime UI — QA feature */
+#profile .account-identity{margin:14px 0 24px}
+#profile .account-section-heading{margin:14px 0 14px}
+#profile .account-section-heading h3{margin:0 0 4px;font-size:19px;color:var(--text,#183249)}
+#profile .account-section-heading p{margin:0;color:var(--muted,#648096);font-size:12px;line-height:1.8}
+#profile .account-balance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0 0 16px}
+#profile .account-balance-card{background:linear-gradient(135deg,#fff,#f5fafc);border:1px solid #cddde5;border-radius:17px;padding:18px;box-shadow:0 5px 20px rgba(16,46,67,.055);min-width:0;display:flex;flex-direction:column;gap:6px}
+#profile .account-balance-icon{width:42px;height:42px;display:grid;place-items:center;background:#eaf4fa;color:#166083;border-radius:12px;font-size:24px}
+#profile .account-balance-label{font-size:14px;font-weight:800;color:#243a51}
+#profile .account-balance-number{display:flex;align-items:baseline;gap:7px;margin:4px 0 10px;flex-wrap:wrap}
+#profile .account-balance-number strong{font-size:clamp(30px,5vw,44px);font-weight:900;line-height:1.1;color:#135b7c;font-variant-numeric:tabular-nums}
+#profile .account-balance-number span{font-size:12px;color:#536d81}
+#profile .account-balance-detail{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #e3edf2;padding-top:8px;font-size:12px;color:#536d81}
+#profile .account-balance-detail strong{color:#273e54;white-space:nowrap;font-variant-numeric:tabular-nums}
+#profile .account-financial-card{display:flex;align-items:center;gap:14px;padding:18px;background:linear-gradient(120deg,#f4f9fc,#eaf4f8);border:1px solid #bcd7e2;border-radius:17px;margin-bottom:12px}
+#profile .account-financial-icon{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;border-radius:14px;background:#d5e9f2;color:#175b7e;font-size:31px}
+#profile .account-financial-description{flex:1;min-width:0}
+#profile .account-financial-description h3{margin:0 0 5px;color:#193b55;font-size:16px}
+#profile .account-financial-description p{font-size:12px;line-height:1.8;margin:0;color:#4e6a7c}
+#profile .account-financial-stat{text-align:center;min-width:85px;display:flex;flex-direction:column;gap:2px}
+#profile .account-financial-stat strong{color:#105e80;font-weight:900;font-size:35px;line-height:1.2;font-variant-numeric:tabular-nums}
+#profile .account-financial-stat span{font-size:11px;color:#536d81}
+#profile .account-policy-note{font-size:12px;color:#667d8b;line-height:1.8;margin:4px 0 25px}
+#profile .account-services-title{margin:0 0 13px;font-size:19px}
+#profile .account-service{background:#fff;border:1px solid #d9e4eb;border-radius:13px;margin:10px 0;overflow:hidden;box-shadow:0 3px 13px rgba(16,46,67,.035)}
+#profile .account-service>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:15px 17px;color:#223a50}
+#profile .account-service>summary::-webkit-details-marker{display:none}
+#profile .account-service>summary:focus-visible{outline:3px solid #439abc;outline-offset:-3px}
+#profile .account-service-icon{display:grid;place-items:center;width:37px;height:37px;flex:0 0 37px;border-radius:10px;background:#edf5f9;color:#135e82;font-size:21px}
+#profile .account-service-text{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+#profile .account-service-text strong{font-size:14px}
+#profile .account-service-text small{font-size:11px;color:#647b8e;line-height:1.5}
+#profile .account-chevron{font-size:24px;color:#718fa3;transition:transform .18s}
+#profile details[open]>.account-chevron,#profile details[open]>summary>.account-chevron{transform:rotate(180deg)}
+#profile .account-service-panel{border-top:1px solid #e2edf2;padding:16px}
+#profile .account-service-panel>.section-card{box-shadow:none;margin:0;padding:0;border:0;background:transparent}
+#profile .account-history-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 15px}
+#profile .account-history-tabs button{border:1px solid #d2e3ec;border-radius:10px;padding:11px 6px;background:#f5f9fb;color:#385468;font-weight:700;font-size:12px;cursor:pointer;line-height:1.35}
+#profile .account-history-tabs button[aria-pressed="true"]{background:#155f83;color:#fff;border-color:#155f83}
+#profile .account-history-tabs button:focus-visible{outline:3px solid #61b1d3;outline-offset:2px}
+#profile .account-pending{margin-top:10px;color:#596f80;font-size:12px}
+@media(max-width:610px){#profile .account-balance-grid{gap:9px}#profile .account-balance-card{padding:12px;border-radius:13px}#profile .account-balance-label{font-size:12px}#profile .account-balance-number strong{font-size:31px}#profile .account-balance-detail{font-size:11px}#profile .account-financial-card{gap:9px;padding:12px}#profile .account-financial-icon{flex-basis:40px;width:40px;height:40px;font-size:23px}#profile .account-financial-stat strong{font-size:27px}#profile .account-history-tabs{gap:4px}#profile .account-history-tabs button{font-size:10px;padding:9px 3px}#profile .account-service-panel{padding:10px}}
+@media(prefers-reduced-motion:reduce){#profile .account-chevron{transition:none}}
+
+/* Overtime validation feedback (QA) */
+#profile #otDateHint{display:block;margin:7px 0 0;font-size:12px;line-height:1.65;color:#5b7183}
+#profile #otFeedback{display:block;font-weight:650;font-size:13px;line-height:1.8;min-height:23px}
+#profile #otFeedback[data-state="error"]{color:#b33c3c}
+#profile #otFeedback[data-state="success"]{color:#14775d}
+
+
+/* Owner approval detail cards - QA */
+#approvals .approval-card--detailed{background:#fff;border:1px solid #d8e4ec;border-radius:16px;padding:18px 20px;margin:12px 0;box-shadow:0 5px 20px rgba(22,57,76,.045);color:#16354b;min-width:0}
+#approvals .request-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:14px;border-bottom:1px solid #e2edf2}
+#approvals .request-card-heading{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+#approvals .request-card-type{font-size:15px;line-height:1.5;font-weight:900;color:#087986}
+#approvals .request-card-name{font-size:16px;font-weight:850;color:#102d42;line-height:1.55;overflow-wrap:anywhere}
+#approvals .request-card-identity{font-size:12px;color:#59778c;line-height:1.65;overflow-wrap:anywhere}
+#approvals .request-status{flex-shrink:0;display:inline-block;font-size:12px;font-weight:800;padding:6px 10px;border-radius:999px;white-space:nowrap;line-height:1.5;border:1px solid #d9e2eb;color:#37546a;background:#f5f8fa}
+#approvals .request-status--pending{background:#fff6dd;border-color:#f4dda7;color:#845f10}
+#approvals .request-status--approved{background:#e8f5ef;border-color:#badfcb;color:#176846}
+#approvals .request-status--rejected{background:#fce9e7;border-color:#f1c5c3;color:#9f3b35}
+#approvals .request-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin:14px 0 12px;padding:0}
+#approvals .request-detail-field{background:#f4f8fa;border:1px solid #e6eff3;border-radius:10px;padding:12px;min-width:0;display:flex;flex-direction:column;gap:5px}
+#approvals .request-detail-field dt{font-size:12px;color:#688094;font-weight:650;line-height:1.5}
+#approvals .request-detail-field dd{font-size:14px;font-weight:800;color:#1b4058;line-height:1.6;margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#approvals .request-notes{padding:10px 12px;margin:12px 0;background:#fafbfd;border-inline-start:3px solid #79a8b4;border-radius:8px}
+#approvals .request-notes-label{font-size:12px;font-weight:800;color:#285469}
+#approvals .request-notes p{color:#39576a;font-size:13px;line-height:1.65;margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#approvals .request-actions{display:flex;align-items:center;gap:11px;justify-content:flex-start;padding-top:8px;border-top:1px solid #edf2f5}
+#approvals .request-actions button{flex:1;min-height:43px;max-width:230px;cursor:pointer}
+#approvals .request-actions button:disabled{opacity:.65;cursor:wait}
+#approvals .request-action-feedback{font-size:13px;font-weight:700;min-height:0;line-height:1.75;margin:8px 0 0}
+#approvals .request-action-feedback:empty{display:none}
+#approvals .request-action-feedback[data-state="error"]{color:#aa3535}
+#approvals .request-action-feedback[data-state="success"]{color:#126e52}
+@media(max-width:640px){
+ #approvals .approval-card--detailed{padding:14px 12px;border-radius:13px}
+ #approvals .request-card-top{gap:9px}
+ #approvals .request-card-name{font-size:15px}
+ #approvals .request-card-type{font-size:14px}
+ #approvals .request-card-identity{font-size:11px}
+ #approvals .request-status{font-size:10px;padding:5px 8px}
+ #approvals .request-details-grid{gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #approvals .request-detail-field{padding:10px 9px}
+ #approvals .request-detail-field dd{font-size:12px}
+ #approvals .request-actions button{max-width:none}
+}
+@media(max-width:370px){#approvals .request-details-grid{grid-template-columns:1fr}}
+
+
+/* Resolved owner requests: short rows by default, with opt-in audit details.
+   Pending requests intentionally keep the original detailed decision layout. */
+#approvals .approval-card--compact{background:#fff;border:1px solid #dce6ec;border-radius:12px;padding:11px 14px;margin:8px 0;box-shadow:none;color:#16354b;min-width:0}
+#approvals .approval-card--compact .request-card-top{align-items:center;gap:10px;border-bottom:0;padding:0}
+#approvals .approval-card--compact .request-card-heading{gap:1px}
+#approvals .approval-card--compact .request-card-type{font-size:13px;line-height:1.4}
+#approvals .approval-card--compact .request-card-name{font-size:14px;line-height:1.4}
+#approvals .approval-card--compact .request-card-identity{font-size:11px;line-height:1.35}
+#approvals .approval-card--compact .request-status{font-size:11px;padding:4px 8px}
+#approvals .request-compact-facts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 13px;margin:8px 0 4px;color:#39566a;font-size:12px;line-height:1.55;font-variant-numeric:tabular-nums}
+#approvals .request-compact-fact{min-width:0;overflow-wrap:anywhere}
+#approvals .request-compact-fact strong{color:#1d465b;font-weight:800}
+#approvals .request-compact-reason{font-size:12px;line-height:1.55;margin:5px 0;color:#914441;overflow-wrap:anywhere}
+#approvals .request-optional-details{border-top:1px solid #edf2f5;margin-top:7px;padding-top:4px}
+#approvals .request-optional-details > summary{cursor:pointer;list-style-position:inside;color:#087986;font-size:12px;font-weight:800;padding:3px 0;min-height:26px}
+#approvals .request-optional-details > summary:focus-visible{outline:2px solid #087986;outline-offset:3px;border-radius:4px}
+#approvals .request-optional-details .request-details-grid{margin:6px 0 8px;gap:6px 9px}
+#approvals .request-optional-details .request-detail-field{padding:7px 9px;gap:2px}
+#approvals .request-optional-details .request-detail-field dt{font-size:11px}
+#approvals .request-optional-details .request-detail-field dd{font-size:12px}
+#approvals .request-optional-details .request-notes{margin:7px 0;padding:7px 9px}
+@media(max-width:640px){
+ #approvals .approval-card--compact{padding:10px 11px;margin:7px 0}
+ #approvals .approval-card--compact .request-card-top{gap:6px}
+ #approvals .approval-card--compact .request-card-type{font-size:12px}
+ #approvals .approval-card--compact .request-card-name{font-size:13px}
+ #approvals .approval-card--compact .request-card-identity{font-size:10px}
+ #approvals .request-compact-facts{font-size:11px;gap:3px 9px}
+}
+
+/* Stage22: one Owner action queue, archive filters apply only to decided requests. */
+#approvals.owner-approval-hub{max-width:1100px}
+#approvals .owner-inbox-card{border:1px solid #b9dcd9;background:#fbfefd}
+#approvals .owner-history-card{margin-top:18px}
+#approvals .owner-pending-count{display:inline-flex;align-items:center;justify-content:center;min-width:25px;background:#fff2d1;color:#845f10;border:1px solid #f2d39d;border-radius:40px;padding:1px 8px;font-size:12px;margin-inline-start:5px}
+#approvals .owner-history-count{display:inline-flex;align-items:center;justify-content:center;min-width:25px;border-radius:40px;padding:1px 8px;background:#edf4f6;color:#3a6373;font-size:12px;margin-inline-start:5px}
+#approvals .owner-inbox-card .approval-card--detailed{border-color:#d6e5e8}
+#approvals .owner-history-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px 12px;align-items:end;margin-bottom:16px}
+#approvals .owner-history-filters label{font-size:12px;margin:6px 0 5px}
+#approvals .owner-history-filters select{font-size:13px;min-height:43px;padding:8px}
+#approvals .owner-summary-collapse{margin-top:16px}
+#approvals .owner-summary-collapse > summary{cursor:pointer;font-size:14px;font-weight:800;color:#17485a;padding:4px 0}
+#approvals .owner-summary-collapse > summary:focus-visible{outline:2px solid #087986;outline-offset:3px}
+#approvals #ownerPendingRows:empty:after,#approvals #ownerHistoryRows:empty:after{content:'لا توجد طلبات';color:#587083}
+@media(max-width:640px){
+ #approvals .owner-inbox-card,#approvals .owner-history-card{padding:14px 11px}
+ #approvals .owner-history-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 9px}
+ #approvals .owner-history-filters select{font-size:12px;min-width:0}
+ #approvals .owner-inbox-card .approve-head{gap:8px;align-items:flex-start}
+ #approvals .owner-inbox-card .approve-head button{white-space:normal}
+}
