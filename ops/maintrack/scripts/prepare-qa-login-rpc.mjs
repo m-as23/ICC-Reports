@@ -10,7 +10,7 @@ export function prepareQaLoginRpc(baseline,candidate,runId,adapter,budget){
  entry.content="import {withLoginBudget,LoginRateError} from './login-rate-limit.mjs';\n"+entry.content;
  if(!entry.content.includes('instanceof LoginRateError'))entry.content=entry.content.replace('e instanceof AppError','e instanceof AppError||e instanceof LoginRateError');
  entry.content=applyQaLoginLease(entry.content,runId);
- files.push({name:'qa-login-lease.mjs',content:adapter},{name:'login-rate-limit.mjs',content:budget});
+ files.push({name:'qa-login-lease.mjs',content:adapter.replace("../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs","./login-rate-limit.mjs")},{name:'login-rate-limit.mjs',content:budget});
  const hash=x=>createHash('sha256').update(x).digest('hex');
  return {deploy:false,projectRef:'szhstrafzkxzstjdcynl',runId,baselineVersion:baseline.version,baselineSourceSha256:hash(JSON.stringify(baseline.files)),sqlMustBeInstalledAndAttestedTogether:true,files,sha256:Object.fromEntries(files.map(x=>[x.name,hash(x.content)]))};
 }

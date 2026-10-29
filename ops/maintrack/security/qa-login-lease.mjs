@@ -1,11 +1,11 @@
+import {LoginRateError} from '../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs';
 // QA-only adapter. Operational source is immutable; no retries of ambiguous writes.
 export async function qaLoginPrivileges(c){
  const r=await c.query(`SELECT session_user='maintrack_qa_final_runtime' caller,
  NOT pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') isolated,
  has_function_privilege(current_user,'maintrack_qa_lease.login_mutate(uuid,text,text,text)','EXECUTE') executable,
  NOT has_table_privilege(current_user,'maintrack_qa_lease.sessions','SELECT') private_ledger,
- NOT row_security_active('qa_security_final_20261025.mt_sessions') sessions_unfiltered,
- NOT row_security_active('qa_security_final_20261025.mt_login_attempts') counters_unfiltered,
+ (SELECT count(*)=3 FROM pg_policies WHERE schemaname='qa_security_final_20261025' AND policyname IN('qa_login_issuer_users','qa_login_issuer_counters','qa_login_issuer_sessions') AND roles=ARRAY['maintrack_qa_login_issuer']::name[]) issuer_policies,
  EXISTS(SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE p.oid='maintrack_qa_lease.login_mutate(uuid,text,text,text)'::regprocedure AND r.rolname='maintrack_qa_login_issuer' AND NOT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND p.prosecdef AND p.proconfig=ARRAY['search_path=pg_catalog, pg_temp']) owner_path,
  NOT EXISTS(SELECT 1 FROM pg_proc p,CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE p.oid='maintrack_qa_lease.login_mutate(uuid,text,text,text)'::regprocedure AND a.grantee=0 AND a.privilege_type='EXECUTE') public_denied`.replace('p,CROSS','p CROSS'));
  const checks=r.rows[0];return {compatible:!!checks&&Object.values(checks).every(x=>x===true),checks};
@@ -16,7 +16,7 @@ export function qaLeaseHarness(pool,runId){
  return {async mutate(c,op,code,hash=null){
   if(halted)throw Error('QA_HARNESS_HALTED_NO_RETRY');
   try{return await c.query('SELECT maintrack_qa_lease.login_mutate($1::uuid,$2::text,$3::text,$4::text)',[runId,op,code,hash]);}
-  catch(e){if(!e.code||['ECONNRESET','ETIMEDOUT','08006','57P01'].includes(e.code)){halted=true;throw Error('QA_AMBIGUOUS_WRITE_NO_RETRY');}throw e;}
+  catch(e){if(!e.code||['ECONNRESET','ETIMEDOUT','08006','57P01'].includes(e.code)){halted=true;throw Error('QA_AMBIGUOUS_WRITE_NO_RETRY');}if(e.code==='P0002')throw new LoginRateError('QA_LEASE_OR_ACTOR_CLOSED',403);if(e.code==='P0001'&&['QA_CALLER_DENIED','QA_ACTOR_DENIED','QA_PROJECT_DENIED','QA_SESSION_BUDGET_OR_HASH','QA_TOKEN_NOT_OWNED','QA_OPERATION_DENIED'].includes(e.message))throw new LoginRateError(e.message,403);throw e;}
  },async ready(){return qaLoginPrivileges(pool);},get halted(){return halted;}};
 }
 export function applyQaLoginLease(source,runId){
@@ -44,7 +44,7 @@ export function qaWindowHarness({now=Date.now,sleep=ms=>new Promise(r=>setTimeou
   if(halted||count>=60||now()>=deadline)throw Error('QA_WINDOW_CLOSED');
   if(last!==null)await sleep(Math.max(0,2600-(now()-last)));
   if(now()>=deadline)throw Error('QA_WINDOW_CLOSED');count++;
-  try{return await operation();}catch{halted=true;throw Error('QA_AMBIGUOUS_REQUEST_NO_RETRY');}finally{last=now();}
+  try{const result=await operation();if(result?.status>=500){halted=true;throw Error('QA_SERVER_FAILURE_NO_RETRY');}return result;}catch{halted=true;throw Error('QA_AMBIGUOUS_REQUEST_NO_RETRY');}finally{last=now();}
  };
  return {get state(){return {started,deadline,count,halted};},async request(url,options){
   const u=new URL(url);if(u.origin!=='https://szhstrafzkxzstjdcynl.supabase.co'||!['/functions/v1/maintrack-security-qa-final/api','/functions/v1/maintrack-security-qa-inventory'].includes(u.pathname)||u.search||u.hash||u.username||u.password)throw Error('QA_TARGET_DENIED');

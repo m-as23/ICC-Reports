@@ -11,6 +11,9 @@ CREATE TRIGGER qa_lease_statement BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE 
 CREATE TRIGGER qa_lease_statement BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE ON qa_security_final_20261025.mt_login_attempts FOR EACH STATEMENT EXECUTE FUNCTION maintrack_qa_lease.write_guard();
 DROP FUNCTION maintrack_qa_lease.login_mutate(uuid,text,text,text);
 DROP FUNCTION maintrack_qa_lease.login_write_guard();
+DROP POLICY qa_login_issuer_users ON qa_security_final_20261025.mt_users;
+DROP POLICY qa_login_issuer_counters ON qa_security_final_20261025.mt_login_attempts;
+DROP POLICY qa_login_issuer_sessions ON qa_security_final_20261025.mt_sessions;
 DROP OWNED BY maintrack_qa_login_issuer;
 DROP ROLE maintrack_qa_login_issuer;
 -- Installation preflight must prove this USAGE was absent before installation.

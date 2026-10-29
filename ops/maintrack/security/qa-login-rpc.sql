@@ -7,6 +7,10 @@ GRANT SELECT(id,employee_code,name,active,must_change,token_version) ON qa_secur
 GRANT UPDATE ON maintrack_qa_lease.runs TO maintrack_qa_login_issuer;
 GRANT INSERT ON maintrack_qa_lease.sessions TO maintrack_qa_login_issuer;
 GRANT SELECT,INSERT,UPDATE,DELETE ON qa_security_final_20261025.mt_login_attempts,qa_security_final_20261025.mt_sessions TO maintrack_qa_login_issuer;
+-- Add policies only for the private NOLOGIN issuer; retain existing runtime policies.
+CREATE POLICY qa_login_issuer_users ON qa_security_final_20261025.mt_users FOR SELECT TO maintrack_qa_login_issuer USING(employee_code IN('90000001','90000002') AND starts_with(name,'QA_FINAL_'));
+CREATE POLICY qa_login_issuer_counters ON qa_security_final_20261025.mt_login_attempts FOR ALL TO maintrack_qa_login_issuer USING(employee_code IN('90000001','90000002') AND EXISTS(SELECT 1 FROM maintrack_qa_lease.runs WHERE state='ARMED' AND NOT verified AND project_ref='szhstrafzkxzstjdcynl' AND clock_timestamp()<admit_until)) WITH CHECK(employee_code IN('90000001','90000002') AND EXISTS(SELECT 1 FROM maintrack_qa_lease.runs WHERE state='ARMED' AND NOT verified AND project_ref='szhstrafzkxzstjdcynl' AND clock_timestamp()<admit_until));
+CREATE POLICY qa_login_issuer_sessions ON qa_security_final_20261025.mt_sessions FOR ALL TO maintrack_qa_login_issuer USING(user_id IN(SELECT id FROM qa_security_final_20261025.mt_users WHERE employee_code IN('90000001','90000002'))) WITH CHECK(user_id IN(SELECT id FROM qa_security_final_20261025.mt_users WHERE employee_code IN('90000001','90000002')) AND EXISTS(SELECT 1 FROM maintrack_qa_lease.runs WHERE state='ARMED' AND NOT verified AND project_ref='szhstrafzkxzstjdcynl' AND clock_timestamp()<admit_until AND expires_at<=admit_until));
 -- Invoker guard observes the dedicated definer identity, not a caller-set GUC.
 -- No caller receives role membership or access to private ledger tables.
 CREATE FUNCTION maintrack_qa_lease.login_write_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
