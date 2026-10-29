@@ -5,4 +5,9 @@ const index=result.files.find(f=>f.name==='index.ts');const anchor=`qaLeaseHarne
 const adapter=result.files.find(f=>f.name==='qa-login-lease.mjs');adapter.content+=`\nexport {permanentHarness as qaLeaseHarness};\n`;
 const channel=result.files.find(f=>f.name==='channel.mjs');channel.content=`import {permanentChannel} from './qa-login-lease.mjs';export const createQaChannel=({pool})=>permanentChannel(pool);export const BUCKET='maintrack-security-qa-20261025';export const CONTROL='maintrack_qa_permanent.windows';export function guardStorageRequest(){throw Error('QA_STORAGE_DISABLED');}\n`;
 const guard=result.files.find(f=>f.name==='qa-guard.mjs');for(const field of ['accounts','active_accounts','synthetic_accounts']){const a=`x.${field}===4`;if(!guard.content.includes(a))throw Error('ATTESTATION_CONTRACT');guard.content=guard.content.replace(a,`x.${field}===2`);}
-result.sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();delete result.runId;delete result.sha256;result.deploy=false;result.permanent=true;result.status='REVIEW_ONLY_NOT_CLOUD_VERIFIED';result.installSql=read('ops/maintrack/security/qa-permanent.sql');fs.writeFileSync(out,JSON.stringify(result,null,2)+'\n');console.log('PERMANENT_QA_REVIEW_BUNDLE_ONLY');
+result.sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();delete result.runId;delete result.sha256;result.deploy=false;result.permanent=true;result.status='REVIEW_ONLY_NOT_CLOUD_VERIFIED';
+const baseSql=read('ops/maintrack/security/qa-permanent.sql'),inventorySql=read('ops/maintrack/security/qa-permanent-inventory.sql');
+if(!/\nCOMMIT;\s*$/.test(baseSql)||inventorySql.split('\nBEGIN;').length!==2)throw Error('ATOMIC_QA_MIGRATION_CONTRACT');
+result.installSql=baseSql.replace(/\nCOMMIT;\s*$/,'\n')+inventorySql.replace('\nBEGIN;','\n');
+result.inventoryDatabaseIsolation='RESTRICTIVE_LEASE_POLICIES_INCLUDED_NOT_CLOUD_VERIFIED';
+fs.writeFileSync(out,JSON.stringify(result,null,2)+'\n');console.log('PERMANENT_QA_REVIEW_BUNDLE_ONLY');
