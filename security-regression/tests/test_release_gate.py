@@ -9,10 +9,31 @@ class GateTests(unittest.TestCase):
   self.record={'schema':1,'sourceCommit':self.commit,'artifactSha256':self.apk,'productionSourceProven':True,'independentApproval':True,'findings':[],'cases':{x:{'status':'PASS','sourceCommit':self.commit,'artifactSha256':self.apk,'evidence':[ev.copy()]} for x in REQUIRED}}
   self.cleanup={'kind':'maintrack-server-cleanup-v1','projectRef':'szhstrafzkxzstjdcynl','sourceCommit':self.commit,'artifactSha256':self.apk,'serverClock':True,'admissionClosed':True,'sessionsInactive':True,'baselineVerified':True,'archivesRetained':True,'serverSchedulerProven':True,'controllerFailureExercised':True,'storageObjectsReconciled':True,'schedulerStopped':True,'serverTimeoutProven':True,'startedAt':'2026-10-28T03:00:00Z','admitUntil':'2026-10-28T03:03:00Z','deadline':'2026-10-28T03:07:00Z','verifiedAt':'2026-10-28T03:04:00Z'}
   self.bind_cleanup(self.cleanup)
+  self.approval={'kind':'github-environment-review-v1','repository':'m-as23/ICC-Reports','environment':'maintrack-production-approval','reviewer':'m-as23','runId':12,'sourceCommit':self.commit,'artifactSha256':self.apk,'approved':True}
+  client=b'synthetic overlaid client';self.native_hash=hashlib.sha256(client).hexdigest();(self.root/'client.js').write_bytes(client)
+  headers=[{'source':s,'headers':[{'key':'Content-Security-Policy','value':"default-src 'self'; frame-ancestors 'self'"},{'key':'X-Frame-Options','value':'SAMEORIGIN'}]} for s in ('/','/index.html','/inventory-reference.html')]
+  provenance={'schema':1,'sourceCommit':self.commit,'canonicalLocksModified':False,'changes':[{'path':p,'before':'d'*64,'after':self.native_hash,'origin':'PR27'} for p in ('web/secure-assets/index-inline-1.js','native/www/secure-assets/index-inline-1.js')],'headerPolicy':headers}
+  (self.root/'provenance.json').write_text(json.dumps(provenance));(self.root/'headers.json').write_text(json.dumps({'headers':headers}))
+  entry=lambda p:{'path':p,'sha256':hashlib.sha256((self.root/p).read_bytes()).hexdigest()}
+  self.record['candidateBuild']={'provenance':entry('provenance.json'),'webClient':entry('client.js'),'webHeaders':entry('headers.json')}
+  self.record['findingReadiness']={f'MT-SEC-{i:03d}':'PASS' for i in range(1,6)}
  def bind_cleanup(self,proof):
   data=json.dumps(proof).encode();(self.root/'cleanup.json').write_bytes(data)
   self.record['cases']['qa-cleanup']['evidence']=[{'path':'cleanup.json','sha256':hashlib.sha256(data).hexdigest()}]
- def result(self,r=None):return evaluate(self.root,self.record if r is None else r,self.commit,self.apk)['releaseDecision']
+ def result(self,r=None):return evaluate(self.root,self.record if r is None else r,self.commit,self.apk,approval=self.approval,native_client_sha256=self.native_hash)['releaseDecision']
+ def test_record_cannot_self_assert_platform_approval(self):
+  r=evaluate(self.root,self.record,self.commit,self.apk,native_client_sha256=self.native_hash)
+  self.assertEqual(r['releaseDecision'],'NO-GO');self.assertIn('VERIFIED_PLATFORM_APPROVAL_REQUIRED',r['reasons'])
+ def test_platform_approval_must_bind_current_source_and_artifact(self):
+  for key,value in [('sourceCommit','c'*40),('artifactSha256','c'*64),('reviewer','other'),('approved',False),('environment','other')]:
+   proof=dict(self.approval);proof[key]=value
+   self.assertEqual(evaluate(self.root,self.record,self.commit,self.apk,approval=proof,native_client_sha256=self.native_hash)['releaseDecision'],'NO-GO')
+ def test_unresolved_known_findings_block_even_when_cases_claim_pass(self):
+  for status in ('PARTIAL','BLOCKED','NOT TESTED','CLOSED LOCALLY','FAIL'):
+   r=copy.deepcopy(self.record);r['findingReadiness']['MT-SEC-001']=status;self.assertEqual(self.result(r),'NO-GO')
+ def test_raw_canonical_or_unbound_build_cannot_pass(self):
+  r=copy.deepcopy(self.record);r.pop('candidateBuild');self.assertEqual(self.result(r),'NO-GO')
+  self.assertEqual(evaluate(self.root,self.record,self.commit,self.apk,approval=self.approval,native_client_sha256='f'*64)['releaseDecision'],'NO-GO')
  def test_complete_synthetic_fixture_can_pass_without_authorizing_deploy(self):
   self.assertEqual(self.result(),'GO');self.assertFalse(evaluate(self.root,self.record,self.commit,self.apk)['deploymentAuthorized'])
  def test_missing_each_mandatory_case_blocks(self):

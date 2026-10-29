@@ -21,3 +21,11 @@ test('QA-issued sessions are transactionally registered and server-expiring',{sk
   await c.query('TRUNCATE maintrack_qa_lease.sessions,maintrack_qa_lease.runs,mt_sessions');
  }finally{if(c)c.release();await pool.end();}
 });
+
+// Metadata only: no password/hash values or permission changes.
+test('readiness includes Login counters and crypt and refuses any missing privilege',async()=>{
+ let sql;const proof=await qaLoginPrivileges({query:async text=>{sql=text;return {rows:[{worker_member:true,account_counters:true,login_user_read:true,crypt_execute:true}]};}});
+ assert.equal(proof.compatible,true);for(const op of ['SELECT','INSERT','UPDATE','DELETE'])assert.ok(sql.includes("has_table_privilege(current_user,'mt_login_attempts','"+op+"')"));assert.equal((sql.match(/ AND has_table_privilege\(current_user,'mt_login_attempts'/g)||[]).length,3);assert.match(sql,/to_regprocedure\('extensions.crypt\(text,text\)'\)/);assert.match(sql,/row_security_active\('mt_users'\)/);
+ assert.equal((await qaLoginPrivileges({query:async()=>({rows:[{worker_member:true,account_counters:false}]})})).compatible,false);
+ assert.equal((await qaLoginPrivileges({query:async()=>({rows:[]})})).compatible,false);
+});

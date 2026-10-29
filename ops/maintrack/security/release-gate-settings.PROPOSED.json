@@ -1,8 +1,14 @@
 {
   "applied": false,
   "productionDeploymentAuthorized": false,
-  "targetBranches": ["main", "release/maintrack-047-final-20261024"],
-  "requiredChecks": ["MainTrack security local / security-local", "MainTrack logout regression / logout-contract", "candidate-bound-security-release-evidence"],
+  "targetBranches": [
+    "main",
+    "release/maintrack-047-final-20261024"
+  ],
+  "requiredChecks": [
+    "security-local",
+    "logout-contract"
+  ],
   "requiredApprovingReviews": 1,
   "requireCodeOwnerReview": true,
   "requireUpToDateBranch": true,
@@ -10,5 +16,20 @@
   "requiredEnvironmentReviewer": "repository owner",
   "preventSelfReview": true,
   "cloudScheduleEnabled": false,
-  "notes": "Review proposal only. candidate-bound-security-release-evidence must run release_gate.py using independently reviewed QA evidence and the exact source/APK; it is intentionally not configured as a local-CI success check. No branch protection/environment settings were applied."
+  "notes": "Proposal only. Observed CI contexts security-local/logout-contract from App15368. Owner must apply protection and provide independent reviewer; the PR author cannot approve their own PR. CLI release evidence gate fails closed until trusted platform approval and native artifact extraction are integrated. Existing signing workflow remains ungated; publication stays blocked. No administrative changes performed.",
+  "requiredCheckAppId": 15368,
+  "requireLastPushApproval": true,
+  "dismissStaleReviews": true,
+  "requiredConversationResolution": true,
+  "allowForcePush": false,
+  "allowDeletion": false,
+  "adminEnforcement": true,
+  "bypassActors": [],
+  "candidateEvidenceGate": {
+    "context": "candidate-bound-security-release-evidence",
+    "implementedInCI": false,
+    "requiredForSigningAndDeployment": true,
+    "mustNotBeAddedAsRequiredPRCheckBeforeImplementation": true,
+    "status": "BLOCKED_PENDING_TRUSTED_PLATFORM_APPROVAL_INTEGRATION"
+  }
 }

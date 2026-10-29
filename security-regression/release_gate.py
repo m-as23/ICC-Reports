@@ -23,8 +23,40 @@ def cleanup_proven(root,entries,commit,artifact):
 def sha(data):return hashlib.sha256(data).hexdigest()
 def source_dirty(root):
     return bool(subprocess.check_output(['git','status','--porcelain','--untracked-files=all'],cwd=root,text=True).strip())
-def evaluate(root,record,commit,artifact):
+def candidate_build_proven(root,record,commit,native_hash):
+    try:
+        def read(entry):
+            relative=pathlib.Path(entry['path']); file=(root/relative).resolve()
+            if relative.is_absolute() or not file.is_relative_to(root):raise ValueError('OUTSIDE_ROOT')
+            data=file.read_bytes()
+            if sha(data)!=entry['sha256']:raise ValueError('CHANGED')
+            return data
+        build=record['candidateBuild']; provenance=json.loads(read(build['provenance']))
+        client_hash=sha(read(build['webClient'])); headers=json.loads(read(build['webHeaders']))['headers']
+        if provenance.get('sourceCommit')!=commit or provenance.get('canonicalLocksModified') is not False:return False
+        changes=provenance.get('changes',[])
+        for path,digest in [('web/secure-assets/index-inline-1.js',client_hash),('native/www/secure-assets/index-inline-1.js',native_hash)]:
+            if not digest or not any(x.get('path')==path and x.get('after')==digest and x.get('before')!=digest and x.get('origin')=='PR27' for x in changes):return False
+        for path in ('/','/index.html','/inventory-reference.html'):
+            rules=[x for x in headers if x.get('source')==path]
+            if not rules:return False
+            values={h['key'].lower():h['value'] for h in rules[0]['headers']}
+            if values.get('x-frame-options')!='SAMEORIGIN' or "frame-ancestors 'self'" not in values.get('content-security-policy',''):return False
+        return headers==provenance.get('headerPolicy')
+    except (KeyError,ValueError,OSError,TypeError,AttributeError):return False
+
+def evaluate(root,record,commit,artifact,*,approval=None,native_client_sha256=None):
     root=pathlib.Path(root).resolve();reasons=[]
+    # Only a trusted platform integration may supply this argument. Record fields
+    # cannot confer approval. CLI has no such integration and remains fail-closed.
+    if not isinstance(approval,dict) or not all((approval.get('kind')=='github-environment-review-v1',approval.get('repository')=='m-as23/ICC-Reports',approval.get('environment')=='maintrack-production-approval',approval.get('reviewer')=='m-as23',type(approval.get('runId')) is int and approval.get('runId',0)>0,approval.get('sourceCommit')==commit,approval.get('artifactSha256')==artifact,approval.get('approved') is True)):
+        reasons.append('VERIFIED_PLATFORM_APPROVAL_REQUIRED')
+    readiness=record.get('findingReadiness',{})
+    if not isinstance(readiness,dict):readiness={}
+    for number in range(1,6):
+        finding=f'MT-SEC-{number:03d}'
+        if readiness.get(finding)!='PASS':reasons.append(finding+':NOT_RELEASE_READY')
+    if not candidate_build_proven(root,record,commit,native_client_sha256):reasons.append('SECURITY_RC_BUILD_PROVENANCE_REQUIRED')
     if not re.fullmatch(r'[a-f0-9]{40}',commit):reasons.append('INVALID_SOURCE_COMMIT')
     if record.get('schema')!=1:reasons.append('INVALID_EVIDENCE_SCHEMA')
     if record.get('sourceCommit')!=commit:reasons.append('SOURCE_MISMATCH')
