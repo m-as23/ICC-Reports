@@ -10,7 +10,7 @@ CREATE TABLE maintrack_qa_permanent.events(at timestamptz DEFAULT clock_timestam
 ALTER TABLE maintrack_qa_permanent.windows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintrack_qa_permanent.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintrack_qa_permanent.events ENABLE ROW LEVEL SECURITY;
-CREATE TABLE maintrack_qa_permanent.health(singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),heartbeat timestamptz NOT NULL);
+CREATE TABLE maintrack_qa_permanent.health(singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),heartbeat timestamptz NOT NULL,backend_pid int NOT NULL,login name NOT NULL,database name NOT NULL);
 ALTER TABLE maintrack_qa_permanent.health ENABLE ROW LEVEL SECURITY;
 CREATE FUNCTION maintrack_qa_permanent.is_open() RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until AND EXISTS(SELECT 1 FROM maintrack_qa_permanent.health WHERE heartbeat>clock_timestamp()-interval '90 seconds')) $$;
 CREATE FUNCTION maintrack_qa_permanent.owns_session(p_hash text) RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.sessions s JOIN maintrack_qa_permanent.windows w ON w.id=s.window_id WHERE s.token_hash=p_hash AND w.state='ARMED' AND clock_timestamp()<w.admit_until) $$;
@@ -59,7 +59,8 @@ CREATE PROCEDURE maintrack_qa_permanent.tick() LANGUAGE plpgsql SECURITY INVOKER
 DECLARE r record; problem text;
 BEGIN
  IF NOT pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') THEN RAISE EXCEPTION 'QA_WORKER_DENIED'; END IF;
- INSERT INTO maintrack_qa_permanent.health(singleton,heartbeat) VALUES(true,clock_timestamp()) ON CONFLICT(singleton) DO UPDATE SET heartbeat=EXCLUDED.heartbeat;COMMIT;
+ IF NOT pg_try_advisory_lock(742019,1) THEN RETURN; END IF;
+ INSERT INTO maintrack_qa_permanent.health(singleton,heartbeat,backend_pid,login,database) VALUES(true,clock_timestamp(),pg_backend_pid(),session_user,current_database()) ON CONFLICT(singleton) DO UPDATE SET heartbeat=EXCLUDED.heartbeat,backend_pid=EXCLUDED.backend_pid,login=EXCLUDED.login,database=EXCLUDED.database;COMMIT;
  FOR r IN SELECT * FROM maintrack_qa_permanent.windows WHERE state<>'COMPLETE' AND admit_until<=clock_timestamp() AND attempts<2 LOOP
   UPDATE maintrack_qa_permanent.windows SET state='RECOVERING',attempts=attempts+1 WHERE id=r.id;COMMIT;
   BEGIN
@@ -79,6 +80,7 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS problem=RETURNED_SQLSTATE;UPDATE maintrack_qa_permanent.windows SET state='FAILED',error=problem WHERE id=r.id;INSERT INTO maintrack_qa_permanent.events(window_id,kind,detail) VALUES(r.id,'RECOVERY_FAILED',problem);
   END;COMMIT;
  END LOOP;
+ PERFORM pg_advisory_unlock(742019,1);
 END $$;
 -- Dedicated non-login definer, scoped authentication columns only.
 GRANT USAGE,CREATE ON SCHEMA maintrack_qa_permanent TO maintrack_qa_permanent_executor;
