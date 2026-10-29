@@ -87,7 +87,7 @@ def evaluate(root,record,commit,artifact,*,approval=None,native_client_sha256=No
             except (KeyError,ValueError,OSError,TypeError):reasons.append(case_id+':INVALID_EVIDENCE')
     return {'releaseDecision':'NO-GO' if reasons else 'GO','reasons':reasons,'deploymentAuthorized':False,'sourceCommit':commit,'artifactSha256':artifact,'requiredCases':list(REQUIRED)}
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--evidence',required=True);p.add_argument('--artifact',required=True);p.add_argument('--output',required=True);p.add_argument('--platform-run');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--evidence',required=True);p.add_argument('--artifact',required=True);p.add_argument('--output',required=True);p.add_argument('--platform-run');p.add_argument('--platform-artifact');p.add_argument('--apksigner');p.add_argument('--certificate-sha256');a=p.parse_args()
     root=pathlib.Path(__file__).resolve().parents[1]
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
     dirty=source_dirty(root)
@@ -95,8 +95,10 @@ def main():
     apk=pathlib.Path(a.artifact);digest=sha(apk.read_bytes()) if apk.is_file() else None
     approval=None;native_hash=None;platform_error=False
     if a.platform_run:
-        from platform_approval import fetch_approval,native_client_hash
-        try:approval=fetch_approval(a.platform_run,commit,digest);native_hash=native_client_hash(apk)
+        from platform_approval import fetch_approval,native_client_hash,verify_certificate
+        try:
+            verify_certificate(a.apksigner,a.artifact,a.certificate_sha256)
+            approval=fetch_approval(a.platform_run,commit,digest,a.platform_artifact,apk.name);native_hash=native_client_hash(apk)
         except (ValueError,OSError,subprocess.SubprocessError):platform_error=True
     result=evaluate(root,record,commit,digest,approval=approval,native_client_sha256=native_hash)
     if platform_error:result['reasons'].append('PLATFORM_OR_APK_VERIFICATION_FAILED');result['releaseDecision']='NO-GO'

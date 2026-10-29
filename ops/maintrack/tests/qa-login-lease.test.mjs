@@ -1,31 +1,16 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {createHash,randomBytes} from 'node:crypto';import {createRequire} from 'node:module';
-import {leaseLoginIssue,applyQaLoginLease,qaLoginPrivileges} from '../security/qa-login-lease.mjs';
-const {Pool}=createRequire(new URL('../inventory/backend/package.json',import.meta.url))('pg');
-const id='11111111-2222-4333-8444-555555555555',sha=x=>createHash('sha256').update(x).digest('hex');
-test('QA source adapter is explicit, single-use and operational source stays immutable',()=>{const source=fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/index.ts',import.meta.url),'utf8');const adapted=applyQaLoginLease(source,id);assert.ok(adapted.includes('return issue(u,c)'));assert.ok(adapted.includes('const issue=leaseLoginIssue('));assert.ok(!source.includes('leaseLoginIssue'));assert.throws(()=>applyQaLoginLease(adapted,id),/ALREADY_APPLIED/);});
-test('QA-issued sessions are transactionally registered and server-expiring',{skip:!process.env.LOGIN_PG_URL?'owned fixture required':false},async()=>{
- const u=new URL(process.env.LOGIN_PG_URL);assert.ok(['postgres:','postgresql:'].includes(u.protocol)&&['127.0.0.1','localhost'].includes(u.hostname)&&u.pathname==='/maintrack_auth_local'&&!u.search&&!u.hash&&['mt_local_admin','mt_lab_admin'].includes(u.username));
- const pool=new Pool({connectionString:u.toString(),max:1});let c;
- try{assert.equal((await pool.query("SELECT shobj_description(oid,'pg_database') marker FROM pg_database WHERE datname=current_database()")).rows[0].marker,'MAINTRACK_LOGIN_LOCAL_EPHEMERAL_V1');
-  await pool.query(`DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='maintrack_qa_cleanup_worker') THEN CREATE ROLE maintrack_qa_cleanup_worker NOLOGIN; END IF; END $$;CREATE SCHEMA IF NOT EXISTS maintrack_qa_lease;CREATE TABLE IF NOT EXISTS maintrack_qa_lease.runs(id uuid PRIMARY KEY,project_ref text,state text,admit_until timestamptz);CREATE TABLE IF NOT EXISTS maintrack_qa_lease.sessions(run_id uuid,token_hash text PRIMARY KEY);TRUNCATE maintrack_qa_lease.sessions,maintrack_qa_lease.runs,mt_sessions;INSERT INTO maintrack_qa_lease.runs VALUES('${id}','szhstrafzkxzstjdcynl','ARMED',now()+interval '1 minute')`);
-  assert.equal((await qaLoginPrivileges(pool)).compatible,true,'owned local superuser fixture, not a cloud runtime attestation');
-  let deniedCalls=0;const denied=leaseLoginIssue(async()=>{deniedCalls++;},{runId:id,sha,reject:(code,status)=>{throw Object.assign(Error(code),{code,status});}});await assert.rejects(()=>denied({employee_code:'90000001'},{query:async()=>({rows:[{worker_member:false}]})}),e=>e.code==='QA_RUNTIME_ROLE_INCOMPATIBLE');assert.equal(deniedCalls,0);
-  let issued=0;const base=async(u,c)=>{issued++;const token=randomBytes(32).toString('hex');await c.query("INSERT INTO mt_sessions VALUES($1,'a',0,now()+interval '7 days')",[sha(token)]);return {token};};const issue=leaseLoginIssue(base,{runId:id,sha,reject:(code,status)=>{throw Object.assign(Error(code),{code,status});}});
-  c=await pool.connect();await c.query('BEGIN');await issue({employee_code:'90000001'},c);await c.query('COMMIT');
-  assert.equal((await c.query('SELECT count(*) n FROM mt_sessions s JOIN maintrack_qa_lease.sessions q USING(token_hash) JOIN maintrack_qa_lease.runs r ON r.id=q.run_id WHERE s.expires_at<=r.admit_until')).rows[0].n,'1');
-  await c.query('BEGIN');await issue({employee_code:'90000002'},c);await c.query('ROLLBACK');assert.equal((await c.query('SELECT count(*) n FROM mt_sessions')).rows[0].n,'1');assert.equal((await c.query('SELECT count(*) n FROM maintrack_qa_lease.sessions')).rows[0].n,'1');
-  await c.query("UPDATE maintrack_qa_lease.runs SET admit_until=now()-interval '1 second'");await c.query('BEGIN');await assert.rejects(()=>issue({employee_code:'90000001'},c),e=>e.code==='QA_LEASE_CLOSED');await c.query('ROLLBACK');assert.equal(issued,2);
-  await c.query("UPDATE maintrack_qa_lease.runs SET admit_until=now()+interval '1 minute'");
-  for(let i=0;i<3;i++)await c.query('INSERT INTO maintrack_qa_lease.sessions VALUES($1,$2)',[id,String(i).repeat(64)]);
-  await c.query('BEGIN');await assert.rejects(()=>issue({employee_code:'90000001'},c),e=>e.code==='QA_SESSION_BUDGET');await c.query('ROLLBACK');assert.equal(issued,2);
-  await c.query('TRUNCATE maintrack_qa_lease.sessions,maintrack_qa_lease.runs,mt_sessions');
- }finally{if(c)c.release();await pool.end();}
-});
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {applyQaLoginLease,qaWindowHarness} from '../security/qa-login-lease.mjs';
+const id='11111111-2222-4333-8444-555555555555';
+test('restricted source adapter is unique and leaves operational bytes immutable',()=>{const source=fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/index.ts',import.meta.url),'utf8'),copy=source;const out=applyQaLoginLease(source,id);assert.equal(source,copy);assert.ok(!out.includes('leaseLoginIssue'));assert.ok(!out.includes('INSERT INTO maintrack_qa_lease.sessions'));assert.ok(out.includes("qaLease.mutate(c,'reset',code)"));assert.throws(()=>applyQaLoginLease(out,id));assert.throws(()=>applyQaLoginLease(source,'invalid'));});
+test('window target, attempt, spacing and deadline are fixed',async()=>{let clock=0,calls=0;const h=qaWindowHarness({now:()=>clock,sleep:async n=>{clock+=n;},send:async()=>{calls++;return {status:200};}});await assert.rejects(()=>h.request('https://production.invalid/api',{}));for(let i=0;i<60;i++)await h.request('https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api',{});assert.equal(calls,60);assert.equal(clock,59*2600);await assert.rejects(()=>h.request('https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api',{}));const expired=qaWindowHarness({now:()=>clock,send:async()=>{throw Error('should not send');}});clock+=1200000;await assert.rejects(()=>expired.request('https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api',{}),/CLOSED/);});
+test('ambiguous HTTP write consumes one attempt then permanently stops',async()=>{let calls=0;const h=qaWindowHarness({send:async()=>{calls++;throw Error('lost response');}}),url='https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api';await assert.rejects(()=>h.request(url,{}),/AMBIGUOUS/);await assert.rejects(()=>h.request(url,{}),/CLOSED/);assert.equal(calls,1);assert.equal(h.state.count,1);});
 
-// Metadata only: no password/hash values or permission changes.
-test('readiness includes Login counters and crypt and refuses any missing privilege',async()=>{
- let sql;const proof=await qaLoginPrivileges({query:async text=>{sql=text;return {rows:[{worker_member:true,account_counters:true,login_user_read:true,crypt_execute:true}]};}});
- assert.equal(proof.compatible,true);for(const op of ['SELECT','INSERT','UPDATE','DELETE'])assert.ok(sql.includes("has_table_privilege(current_user,'mt_login_attempts','"+op+"')"));assert.equal((sql.match(/ AND has_table_privilege\(current_user,'mt_login_attempts'/g)||[]).length,3);assert.match(sql,/to_regprocedure\('extensions.crypt\(text,text\)'\)/);assert.match(sql,/row_security_active\('mt_users'\)/);
- assert.equal((await qaLoginPrivileges({query:async()=>({rows:[{worker_member:true,account_counters:false}]})})).compatible,false);
- assert.equal((await qaLoginPrivileges({query:async()=>({rows:[]})})).compatible,false);
+test('offline bundle retains isolation modules and routes Logout before auth',async()=>{
+ const {prepareQaLoginRpc}=await import('../scripts/prepare-qa-login-rpc.mjs');
+ const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
+ const baseline={slug:'maintrack-security-qa-final',version:9,files:[{name:'index.ts',content:read('../../../../remediation/logout/reference/qa-core.ts')},{name:'qa-guard.mjs',content:'// szhstrafzkxzstjdcynl baseline fixture'},{name:'channel.mjs',content:'// unchanged channel'}]};
+ const source=read('../../../supabase/functions/maintrack-final-047/index.ts');
+ const out=prepareQaLoginRpc(baseline,source,id,read('../security/qa-login-lease.mjs'),'// rate budget');
+ const index=out.files.find(f=>f.name==='index.ts').content;
+ assert.ok(index.includes("a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b)"));
+ assert.ok(index.includes('withQaIsolation'));assert.equal(out.files.find(f=>f.name==='channel.mjs').content,baseline.files[2].content);assert.equal(out.deploy,false);
 });
