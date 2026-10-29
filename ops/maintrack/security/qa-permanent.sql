@@ -11,6 +11,7 @@ ALTER TABLE maintrack_qa_permanent.windows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintrack_qa_permanent.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintrack_qa_permanent.events ENABLE ROW LEVEL SECURITY;
 CREATE FUNCTION maintrack_qa_permanent.is_open() RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until) $$;
+CREATE FUNCTION maintrack_qa_permanent.owns_session(p_hash text) RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.sessions s JOIN maintrack_qa_permanent.windows w ON w.id=s.window_id WHERE s.token_hash=p_hash AND w.state='ARMED' AND clock_timestamp()<w.admit_until) $$;
 CREATE FUNCTION maintrack_qa_permanent.counter_state() RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT COALESCE(jsonb_agg(jsonb_build_object('employee_code',employee_code,'fail_count',fail_count,'updated_at',updated_at,'blocked_until',blocked_until) ORDER BY employee_code),'[]'::jsonb) FROM qa_security_final_20261025.mt_login_attempts WHERE employee_code IN('90000001','90000002') $$;
 CREATE FUNCTION maintrack_qa_permanent.open_window(p_id uuid,p_cap text,p_plan text,p_seconds int) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 BEGIN
@@ -90,6 +91,7 @@ CREATE POLICY qa_private_worker ON maintrack_qa_permanent.events TO maintrack_qa
 CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.mt_users TO maintrack_qa_permanent_executor USING(employee_code IN('90000001','90000002') AND starts_with(name,'QA_FINAL_'));
 CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.mt_login_attempts TO maintrack_qa_permanent_executor USING(employee_code IN('90000001','90000002'));
 CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.mt_sessions TO maintrack_qa_permanent_executor USING(user_id IN(SELECT id FROM qa_security_final_20261025.mt_users WHERE employee_code IN('90000001','90000002')));
+ALTER FUNCTION maintrack_qa_permanent.owns_session(text) OWNER TO maintrack_qa_permanent_executor;
 ALTER FUNCTION maintrack_qa_permanent.is_open() OWNER TO maintrack_qa_permanent_executor;
 ALTER FUNCTION maintrack_qa_permanent.counter_state() OWNER TO maintrack_qa_permanent_executor;
 ALTER FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) OWNER TO maintrack_qa_permanent_executor;
@@ -105,13 +107,13 @@ CREATE TRIGGER qa_lease_statement BEFORE INSERT OR UPDATE OR DELETE OR TRUNCATE 
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA maintrack_qa_permanent FROM PUBLIC;
 REVOKE ALL ON PROCEDURE maintrack_qa_permanent.tick() FROM PUBLIC;
 GRANT USAGE ON SCHEMA maintrack_qa_permanent TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime,maintrack_qa_cleanup_worker;
-GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.is_open(),maintrack_qa_permanent.admit(text) TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime;
+GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.owns_session(text),maintrack_qa_permanent.is_open(),maintrack_qa_permanent.admit(text) TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime;
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.mutate(text,text,text) TO maintrack_qa_final_runtime;
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) TO maintrack_qa_cleanup_worker;
 GRANT EXECUTE ON PROCEDURE maintrack_qa_permanent.tick() TO maintrack_qa_cleanup_worker;
 REVOKE INSERT,UPDATE,DELETE ON qa_security_final_20261025.mt_users,qa_security_final_20261025.mt_sessions,qa_security_final_20261025.mt_login_attempts FROM maintrack_qa_final_runtime;
 -- Restrictive policies compose with existing runtime policies, never replace them.
 CREATE POLICY qa_permanent_users ON qa_security_final_20261025.mt_users AS RESTRICTIVE TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime USING(maintrack_qa_permanent.is_open() AND employee_code IN('90000001','90000002'));
-CREATE POLICY qa_permanent_sessions ON qa_security_final_20261025.mt_sessions AS RESTRICTIVE TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime USING(maintrack_qa_permanent.is_open() AND expires_at>clock_timestamp());
+CREATE POLICY qa_permanent_sessions ON qa_security_final_20261025.mt_sessions AS RESTRICTIVE TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime USING(maintrack_qa_permanent.is_open() AND expires_at>clock_timestamp() AND maintrack_qa_permanent.owns_session(token_hash));
 CREATE POLICY qa_permanent_counters ON qa_security_final_20261025.mt_login_attempts AS RESTRICTIVE TO maintrack_qa_final_runtime USING(maintrack_qa_permanent.is_open() AND employee_code IN('90000001','90000002'));
 COMMIT;
