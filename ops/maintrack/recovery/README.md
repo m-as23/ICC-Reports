@@ -17,15 +17,23 @@ The owner independently verified the existing `maintrack_qa_recovery` Session Po
 
 The native runner now accepts explicit `--transport qa-session-pooler`: the endpoint is pinned to the observed QA pooler `aws-1-eu-central-1.pooler.supabase.com:5432` and the pooler user to `postgres.szhstrafzkxzstjdcynl`; TLS `verify-full` and a live QA scope assertion remain mandatory. There is no automatic fallback. The default remains direct QA host. A safe noninteractive named-service probe returned `no password supplied`; this process has not received a protected unattended credential provider. Do not read the owner's password-reference file or pass a password in argv, evidence or environment output. An operator may perform interactive schema capture from an ordinary terminal using the approved service; unattended restore readiness remains BLOCKED until its secure credential channel and exact restore permissions are verified.
 
+### Capture TLS correction
+
+The owner's `pg_stat_ssl.ssl=false` observation is the pooler-to-PostgreSQL leg. It does not contradict client-to-pooler TLS1.3, but client `verify-full` cannot certify that backend leg. Read-only official CLI `ssl-enforcement get` confirmed `currentConfig.database=false`. No setting was changed. Supabase documents that SSL enforcement governs both shared-pooler legs and requires a database restart; changing it is outside this task.
+
+Capture now defaults to **direct** with pinned `user=postgres`, overriding the pooler-specific username inherited from the service. It retains `sslmode=verify-full`, the service's existing CA configuration, and the mandatory backend SSL check before `pg_dump`. The capture manifest records client verification separately from the PostgreSQL TLS observation. Native/optional PowerShell recovery preflight also rejects absent backend TLS.
+
+Actual direct probe: DNS supplies IPv6 only, but TCP returned `ENETUNREACH`; no IPv6 default route was visible. Direct TLS/certificate validation remains NOT TESTED. The corrected command stops before password prompts or output directory creation while direct TCP is unavailable. It does not switch to the pooler automatically. Use an already trusted IPv6-capable network to reach the official direct endpoint; no paid add-on, VPN/tunnel or project setting was configured. The official IPv4 alternative is session pooling, but its currently observed unencrypted backend leg fails this policy. An explicit pooler selection never bypasses the backend SSL guard.
+
 ### One-command interactive read-only schema capture
 
 From an ordinary PowerShell terminal with the verified user PATH:
 
 ```powershell
-node D:\MainTrack-Android-QA\integration-candidate\ops\maintrack\recovery\capture-qa-schema.mjs --mode Capture --execute-readonly yes
+node D:\MainTrack-Android-QA\integration-candidate\ops\maintrack\recovery\capture-qa-schema.mjs --mode Capture --execute-readonly yes --transport direct
 ```
 
-Without those mode/execute flags, the command only prints a safe DryRun plan. It neither writes a snapshot nor connects. The capture command uses the existing `maintrack_qa_recovery` service but overrides host, port, pooler project username, database and TLS to the reviewed exact QA values. It asks for the same QA PostgreSQL password **twice**, directly through official `psql` and `pg_dump` terminal prompts; Node never reads or stores it. Do not paste the password into the command itself or this conversation. Two prompts avoid exporting a password between independent official clients.
+Without those mode/execute flags, the command only prints a safe DryRun plan. It neither writes a snapshot nor connects. Capture uses the existing `maintrack_qa_recovery` service, with explicit QA host, port, direct username, database and TLS. After direct TCP is reachable, it asks for the QA PostgreSQL password **twice**, directly through official `psql` and `pg_dump` terminal prompts; Node never reads or stores it. The first client must actually confirm backend TLS before the dump starts. Do not paste the password into the command itself or this conversation. Two prompts avoid exporting a password between independent official clients.
 
 The command creates a new directory below `D:\MainTrack-QA-Recovery` with inheritance disabled and current-user/SYSTEM-only ACL, then captures a read-only QA identity/catalog attestation and a schema-only custom archive. No existing snapshot is overwritten. Existing ownership/ACL/RLS/trigger definitions are retained in the archive; it does not use `--no-owner` or `--no-acl`. The archive index and SHA-256 file manifest are generated locally. On a timeout, authentication error or other failure, it stops without retry and preserves an INCOMPLETE/failure manifest. Local synthetic contract tests do not prove capture or restore success.
 

@@ -1,6 +1,6 @@
 // Standalone native Node runner. No MCP dependency, no Windows policy changes.
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {spawnSync} from 'node:child_process';
-import {qaConnection} from './qa-connection.mjs';
+import {qaConnection,requireBackendTls} from './qa-connection.mjs';
 const REF='szhstrafzkxzstjdcynl';
 const args=process.argv.slice(2),opt={};for(let i=0;i<args.length;i+=2){if(!args[i]?.startsWith('--')||args[i+1]===undefined)throw Error('INVALID_ARGUMENTS');opt[args[i].slice(2)]=args[i+1];}
 const mode=opt.mode||'Preflight';if(!['Preflight','DryRun','Restore'].includes(mode))throw Error('INVALID_MODE');
@@ -24,8 +24,8 @@ try{
  else{
   if(opt.service){
    connection=qaConnection(opt.service,opt.transport||'direct');report.transport=opt.transport||'direct';
-   const sql="BEGIN READ ONLY;SELECT json_build_object('projectRef',(SELECT project_ref FROM qa_security_final_20261025.qa_scope WHERE singleton),'createRole',(SELECT rolcreaterole FROM pg_roles WHERE rolname=current_user),'schemaCreate',has_schema_privilege(current_user,'qa_security_final_20261025','CREATE'),'cleanupMember',pg_has_role(current_user,'maintrack_qa_cleanup_worker','MEMBER'));ROLLBACK;";
-   try{const data=JSON.parse(tool(opt.psql||'psql',['-X','-q','-t','-A','--no-password','--set','ON_ERROR_STOP=1','--dbname',connection,'--command',sql]));if(data.projectRef!==REF)throw Error('WRONG_PROJECT');report.sqlAccess='VERIFIED_READ_ONLY';report.sqlCapabilities={createRole:data.createRole,schemaCreate:data.schemaCreate,cleanupMember:data.cleanupMember};}catch{report.errors.push('SQL_READ_ACCESS_NOT_VERIFIED');}
+   const sql="BEGIN READ ONLY;SELECT json_build_object('projectRef',(SELECT project_ref FROM qa_security_final_20261025.qa_scope WHERE singleton),'backendSsl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'backendProtocol',(SELECT version FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'createRole',(SELECT rolcreaterole FROM pg_roles WHERE rolname=current_user),'schemaCreate',has_schema_privilege(current_user,'qa_security_final_20261025','CREATE'),'cleanupMember',pg_has_role(current_user,'maintrack_qa_cleanup_worker','MEMBER'));ROLLBACK;";
+   try{const data=JSON.parse(tool(opt.psql||'psql',['-X','-q','-t','-A','--no-password','--set','ON_ERROR_STOP=1','--dbname',connection,'--command',sql]));if(data.projectRef!==REF)throw Error('WRONG_PROJECT');report.sqlTls=requireBackendTls(data);report.sqlAccess='VERIFIED_READ_ONLY';report.sqlCapabilities={createRole:data.createRole,schemaCreate:data.schemaCreate,cleanupMember:data.cleanupMember};}catch(e){report.errors.push(e.message==='BACKEND_TLS_REQUIRED'?'BACKEND_TLS_REQUIRED':'SQL_READ_ACCESS_NOT_VERIFIED');}
   }else report.errors.push('QA_NAMED_SERVICE_REQUIRED');
   if(report.tools.supabase){try{const rows=JSON.parse(tool(opt.supabase||'supabase',['functions','list','--project-ref',REF,'--output','json']));if(!Array.isArray(rows)||!['maintrack-security-qa-final','maintrack-security-qa-inventory'].every(n=>rows.some(x=>x.slug===n)))throw Error('FUNCTION_IDENTITY_MISMATCH');report.edgeRead='VERIFIED_METADATA_ONLY';}catch{report.errors.push('EDGE_READ_ACCESS_NOT_VERIFIED');}}else report.errors.push('SUPABASE_CLI_REQUIRED');
  }

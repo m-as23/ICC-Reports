@@ -8,8 +8,8 @@ export function capturePlan(options={}){
  if(options['source-commit']&&!/^[a-f0-9]{40}$/.test(options['source-commit']))throw Error('EXACT_SOURCE_COMMIT_REQUIRED');
  if(options.mode&&!['DryRun','Capture'].includes(options.mode))throw Error('INVALID_MODE');
  if(options.mode==='Capture'&&options['execute-readonly']!=='yes')throw Error('EXPLICIT_READONLY_CAPTURE_REQUIRED');
- const connection=qaConnection(options.service||'maintrack_qa_recovery','qa-session-pooler');
- return {projectRef:REF,mode:options.mode||'DryRun',connection,schemas:SCHEMAS,sourceCommit:options['source-commit']||null,
+ const transport=options.transport||'direct',connection=qaConnection(options.service||'maintrack_qa_recovery',transport);
+ return {projectRef:REF,mode:options.mode||'DryRun',transport,connection,schemas:SCHEMAS,sourceCommit:options['source-commit']||null,
   mutations:0,credentialHandling:'Official psql/pg_dump terminal prompts only; Node never reads credentials',
   prompts:2,atomicAcrossCatalogAndArchive:false,restoreAuthorized:false};
 }
@@ -21,7 +21,7 @@ DO $verify$ BEGIN
 END $verify$;
 SELECT json_build_object(
  'projectRef','${REF}','capturedUtc',clock_timestamp(),'database',current_database(),'sessionUser',session_user,
- 'serverVersion',current_setting('server_version'),'tlsProtocol',(SELECT version FROM pg_stat_ssl WHERE pid=pg_backend_pid()),
+ 'serverVersion',current_setting('server_version'),'backendSsl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'tlsProtocol',(SELECT version FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'tlsCipher',(SELECT cipher FROM pg_stat_ssl WHERE pid=pg_backend_pid()),
  'schemaScope',ARRAY['qa_security_final_20261025','qa_security_inventory_20261025','maintrack_qa_lease'],
  'schemas',(SELECT json_agg(json_build_object('name',nspname,'owner',pg_get_userbyid(nspowner),'acl',nspacl)) FROM pg_namespace WHERE nspname=ANY(ARRAY['qa_security_final_20261025','qa_security_inventory_20261025','maintrack_qa_lease'])),
  'functions',(SELECT json_agg(json_build_object('schema',n.nspname,'name',p.proname,'identityArgs',pg_get_function_identity_arguments(p.oid),'owner',pg_get_userbyid(p.proowner),'securityDefiner',p.prosecdef,'acl',p.proacl)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=ANY(ARRAY['qa_security_final_20261025','qa_security_inventory_20261025','maintrack_qa_lease'])),
@@ -35,6 +35,11 @@ ROLLBACK;`;
 export function runCapture(options={},run=spawnSync){
  const plan=capturePlan(options);if(plan.mode==='DryRun')return plan;
  if(process.platform!=='win32')throw Error('WINDOWS_RESTRICTED_CAPTURE_REQUIRED');
+ if(plan.transport==='direct'){
+  const probe=run(process.execPath,[fileURLToPath(new URL('./probe-qa-direct.mjs',import.meta.url))],{encoding:'utf8',windowsHide:true,timeout:12000,maxBuffer:65536});
+  let state;try{state=JSON.parse(probe.stdout);}catch{throw Error('DIRECT_NETWORK_PROBE_FAILED_NO_CAPTURE');}
+  if(probe.status!==0||state.projectRef!==REF||state.host!==`db.${REF}.supabase.co`||state.reachable!==true)throw Error('DIRECT_QA_NETWORK_UNAVAILABLE_NO_PASSWORD_PROMPT');
+ }
  const recoveryRoot=path.resolve('D:\\MainTrack-QA-Recovery');
  const out=path.resolve(options.output||path.join(recoveryRoot,`schema-capture-${new Date().toISOString().replace(/[:.]/g,'-')}`));
  if(!out.toLowerCase().startsWith((recoveryRoot+path.sep).toLowerCase())||fs.existsSync(out))throw Error('NEW_RECOVERY_SUBDIRECTORY_REQUIRED');
@@ -52,6 +57,8 @@ export function runCapture(options={},run=spawnSync){
  if(psql.status!==0){report.status='CATALOG_CAPTURE_FAILED';save();throw Error('CATALOG_CAPTURE_FAILED_NO_RETRY');}
  const catalog=JSON.parse(fs.readFileSync(path.join(out,'catalog.json'),'utf8').trim());
  if(catalog.projectRef!==REF||catalog.database!=='postgres'||catalog.schemas?.length!==SCHEMAS.length){report.status='IDENTITY_OR_SCHEMA_SCOPE_MISMATCH';save();throw Error('CAPTURE_IDENTITY_MISMATCH');}
+ if(catalog.backendSsl!==true||!['TLSv1.2','TLSv1.3'].includes(catalog.tlsProtocol)){report.status='BACKEND_TLS_UNVERIFIED';save();throw Error('BACKEND_TLS_REQUIRED_BEFORE_DUMP');}
+ report.tlsEvidence={transport:plan.transport,clientVerification:'libpq sslmode=verify-full',backendSsl:catalog.backendSsl,backendProtocol:catalog.tlsProtocol,scope:plan.transport==='direct'?'Direct client-to-PostgreSQL connection':'PostgreSQL sees pooler-to-backend leg; client-to-pooler verification is separate'};
  const dump=run(options['pg-dump']||'pg_dump.exe',['--password','--dbname',plan.connection,'--schema-only','--format=custom','--lock-wait-timeout=10s',...SCHEMAS.flatMap(x=>['--schema',x]),'--file',path.join(out,'schema.dump')],{stdio:'inherit',windowsHide:false,timeout:240000});
  if(dump.status!==0){report.status='SCHEMA_CAPTURE_FAILED';save();throw Error('SCHEMA_CAPTURE_FAILED_NO_RETRY');}
  const list=run(options['pg-restore']||'pg_restore.exe',['--list',path.join(out,'schema.dump')],{encoding:'utf8',windowsHide:true,timeout:30000,maxBuffer:8*1024*1024});
