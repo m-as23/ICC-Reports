@@ -11,3 +11,11 @@ Observed: main and release/maintrack-047-final-20261024 have no classic protecti
 5. Require the successful candidate-bound release gate upstream of every enabled operational signing/publishing entrypoint; disable alternative publication paths or enforce the same gate, after owner review. Do not enable cloud schedules.
 
 Local gate tests cover readiness of all five findings, mandatory cases, artifact/source and build provenance, cleanup and rejection of self-asserted approvals. These tests do not prove GitHub administration or publishing enforcement. MT-SEC-005 remains PARTIAL, not closed. No owner administration, CI dispatch, signing, merge or deployment performed.
+
+## Standing authorization follow-up
+
+Read-only approval verifier and exact native APK entry hashing are now implemented in security-regression/platform_approval.py, with three focused local tests. release_gate.py --platform-run accepts no approval JSON from evidence. This is NOT a completed trusted publishing integration: independently reviewed workflow ordering and immutable build-artifact/run association must be proven before enabling signing. No live owner approval was available or manufactured. The verifier is a building block, not authorization to release.
+
+Only m-as23 is currently a repository collaborator. The proposed independent review and prevent-self-review requirements cannot be made usable until a separate authorized reviewer/build initiator is established. Therefore do not apply protection in a way that strands the owner permanently. New standing authorization permits application after these prerequisites, but does not manufacture a second reviewer.
+
+Push safety: GitHub trigger review excludes the integration branch from signing workflows and hooks list is empty. Vercel's connected project response did not expose its git production-branch/automatic-deployment policy; no reliable proof of absence of all operational auto-deployment was available. Do not push under the user's conditional authorization until this missing policy is verified. No CI success on the new commit is claimed.
