@@ -40,11 +40,14 @@ async function issue(u,c=pool){const token=randomBytes(32).toString('hex');await
 // Controller bounds supplement, never replace, the server lease/expiry.
 export function qaWindowHarness({now=Date.now,sleep=ms=>new Promise(r=>setTimeout(r,ms)),send}){
  const started=now(),deadline=started+1200000;let count=0,last=null,halted=false;
- return {get state(){return {started,deadline,count,halted};},async request(url,options){
+ const run=async operation=>{
   if(halted||count>=60||now()>=deadline)throw Error('QA_WINDOW_CLOSED');
-  const u=new URL(url);if(u.origin!=='https://szhstrafzkxzstjdcynl.supabase.co'||!['/functions/v1/maintrack-security-qa-final/api','/functions/v1/maintrack-security-qa-inventory'].includes(u.pathname)||u.search||u.hash||u.username||u.password)throw Error('QA_TARGET_DENIED');
   if(last!==null)await sleep(Math.max(0,2600-(now()-last)));
   if(now()>=deadline)throw Error('QA_WINDOW_CLOSED');count++;
-  try{return await send(url,{...options,redirect:'error'});}catch{halted=true;throw Error('QA_AMBIGUOUS_REQUEST_NO_RETRY');}finally{last=now();}
- },close(){halted=true;}};
+  try{return await operation();}catch{halted=true;throw Error('QA_AMBIGUOUS_REQUEST_NO_RETRY');}finally{last=now();}
+ };
+ return {get state(){return {started,deadline,count,halted};},async request(url,options){
+  const u=new URL(url);if(u.origin!=='https://szhstrafzkxzstjdcynl.supabase.co'||!['/functions/v1/maintrack-security-qa-final/api','/functions/v1/maintrack-security-qa-inventory'].includes(u.pathname)||u.search||u.hash||u.username||u.password)throw Error('QA_TARGET_DENIED');
+  return run(()=>send(url,{...options,redirect:'error',signal:AbortSignal.timeout(20000)}));
+ },async external(projectRef,operation){if(projectRef!=='szhstrafzkxzstjdcynl')throw Error('QA_TARGET_DENIED');return run(operation);},close(){halted=true;}};
 }

@@ -14,3 +14,5 @@ test('offline bundle retains isolation modules and routes Logout before auth',as
  assert.ok(index.includes("a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b)"));
  assert.ok(index.includes('withQaIsolation'));assert.equal(out.files.find(f=>f.name==='channel.mjs').content,baseline.files[2].content);assert.equal(out.deploy,false);
 });
+
+test('management and application attempts share one non-resettable budget',async()=>{let clock=0;const h=qaWindowHarness({now:()=>clock,sleep:async n=>{clock+=n;},send:async()=>({status:200})});await h.external('szhstrafzkxzstjdcynl',async()=>({preflight:true}));await h.request('https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api',{});assert.equal(h.state.count,2);assert.equal(clock,2600);await assert.rejects(()=>h.external('production',async()=>{}),/DENIED/);assert.equal(h.state.count,2);});
