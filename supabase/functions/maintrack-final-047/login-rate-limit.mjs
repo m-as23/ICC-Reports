@@ -12,12 +12,14 @@ export function trustedLoginSource(info,env){
  if(version===6){const normalized=new URL('http://['+host+']/').hostname.slice(1,-1);const [left,right]=normalized.split('::');const a=left?left.split(':'):[],b=right?right.split(':'):[];const words=right!==undefined?[...a,...Array(8-a.length-b.length).fill('0'),...b]:a;const n=words.map(x=>parseInt(x,16));if(n.slice(0,5).every(x=>x===0)&&n[5]===65535){host=[n[6]>>>8,n[6]&255,n[7]>>>8,n[7]&255].join('.');}else{host=n.slice(0,4).map(x=>x.toString(16)).join(':')+'::/64';}}
  return createHash('sha256').update('maintrack-login-source-v1:'+host).digest('hex');
 }
+const outstandingByPool=new WeakMap();
 export async function withLoginBudget(pool,source,code,work){
  // Hosted callers deliberately omit source: no proxy/header identity is assumed.
  const hasSource=source!==undefined&&source!==null;
  if(hasSource&&(typeof source!=='string'||!/^[a-f0-9]{64}$/.test(source)))throw new LoginRateError('LOGIN_INGRESS_UNVERIFIED',503);
- const c=await pool.connect();let begun=false;
- try{
+ const outstanding=outstandingByPool.get(pool)||0;if(outstanding>=8)throw new LoginRateError('LOGIN_BUSY');outstandingByPool.set(pool,outstanding+1);
+ let c,begun=false;
+ try{c=await pool.connect();
  if(hasSource){
  // Reserve in a separate bounded transaction: failed credentials still consume
  // quota, while row contention cannot hold a pooled connection indefinitely.
@@ -38,5 +40,5 @@ export async function withLoginBudget(pool,source,code,work){
  let slot=false;for(let i=0;i<4;i++){if(await lock('maintrack-login-slot:'+i)){slot=true;break;}}if(!slot)throw new LoginRateError('LOGIN_BUSY');
  let result;try{result=await work(c);}catch(e){if(e.code==='BAD_PW'){await c.query('COMMIT');begun=false;}throw e;}
  await c.query('COMMIT');begun=false;return result;
- }catch(e){if(begun)await c.query('ROLLBACK');if(['55P03','57014'].includes(e.code))throw new LoginRateError('LOGIN_BUSY');throw e;}finally{c.release();}
+ }catch(e){if(begun)await c.query('ROLLBACK');if(['55P03','57014'].includes(e.code))throw new LoginRateError('LOGIN_BUSY');throw e;}finally{try{c?.release();}finally{outstandingByPool.set(pool,(outstandingByPool.get(pool)||1)-1);}}
 }

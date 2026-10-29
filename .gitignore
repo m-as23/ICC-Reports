@@ -2,3 +2,4 @@ node_modules/
 audit-output/
 __pycache__/
 *.pyc
+/supabase/.temp/

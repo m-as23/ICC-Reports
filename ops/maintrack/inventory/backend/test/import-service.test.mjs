@@ -42,6 +42,7 @@ function environment(){
   if(sql.includes('INSERT INTO inv_lab.items')){events.push('staged-items:'+String(params.length/6));return {rows:[]};}
   if(sql.includes('inv_lab.seal_version'))return {rows:[]};
   if(sql.includes('INSERT INTO inv_lab.audit'))return {rows:[]};
+  if(sql.includes('UPDATE inv_lab.upload_intents'))return {rows:[]};
   if(sql.includes('source.excluded_at')){events.push('checked-restore-source');return {rows:[]};}
   if(sql.includes('inv_lab.publish_version')){assert.ok(events.includes('checked-restore-source'));events.push('published');return {rows:[{id:'10'}]};}
   throw Error('UNEXPECTED_TRANSACTION_QUERY');
@@ -49,6 +50,7 @@ function environment(){
  const pool={
   async connect(){return db;},
   async query(sql,params){
+   if(sql.includes('INSERT INTO inv_lab.upload_intents')){events.push('reserved-upload');return {rows:[]};}
    if(sql.includes('FROM inv_lab.versions WHERE id=$1'))return {rows:[{id:'10',baseVersionId:'9',fileSha256:currentSha,filename:'sample.xlsx',status:'pending',itemCount:120}]};
    if(sql.includes('FROM inv_lab.active a LEFT JOIN inv_lab.versions'))return {rows:[{versionId:'9',generation:'3',approvedAt:null,filename:'older.xlsx'}]};
    if(sql.includes('FROM inv_lab.compare_version'))return {rows:[{code:'PART-00001',change_type:'NEW',old_description:null,old_quantity:null,old_location:null,new_description:'Parker M700 inverter 65A 90L',new_quantity:0,new_location:'R-1'}]};
