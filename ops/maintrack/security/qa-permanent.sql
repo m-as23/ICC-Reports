@@ -26,7 +26,7 @@ DECLARE r maintrack_qa_permanent.windows;
 BEGIN
  IF session_user<>'maintrack_qa_b2_runtime' OR current_setting('role') NOT IN('maintrack_qa_final_runtime','maintrack_qa_inventory_runtime') THEN RAISE EXCEPTION 'QA_CALLER_DENIED'; END IF;
  SELECT * INTO r FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until FOR UPDATE;
- IF r.id IS NULL OR p_hash IS DISTINCT FROM r.cap_hash OR r.requests>=60 OR (r.last_request IS NOT NULL AND clock_timestamp()<r.last_request+interval '2.6 seconds') THEN RETURN false; END IF;
+ IF r.id IS NULL OR clock_timestamp()>=r.admit_until OR p_hash IS DISTINCT FROM r.cap_hash OR r.requests>=60 OR (r.last_request IS NOT NULL AND clock_timestamp()<r.last_request+interval '2.6 seconds') THEN RETURN false; END IF;
  UPDATE maintrack_qa_permanent.windows SET requests=requests+1,last_request=clock_timestamp() WHERE id=r.id;RETURN true;
 END $$;
 CREATE FUNCTION maintrack_qa_permanent.mutate(p_op text,p_code text,p_hash text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
