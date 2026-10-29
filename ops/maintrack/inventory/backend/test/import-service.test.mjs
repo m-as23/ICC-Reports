@@ -37,6 +37,7 @@ function environment(){
  };
  const db={async query(sql,params){
   if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return {rows:[]};
+  if(sql.includes('SELECT state FROM inv_lab.upload_intents'))return {rows:[{state:'RESERVED'}]};
   if(sql.includes('FROM inv_lab.active WHERE singleton=true'))return {rows:[{id:'9'}]};
   if(sql.includes('INSERT INTO inv_lab.versions')){events.push('created-pending');return {rows:[{id:'10'}]};}
   if(sql.includes('INSERT INTO inv_lab.items')){events.push('staged-items:'+String(params.length/6));return {rows:[]};}

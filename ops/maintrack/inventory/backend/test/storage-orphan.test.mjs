@@ -4,6 +4,7 @@ function fixture({missingJournal=false,uploadLost=false,commitLost=false,dbFailu
  const db={release(){},async query(q,p=[]){
   if(q==='BEGIN'||q==='ROLLBACK')return {rows:[]};
   if(q==='COMMIT'){if(commitLost)throw Object.assign(Error('lost commit reply'),{code:'ECONNRESET'});return {rows:[]};}
+  if(q.includes('SELECT state FROM inv_lab.upload_intents'))return {rows:[{state:intents.get(p[0])?.state}]};
   if(q.includes('FROM inv_lab.active'))return {rows:[{id:'9'}]};
   if(q.includes('INSERT INTO inv_lab.versions')){if(dbFailure)throw Error('synthetic stage failure');versions.set('10',p[3]);return {rows:[{id:'10'}]};}
   if(q.includes('UPDATE inv_lab.upload_intents')){intents.set(p[0],{...intents.get(p[0]),state:'ATTACHED',version_id:p[1]});return {rows:[]};}
