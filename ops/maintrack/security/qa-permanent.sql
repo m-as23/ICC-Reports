@@ -3,14 +3,16 @@ BEGIN;
 CREATE ROLE maintrack_qa_permanent_executor NOLOGIN NOINHERIT;
 CREATE SCHEMA maintrack_qa_permanent;
 REVOKE ALL ON SCHEMA maintrack_qa_permanent FROM PUBLIC;
-CREATE TABLE maintrack_qa_permanent.windows(id uuid PRIMARY KEY,admit_until timestamptz NOT NULL,state text NOT NULL CHECK(state IN('ARMED','RECOVERING','FAILED','COMPLETE')),cap_hash text NOT NULL,plan_hash text NOT NULL,attempts int NOT NULL DEFAULT 0,requests int NOT NULL DEFAULT 0,last_request timestamptz,issued int NOT NULL DEFAULT 0,baseline jsonb NOT NULL,error text,started_at timestamptz NOT NULL DEFAULT clock_timestamp());
+CREATE TABLE maintrack_qa_permanent.windows(id uuid PRIMARY KEY,admit_until timestamptz NOT NULL,state text NOT NULL CHECK(state IN('ARMED','RECOVERING','FAILED','COMPLETE')),cap_hash text NOT NULL UNIQUE,plan_hash text NOT NULL,attempts int NOT NULL DEFAULT 0,requests int NOT NULL DEFAULT 0,last_request timestamptz,issued int NOT NULL DEFAULT 0,baseline jsonb NOT NULL,error text,started_at timestamptz NOT NULL DEFAULT clock_timestamp());
 CREATE UNIQUE INDEX one_pending_qa_window ON maintrack_qa_permanent.windows((true)) WHERE state<>'COMPLETE';
 CREATE TABLE maintrack_qa_permanent.sessions(window_id uuid REFERENCES maintrack_qa_permanent.windows,token_hash text PRIMARY KEY);
 CREATE TABLE maintrack_qa_permanent.events(at timestamptz DEFAULT clock_timestamp(),window_id uuid,kind text,detail text);
 ALTER TABLE maintrack_qa_permanent.windows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintrack_qa_permanent.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintrack_qa_permanent.events ENABLE ROW LEVEL SECURITY;
-CREATE FUNCTION maintrack_qa_permanent.is_open() RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until) $$;
+CREATE TABLE maintrack_qa_permanent.health(singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),heartbeat timestamptz NOT NULL);
+ALTER TABLE maintrack_qa_permanent.health ENABLE ROW LEVEL SECURITY;
+CREATE FUNCTION maintrack_qa_permanent.is_open() RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until AND EXISTS(SELECT 1 FROM maintrack_qa_permanent.health WHERE heartbeat>clock_timestamp()-interval '90 seconds')) $$;
 CREATE FUNCTION maintrack_qa_permanent.owns_session(p_hash text) RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM maintrack_qa_permanent.sessions s JOIN maintrack_qa_permanent.windows w ON w.id=s.window_id WHERE s.token_hash=p_hash AND w.state='ARMED' AND clock_timestamp()<w.admit_until) $$;
 CREATE FUNCTION maintrack_qa_permanent.counter_state() RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT COALESCE(jsonb_agg(jsonb_build_object('employee_code',employee_code,'fail_count',fail_count,'updated_at',updated_at,'blocked_until',blocked_until) ORDER BY employee_code),'[]'::jsonb) FROM qa_security_final_20261025.mt_login_attempts WHERE employee_code IN('90000001','90000002') $$;
 CREATE FUNCTION maintrack_qa_permanent.open_window(p_id uuid,p_cap text,p_plan text,p_seconds int) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
@@ -20,13 +22,14 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM qa_security_final_20261025.qa_scope WHERE singleton AND project_ref='szhstrafzkxzstjdcynl') THEN RAISE EXCEPTION 'QA_PROJECT_MISMATCH'; END IF;
  IF (SELECT count(*) FROM qa_security_final_20261025.mt_users WHERE employee_code IN('90000001','90000002') AND starts_with(name,'QA_FINAL_') AND active AND NOT must_change)<>2 THEN RAISE EXCEPTION 'QA_ACTOR_MISMATCH'; END IF;
  IF EXISTS(SELECT 1 FROM qa_security_final_20261025.mt_sessions s JOIN qa_security_final_20261025.mt_users u ON u.id=s.user_id WHERE u.employee_code IN('90000001','90000002') AND s.expires_at>clock_timestamp()) THEN RAISE EXCEPTION 'QA_EXISTING_ACTOR_SESSION'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM maintrack_qa_permanent.health WHERE heartbeat>clock_timestamp()-interval '90 seconds') THEN RAISE EXCEPTION 'QA_SCHEDULER_STALE'; END IF;
  INSERT INTO maintrack_qa_permanent.windows(id,admit_until,state,cap_hash,plan_hash,baseline) VALUES(p_id,clock_timestamp()+make_interval(secs=>p_seconds),'ARMED',p_cap,p_plan,maintrack_qa_permanent.counter_state());
 END $$;
 CREATE FUNCTION maintrack_qa_permanent.admit(p_hash text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE r maintrack_qa_permanent.windows;
 BEGIN
  IF session_user<>'maintrack_qa_b2_runtime' OR current_setting('role') NOT IN('maintrack_qa_final_runtime','maintrack_qa_inventory_runtime') THEN RAISE EXCEPTION 'QA_CALLER_DENIED'; END IF;
- SELECT * INTO r FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until FOR UPDATE;
+ SELECT * INTO r FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until AND maintrack_qa_permanent.is_open() FOR UPDATE;
  IF r.id IS NULL OR clock_timestamp()>=r.admit_until OR p_hash IS DISTINCT FROM r.cap_hash OR r.requests>=60 OR (r.last_request IS NOT NULL AND clock_timestamp()<r.last_request+interval '2.6 seconds') THEN RETURN false; END IF;
  UPDATE maintrack_qa_permanent.windows SET requests=requests+1,last_request=clock_timestamp() WHERE id=r.id;RETURN true;
 END $$;
@@ -34,7 +37,7 @@ CREATE FUNCTION maintrack_qa_permanent.mutate(p_op text,p_code text,p_hash text)
 DECLARE r maintrack_qa_permanent.windows; actor record;
 BEGIN
  IF session_user<>'maintrack_qa_b2_runtime' OR current_setting('role')<>'maintrack_qa_final_runtime' THEN RAISE EXCEPTION 'QA_CALLER_DENIED'; END IF;
- SELECT * INTO STRICT r FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until FOR UPDATE;
+ SELECT * INTO STRICT r FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until AND maintrack_qa_permanent.is_open() FOR UPDATE;
  IF clock_timestamp()>=r.admit_until THEN RAISE EXCEPTION 'QA_LEASE_EXPIRED'; END IF;
  IF p_op='revoke' THEN
   IF NOT EXISTS(SELECT 1 FROM maintrack_qa_permanent.sessions WHERE window_id=r.id AND token_hash=p_hash) THEN RAISE EXCEPTION 'QA_TOKEN_NOT_OWNED'; END IF;
@@ -56,6 +59,7 @@ CREATE PROCEDURE maintrack_qa_permanent.tick() LANGUAGE plpgsql SECURITY INVOKER
 DECLARE r record; problem text;
 BEGIN
  IF NOT pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') THEN RAISE EXCEPTION 'QA_WORKER_DENIED'; END IF;
+ INSERT INTO maintrack_qa_permanent.health(singleton,heartbeat) VALUES(true,clock_timestamp()) ON CONFLICT(singleton) DO UPDATE SET heartbeat=EXCLUDED.heartbeat;COMMIT;
  FOR r IN SELECT * FROM maintrack_qa_permanent.windows WHERE state<>'COMPLETE' AND admit_until<=clock_timestamp() AND attempts<2 LOOP
   UPDATE maintrack_qa_permanent.windows SET state='RECOVERING',attempts=attempts+1 WHERE id=r.id;COMMIT;
   BEGIN
@@ -85,6 +89,7 @@ CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.qa_scope FOR S
 GRANT SELECT(id,employee_code,name,active,must_change,token_version) ON qa_security_final_20261025.mt_users TO maintrack_qa_permanent_executor;
 GRANT SELECT,INSERT,UPDATE,DELETE ON qa_security_final_20261025.mt_login_attempts TO maintrack_qa_permanent_executor;
 GRANT SELECT,INSERT,DELETE ON qa_security_final_20261025.mt_sessions TO maintrack_qa_permanent_executor;
+CREATE POLICY qa_private_worker ON maintrack_qa_permanent.health TO maintrack_qa_permanent_executor,maintrack_qa_cleanup_worker USING(true) WITH CHECK(true);
 CREATE POLICY qa_private_worker ON maintrack_qa_permanent.windows TO maintrack_qa_permanent_executor,maintrack_qa_cleanup_worker USING(true) WITH CHECK(true);
 CREATE POLICY qa_private_worker ON maintrack_qa_permanent.sessions TO maintrack_qa_permanent_executor,maintrack_qa_cleanup_worker USING(true) WITH CHECK(true);
 CREATE POLICY qa_private_worker ON maintrack_qa_permanent.events TO maintrack_qa_permanent_executor,maintrack_qa_cleanup_worker USING(true) WITH CHECK(true);
