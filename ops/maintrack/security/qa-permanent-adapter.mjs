@@ -1,0 +1,8 @@
+import {createHash} from 'node:crypto';
+export function permanentHarness(pool){let halted=false;return {async ready(){const r=await pool.query("SELECT maintrack_qa_permanent.is_open() AS active,session_user='maintrack_qa_b2_runtime' AS login,current_user='maintrack_qa_final_runtime' AS role,NOT pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') AS isolated,EXISTS(SELECT 1 FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE p.oid='maintrack_qa_permanent.mutate(text,text,text)'::regprocedure AND r.rolname='maintrack_qa_permanent_executor' AND NOT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND p.prosecdef) AS owner");const {active,...checks}=r.rows[0];return {compatible:Object.values(checks).every(x=>x===true),active,checks};},async mutate(c,op,code,hash=null){if(halted)throw Error('QA_HALTED');try{return await c.query('SELECT maintrack_qa_permanent.mutate($1,$2,$3)',[op,code,hash]);}catch(e){if(!e.code||['ECONNRESET','ETIMEDOUT','08006'].includes(e.code))halted=true;throw e;}}};}
+export function permanentChannel(pool){return {async activeAuthorized(){return (await pool.query('SELECT maintrack_qa_permanent.is_open() AS active')).rows[0].active;},wrap:handler=>async req=>{
+ try{const cap=req.headers.get('x-maintrack-qa-capability')||'';if(!/^[a-f0-9]{64}$/.test(cap))return new Response('QA_CLOSED',{status:403});
+ const hash=createHash('sha256').update(cap).digest('hex');if(!(await pool.query('SELECT maintrack_qa_permanent.admit($1) AS admitted',[hash])).rows[0].admitted)return new Response('QA_CLOSED',{status:423});
+ if(req.method!=='POST')return new Response('QA_METHOD_DENIED',{status:405});return await handler(req);
+ }catch{return new Response('QA_UNAVAILABLE',{status:503});}
+ }};}
