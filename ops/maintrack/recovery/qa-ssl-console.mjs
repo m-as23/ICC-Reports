@@ -6,6 +6,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {createInterface} from 'node:readline/promises';
 import {qaConnection} from './qa-connection.mjs';
+import {runTerminal} from './terminal-process.mjs';
 export const QA_REF='szhstrafzkxzstjdcynl';
 export const OWNER_SHA='a4920385692c72921f4fdcce546ec4ffcb140bffddf13a13f20d5dff2c7132b1';
 export const ACK='QA_CONFIG_ONLY_REBOOT:'+QA_REF;
@@ -111,12 +112,12 @@ function owner(budget){
  return OWNER_SHA;
 }
 function getConfig(budget){try{return config(JSON.parse(budget.dispatch(cliArgs('ssl-enforcement','get'))));}catch(e){throw Error(/^[A-Z_]+$/.test(e.message)?e.message:'SSL_CONFIG_UNREADABLE');}}
-function readMetadata(p,dir,journal,save){
+async function readMetadata(p,dir,journal,save){
  spaceExternal(journal);
  const remaining=journal.deadlineMs-Date.now();if(remaining<30000)throw Error('MAINTENANCE_DEADLINE');
  journal.operations.push({command:'psql read-only aggregate',write:false,dispatchedUtc:new Date().toISOString()});save();
  const file=path.join(dir,'quiescence.json');
- const result=spawnSync('psql.exe',['-X','--password','-q','-t','-A','--set','ON_ERROR_STOP=1','--dbname',p.connection,'--command',metadataQuery,'--output',file],{stdio:'inherit',windowsHide:false,timeout:Math.min(120000,remaining)});
+ const result=await runTerminal('psql.exe',['-X','--password','-q','-t','-A','--set','ON_ERROR_STOP=1','--dbname',p.connection,'--command',metadataQuery,'--output',file],{stdio:'inherit',windowsHide:false,timeout:Math.min(120000,remaining)});
  journal.lastExternalFinishedMs=Date.now();save();
  if(result.error||result.status!==0)throw Error('INTERACTIVE_PREFLIGHT_FAILED_NO_RETRY');
  let m;try{m=JSON.parse(fs.readFileSync(file,'utf8').trim());}catch{throw Error('METADATA_UNREADABLE');}return requireMetadata(m);
@@ -155,7 +156,7 @@ async function execute(options){
   if(p.mode==='Maintenance'){
    const fd=fs.openSync(lock,'wx');try{fs.writeFileSync(fd,JSON.stringify({projectRef:QA_REF,runDirectory:dir,pid:process.pid,snapshotSha256:snapshotDigest})+'\n');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}lockOwned=true;
   }
-  const meta=readMetadata(p,dir,journal,save);journal.quiescenceSha256=sha(fs.readFileSync(path.join(dir,'quiescence.json')));journal.expiredSessionRowsRetained=meta.sessionRows;save();
+  const meta=await readMetadata(p,dir,journal,save);journal.quiescenceSha256=sha(fs.readFileSync(path.join(dir,'quiescence.json')));journal.expiredSessionRowsRetained=meta.sessionRows;save();
   if(p.mode==='Preflight'){journal.status='READ_ONLY_PREFLIGHT_PASSED_NOT_WRITE_PROOF';save();return {projectRef:QA_REF,status:journal.status,runDirectory:dir,snapshotSha256:snapshotDigest,cloudMutations:0};}
   if(getConfig(budget).database!==previous.database)throw Error('SSL_BASELINE_CHANGED');
   if(journal.deadlineMs-Date.now()<600000)throw Error('RECOVERY_AND_CAPTURE_RESERVE_REQUIRED');
@@ -165,7 +166,7 @@ async function execute(options){
   if(journal.deadlineMs-Date.now()<480000)throw Error('CAPTURE_RESERVE_EXHAUSTED');
   spaceExternal(journal);
   journal.operations.push({command:'existing strict schema capture via pooler',write:false,dispatchedUtc:new Date().toISOString()});save();
-  const result=spawnSync(process.execPath,[fileURLToPath(new URL('./capture-qa-schema.mjs',import.meta.url)),'--mode','Capture','--execute-readonly','yes','--transport','qa-session-pooler','--source-commit',journal.sourceCommit,'--output',path.join(dir,'capture')],{stdio:'inherit',windowsHide:false,timeout:Math.min(450000,journal.deadlineMs-Date.now())});
+  const result=await runTerminal(process.execPath,[fileURLToPath(new URL('./capture-qa-schema.mjs',import.meta.url)),'--mode','Capture','--execute-readonly','yes','--transport','qa-session-pooler','--source-commit',journal.sourceCommit,'--output',path.join(dir,'capture')],{stdio:'inherit',windowsHide:false,timeout:Math.min(450000,journal.deadlineMs-Date.now())});
   if(result.error||result.status!==0)throw Error('STRICT_CAPTURE_FAILED_NO_RETRY');
   const capture=JSON.parse(fs.readFileSync(path.join(dir,'capture','capture-manifest.json'),'utf8'));
   if(capture.projectRef!==QA_REF||capture.transport!=='qa-session-pooler'||capture.tlsEvidence?.backendSsl!==true||capture.status!=='CAPTURED_PENDING_SECRET_REVIEW_AND_LOCAL_RESTORE')throw Error('CAPTURE_ATTESTATION_INCOMPLETE');

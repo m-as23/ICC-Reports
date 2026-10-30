@@ -2,6 +2,7 @@
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
 import {qaConnection} from './qa-connection.mjs';
+import {runTerminal} from './terminal-process.mjs';
 const REF='szhstrafzkxzstjdcynl';
 export const SCHEMAS=['qa_security_final_20261025','qa_security_inventory_20261025','maintrack_qa_lease'];
 export function capturePlan(options={}){
@@ -32,7 +33,8 @@ SELECT json_build_object(
  'roleMemberships',(SELECT json_agg(json_build_object('role',pg_get_userbyid(roleid),'member',pg_get_userbyid(member),'adminOption',admin_option)) FROM pg_auth_members WHERE pg_get_userbyid(roleid) LIKE 'maintrack_qa_%' OR pg_get_userbyid(member) LIKE 'maintrack_qa_%')
 );
 ROLLBACK;`;
-export function runCapture(options={},run=spawnSync){
+export async function runCapture(options={},run=spawnSync){
+ const interactive=run===spawnSync?runTerminal:run;
  const plan=capturePlan(options);if(plan.mode==='DryRun')return plan;
  if(process.platform!=='win32')throw Error('WINDOWS_RESTRICTED_CAPTURE_REQUIRED');
  if(plan.transport==='direct'){
@@ -53,13 +55,13 @@ export function runCapture(options={},run=spawnSync){
  const save=()=>fs.writeFileSync(path.join(out,'capture-manifest.json'),JSON.stringify(report,null,2)+'\n');save();
  const argv=['-X','--password','-q','-t','-A','--set','ON_ERROR_STOP=1','--dbname',plan.connection,'--command',catalogQuery,'--output',path.join(out,'catalog.json')];
  // Terminal-only password prompts: no pipes, callbacks, readline, environment password, or stdout capture.
- const psql=run(options.psql||'psql.exe',argv,{stdio:'inherit',windowsHide:false,timeout:180000});
+ const psql=await interactive(options.psql||'psql.exe',argv,{stdio:'inherit',windowsHide:false,timeout:180000});
  if(psql.status!==0){report.status='CATALOG_CAPTURE_FAILED';save();throw Error('CATALOG_CAPTURE_FAILED_NO_RETRY');}
  const catalog=JSON.parse(fs.readFileSync(path.join(out,'catalog.json'),'utf8').trim());
  if(catalog.projectRef!==REF||catalog.database!=='postgres'||catalog.schemas?.length!==SCHEMAS.length){report.status='IDENTITY_OR_SCHEMA_SCOPE_MISMATCH';save();throw Error('CAPTURE_IDENTITY_MISMATCH');}
  if(catalog.backendSsl!==true||!['TLSv1.2','TLSv1.3'].includes(catalog.tlsProtocol)){report.status='BACKEND_TLS_UNVERIFIED';save();throw Error('BACKEND_TLS_REQUIRED_BEFORE_DUMP');}
  report.tlsEvidence={transport:plan.transport,clientVerification:'libpq sslmode=verify-full',backendSsl:catalog.backendSsl,backendProtocol:catalog.tlsProtocol,scope:plan.transport==='direct'?'Direct client-to-PostgreSQL connection':'PostgreSQL sees pooler-to-backend leg; client-to-pooler verification is separate'};
- const dump=run(options['pg-dump']||'pg_dump.exe',['--password','--dbname',plan.connection,'--schema-only','--format=custom','--lock-wait-timeout=10s',...SCHEMAS.flatMap(x=>['--schema',x]),'--file',path.join(out,'schema.dump')],{stdio:'inherit',windowsHide:false,timeout:240000});
+ const dump=await interactive(options['pg-dump']||'pg_dump.exe',['--password','--dbname',plan.connection,'--schema-only','--format=custom','--lock-wait-timeout=10s',...SCHEMAS.flatMap(x=>['--schema',x]),'--file',path.join(out,'schema.dump')],{stdio:'inherit',windowsHide:false,timeout:240000});
  if(dump.status!==0){report.status='SCHEMA_CAPTURE_FAILED';save();throw Error('SCHEMA_CAPTURE_FAILED_NO_RETRY');}
  const list=run(options['pg-restore']||'pg_restore.exe',['--list',path.join(out,'schema.dump')],{encoding:'utf8',windowsHide:true,timeout:30000,maxBuffer:8*1024*1024});
  if(list.status!==0){report.status='ARCHIVE_INDEX_FAILED';save();throw Error('ARCHIVE_INDEX_FAILED');}
@@ -69,6 +71,6 @@ export function runCapture(options={},run=spawnSync){
  return {projectRef:REF,output:out,status:report.status,mutations:0,files:report.files,restoreAuthorized:false};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{const options={};for(let i=2;i<process.argv.length;i+=2){if(!process.argv[i].startsWith('--')||!process.argv[i+1])throw Error('INVALID_ARGUMENTS');options[process.argv[i].slice(2)]=process.argv[i+1];}console.log(JSON.stringify(runCapture(options),null,2));}
+ try{const options={};for(let i=2;i<process.argv.length;i+=2){if(!process.argv[i].startsWith('--')||!process.argv[i+1])throw Error('INVALID_ARGUMENTS');options[process.argv[i].slice(2)]=process.argv[i+1];}console.log(JSON.stringify(await runCapture(options),null,2));}
  catch(e){console.error(/^[A-Z_]+$/.test(e.message)?e.message:'CAPTURE_FAILED_NO_SECRET_OUTPUT');process.exitCode=2;}
 }

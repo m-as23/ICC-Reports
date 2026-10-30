@@ -485,12 +485,15 @@
         "ops/maintrack/recovery/qa-ssl-console.mjs",
         "ops/maintrack/recovery/qa-connection.mjs",
         "ops/maintrack/recovery/capture-qa-schema.mjs",
-        "ops/maintrack/tests/qa-ssl-console.test.mjs"
+        "ops/maintrack/tests/qa-ssl-console.test.mjs",
+        "ops/maintrack/recovery/terminal-process.mjs",
+        "ops/maintrack/tests/terminal-process.test.mjs"
       ],
       "command": [
         "node",
         "--test",
-        "ops/maintrack/tests/qa-ssl-console.test.mjs"
+        "ops/maintrack/tests/qa-ssl-console.test.mjs",
+        "ops/maintrack/tests/terminal-process.test.mjs"
       ],
       "timeout": 15
     }
