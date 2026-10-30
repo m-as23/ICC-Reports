@@ -18,13 +18,20 @@ export async function withLoginBudget(pool,source,code,work){
  const hasSource=source!==undefined&&source!==null;
  if(hasSource&&(typeof source!=='string'||!/^[a-f0-9]{64}$/.test(source)))throw new LoginRateError('LOGIN_INGRESS_UNVERIFIED',503);
  const outstanding=outstandingByPool.get(pool)||0;if(outstanding>=8)throw new LoginRateError('LOGIN_BUSY');outstandingByPool.set(pool,outstanding+1);
- let c,begun=false;
+ let c,begun=false,connectionError,rejectConnection;
+ const connectionFailure=new Promise((_,reject)=>{rejectConnection=reject;});
+ // A checked-out node-pg client may emit an error while no query is pending.
+ // Contain server-side idle termination and reject the request without retry.
+ connectionFailure.catch(()=>{});
+ const onConnectionError=e=>{connectionError ||= e;rejectConnection(connectionError);};
  try{c=await pool.connect();
+ c.on?.('error',onConnectionError);
  if(hasSource){
  // Reserve in a separate bounded transaction: failed credentials still consume
  // quota, while row contention cannot hold a pooled connection indefinitely.
  await c.query('BEGIN');begun=true;
  await c.query("SET LOCAL statement_timeout='4000ms'");
+ await c.query("SET LOCAL idle_in_transaction_session_timeout='5s'");
  await c.query("SET LOCAL lock_timeout='750ms'");
  const quota=await c.query(`INSERT INTO public.mt_login_rate_guard(key_hash,window_start,attempts,updated_at) VALUES($1,now(),1,now()) ON CONFLICT(key_hash) DO UPDATE SET attempts=CASE WHEN mt_login_rate_guard.window_start<=now()-interval '5 minutes' THEN 1 ELSE LEAST(mt_login_rate_guard.attempts+1,301) END,window_start=CASE WHEN mt_login_rate_guard.window_start<=now()-interval '5 minutes' THEN now() ELSE mt_login_rate_guard.window_start END,updated_at=now() RETURNING attempts`,['login-source-v1:'+source]);
  await c.query('COMMIT');begun=false;
@@ -32,13 +39,16 @@ export async function withLoginBudget(pool,source,code,work){
  }
  await c.query('BEGIN');begun=true;
  await c.query("SET LOCAL statement_timeout='4000ms'");
+ await c.query("SET LOCAL idle_in_transaction_session_timeout='5s'");
  await c.query("SET LOCAL lock_timeout='750ms'");
  const lock=async key=>(await c.query('SELECT pg_try_advisory_xact_lock(hashtextextended($1,0)) AS locked',[key])).rows[0].locked;
  if(hasSource&&!await lock('maintrack-login-source:'+source))throw new LoginRateError('LOGIN_BUSY');
  // Reject duplicate account work before it can occupy shared work slots.
  if(!await lock('maintrack-login-account:'+code))throw new LoginRateError('LOGIN_BUSY');
  let slot=false;for(let i=0;i<4;i++){if(await lock('maintrack-login-slot:'+i)){slot=true;break;}}if(!slot)throw new LoginRateError('LOGIN_BUSY');
- let result;try{result=await work(c);}catch(e){if(e.code==='BAD_PW'){await c.query('COMMIT');begun=false;}throw e;}
+ let result;try{result=await Promise.race([Promise.resolve().then(()=>work(c)),connectionFailure]);}catch(e){if(e.code==='BAD_PW'&&!connectionError){await c.query('COMMIT');begun=false;}throw e;}
  await c.query('COMMIT');begun=false;return result;
- }catch(e){if(begun)await c.query('ROLLBACK');if(['55P03','57014'].includes(e.code))throw new LoginRateError('LOGIN_BUSY');throw e;}finally{try{c?.release();}finally{outstandingByPool.set(pool,(outstandingByPool.get(pool)||1)-1);}}
+ }catch(e){if(begun&&!connectionError){try{await c.query('ROLLBACK');}catch(rollbackError){connectionError ||= rollbackError;}}
+ if(['55P03','57014','25P03'].includes(e.code)||connectionError?.code==='25P03')throw new LoginRateError('LOGIN_BUSY');throw e;
+ }finally{try{c?.release(connectionError);}finally{c?.off?.('error',onConnectionError);outstandingByPool.set(pool,(outstandingByPool.get(pool)||1)-1);}}
 }

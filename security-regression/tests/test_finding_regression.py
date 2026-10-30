@@ -17,6 +17,10 @@ class FindingClosureTests(unittest.TestCase):
     self.assertEqual(self.result(record),'NO-GO')
 
 class DependencySelectionTests(unittest.TestCase):
+ def test_idle_recovery_source_selects_required_login_component(self):
+  cases=json.loads((pathlib.Path(__file__).resolve().parents[1]/'catalog.json').read_text())['cases']
+  self.assertIn('ops/maintrack/tests/login-idle-recovery.test.mjs',next(c for c in cases if c['id']=='login-rate-local')['inputs'])
+  self.assertIn('login-rate-local',select_impacted(cases,['ops/maintrack/tests/login-idle-recovery.test.mjs']))
  def test_lock_change_selects_parser_without_retesting_cron(self):
   cases=json.loads((pathlib.Path(__file__).resolve().parents[1]/'catalog.json').read_text())['cases']
   selected=select_impacted(cases,['ops/maintrack/inventory/backend/package-lock.json'])
@@ -25,6 +29,11 @@ class DependencySelectionTests(unittest.TestCase):
   self.assertNotIn('cleanup-postgres',selected)
 
 class FindingRunnerSafetyTests(unittest.TestCase):
+ def test_login_runner_discovers_idle_recovery_and_serializes_shared_fixture(self):
+  with patch.object(sys,'argv',['finding_tests.py','login']),patch.dict('os.environ',{'LOGIN_PG_URL':'postgresql://mt_local_admin@127.0.0.1:55438/maintrack_auth_local'}),patch.object(finding_tests,'resolve_node',return_value='node'),patch.object(finding_tests,'execute_bounded',return_value={'status':'PASS','output':''}) as execute,contextlib.redirect_stdout(io.StringIO()):
+   self.assertEqual(finding_tests.main(),0)
+   self.assertIn('ops/maintrack/tests/login-idle-recovery.test.mjs',execute.call_args.args[0])
+   self.assertIn('--test-concurrency=1',execute.call_args.args[0])
  def test_missing_remote_and_parameter_overridden_databases_never_execute(self):
   for url in ('','postgres://mt_local_admin@remote.invalid/maintrack_auth_local','postgres://mt_local_admin@127.0.0.1/maintrack_auth_local?host=remote.invalid','postgres://mt_local_admin@127.0.0.1/other_database'):
    with self.subTest(url=url),patch.object(sys,'argv',['finding_tests.py','login']),patch.dict('os.environ',{'LOGIN_PG_URL':url}),patch.object(finding_tests,'resolve_node',return_value='node'),patch.object(finding_tests,'execute_bounded') as execute,contextlib.redirect_stdout(io.StringIO()):

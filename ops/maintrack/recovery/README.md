@@ -1,5 +1,49 @@
 # Independent QA recovery runner
 
+## Current transport decision — 30 October 2026
+
+Use the existing **IPv4 Session Pooler**, explicitly selected with
+`--transport qa-session-pooler`. IPv6 is not a user prerequisite. The earlier
+direct ENETUNREACH observation is retained; do not probe that route again on the
+unchanged network. No automatic transport fallback or TLS downgrade was added.
+
+Supabase's official [backup/restore guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
+explicitly supports Session Pooler for IPv4-only backup and restore. Native
+PostgreSQL tools are already installed; this selected native path does not need
+Docker. The selected connection still pins this QA project, port5432 and
+`sslmode=verify-full`. `pg_stat_ssl` attests only the pooler-to-Postgres leg;
+libpq verifies the client-to-pooler leg separately. Both remain mandatory.
+
+Read-only official CLI checks found no listed backup artifacts and current
+`database=false` SSL enforcement (`--experimental` is required by the installed
+CLI). The current pooler backend leg therefore has not met the accepted TLS
+gate. Capture and cloud cutover remain BLOCKED; the previous TLS fix is unchanged.
+The official [SSL documentation](https://supabase.com/docs/guides/platform/ssl-enforcement)
+states enforcement covers both pooler legs and triggers a short database reboot.
+The practical remaining maintenance option is QA-only SSL enforcement, followed
+by actual backend TLS attestation and schema capture. This configuration/reboot
+has **not** been executed; its independent control/recovery and administrator
+maintenance authorization must be resolved before that specific change. Do not
+silently accept an unencrypted backend leg or disable enforcement automatically.
+
+Once those conditions are met, the existing independent terminal command is:
+
+```powershell
+node D:\MainTrack-Android-QA\integration-candidate\ops\maintrack\recovery\capture-qa-schema.mjs --mode Capture --execute-readonly yes --transport qa-session-pooler --source-commit <exact-reviewed-40-character-commit>
+```
+
+Official psql/pg_dump terminal prompts preserve credential isolation. No password
+is passed through Node, chat, argv, source or evidence. This captures the declared
+three schemas only, not role passwords, employee rows, scheduler rows, Storage
+bytes, Edge settings or complete data recovery. Extend the reviewed snapshot
+scope before any operation requiring those assets. A newly added native local
+archive rehearsal proves owners/ACL/RLS/functions/triggers survive actual
+pg_dump/pg_restore and enforce policy afterward; it does **not** prove a cloud
+snapshot, unattended credential availability or cloud restoration.
+
+Historical observations and commands below retain their original dates/scopes;
+they do not reinstate a requirement for the user to supply IPv6.
+
 Target is pinned to `szhstrafzkxzstjdcynl`. No MCP dependency and no Windows security-policy change. Primary entrypoint is native Node, callable from ordinary PowerShell:
 
 ```powershell

@@ -105,6 +105,8 @@
         "ops/maintrack/inventory/backend/package.json",
         "ops/maintrack/inventory/backend/package-lock.json",
         "ops/maintrack/tests/login-hosted-admission.test.mjs",
+        "ops/maintrack/tests/login-queue.test.mjs",
+        "ops/maintrack/tests/login-idle-recovery.test.mjs",
         "ops/maintrack/security/qa-login-lease.mjs",
         "ops/maintrack/tests/qa-login-lease.test.mjs"
       ],
