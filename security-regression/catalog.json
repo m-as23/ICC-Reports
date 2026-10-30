@@ -476,6 +476,23 @@
         "ops/maintrack/tests/qa-login-lease.test.mjs"
       ],
       "reason": "Requires approved source-independent account admission policy and actual QA Login/header-spoof/lock isolation evidence. No hosted client-IP attribution is claimed or required as an authentication identity; no Direct Transport mode may be enabled."
+    },
+    {
+      "id": "qa-ssl-console-local",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "ops/maintrack/recovery/qa-ssl-console.mjs",
+        "ops/maintrack/recovery/qa-connection.mjs",
+        "ops/maintrack/recovery/capture-qa-schema.mjs",
+        "ops/maintrack/tests/qa-ssl-console.test.mjs"
+      ],
+      "command": [
+        "node",
+        "--test",
+        "ops/maintrack/tests/qa-ssl-console.test.mjs"
+      ],
+      "timeout": 15
     }
   ]
 }
