@@ -26,3 +26,18 @@ export function frameHeaders(html) {
   assert.ok(!/frame-ancestors/i.test(match[1]),'UNREVIEWED_EXISTING_FRAME_POLICY');
   return {'Content-Security-Policy':match[1].trim().replace(/;?$/,"; frame-ancestors 'self';"),'X-Frame-Options':'SAMEORIGIN'};
 }
+
+// Preserve every original page policy and cover fallback/error responses with XFO.
+export function frameHeaderRules(pages) {
+ const rules=[{source:'/(.*)',headers:[{key:'X-Frame-Options',value:'SAMEORIGIN'}]}];
+ for(const {name,html} of pages){
+  assert.ok(/^[A-Za-z0-9_/-]+\.html$/.test(name)&&!name.split('/').includes('..')&&!name.startsWith('/'),'INVALID_HTML_PATH');
+  const policy=/<meta\s+http-equiv="Content-Security-Policy"/i.test(html)?frameHeaders(html):{'Content-Security-Policy':"frame-ancestors 'self';",'X-Frame-Options':'SAMEORIGIN'};
+  const headers=Object.entries(policy).map(([key,value])=>({key,value}));
+  const routes=new Set(['/'+name,'/'+name.replace(/\.html$/,'')]);
+  if(name==='index.html')routes.add('/');
+  if(name.endsWith('/index.html'))routes.add('/'+name.slice(0,-10));
+  for(const source of routes)rules.push({source,headers});
+ }
+ return rules;
+}

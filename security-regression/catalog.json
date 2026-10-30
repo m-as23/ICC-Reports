@@ -77,6 +77,8 @@
         "ops/maintrack/scripts/security-client-overlay.mjs",
         "ops/maintrack/scripts/prepare-security-rc.mjs",
         "ops/maintrack/tests/security-overlay.test.mjs",
+        "ops/maintrack/tests/security-framing-routes.test.mjs",
+        "ops/maintrack/tests/security-framing.browser.test.mjs",
         "remediation/logout/tests/logout.test.mjs",
         "supabase/functions/maintrack-final-047/index.ts",
         "web/maintrack/public/**/*",
