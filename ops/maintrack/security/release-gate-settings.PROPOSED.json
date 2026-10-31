@@ -16,7 +16,7 @@
   "requiredEnvironmentReviewer": "repository owner",
   "preventSelfReview": true,
   "cloudScheduleEnabled": false,
-  "notes": "Proposal only. Observed CI contexts security-local/logout-contract from App15368. Owner must apply protection and provide independent reviewer; the PR author cannot approve their own PR. CLI release evidence gate fails closed until trusted platform approval and native artifact extraction are integrated. Existing signing workflow remains ungated; publication stays blocked. No administrative changes performed.",
+  "notes": "Proposal only. Live read-only checks on 2026-10-31 confirm both requested branches unprotected and no effective rules. Historical contexts App15368 are not proof for the latest local SHA. No active protection/environment/workflow changed; independent reviewer and trusted receipt integration remain mandatory. Do not add the unimplemented candidate evidence context as a required PR check or create an unrecoverable self-review deadlock.",
   "requiredCheckAppId": 15368,
   "requireLastPushApproval": true,
   "dismissStaleReviews": true,
@@ -31,5 +31,49 @@
     "requiredForSigningAndDeployment": true,
     "mustNotBeAddedAsRequiredPRCheckBeforeImplementation": true,
     "status": "BLOCKED_PENDING_TRUSTED_PLATFORM_APPROVAL_INTEGRATION"
+  },
+  "readOnlyVerification20261031": {
+    "repository": "m-as23/ICC-Reports",
+    "main": {
+      "classicProtection": "404 Branch not protected",
+      "effectiveRules": []
+    },
+    "release/maintrack-047-final-20261024": {
+      "classicProtection": "404 Branch not protected",
+      "effectiveRules": []
+    },
+    "checksObserved": {
+      "headSha": "b86ce50f83096146e2c48e0e333f4405331a7901",
+      "contexts": [
+        "security-local",
+        "logout-contract"
+      ],
+      "appId": 15368
+    },
+    "signingEnvironment": {
+      "name": "maintrack-android-release",
+      "requiredReviewersObserved": false,
+      "branchPolicyOnly": true
+    },
+    "reviewEnvironmentExists": false,
+    "pr28": {
+      "draft": true,
+      "merged": false,
+      "remoteHead": "b86ce50f83096146e2c48e0e333f4405331a7901"
+    }
+  },
+  "applicationPreconditions": [
+    "Independent qualified reviewer designated; author/last pusher cannot approve their own PR",
+    "Verify security-local and logout-contract exist and run on each actual protected target before activating required checks",
+    "Use existing protected signing environment plus separate pre-sign review environment with actual reviewers, prevent_self_review and no unapproved bypass",
+    "Wire trusted live platform/artifact/review receipts before replacing the intentionally blocked PROPOSED signing workflow",
+    "Apply only after separate Owner administration approval; read back effective rules and prove rejection without Production release"
+  ],
+  "knownWorkflowGap": {
+    "path": ".github/workflows/maintrack-final-apk-047.yml",
+    "job": "sign-final",
+    "currentChecks": "Historical check-final-047-qa helper; not the five-finding release gate",
+    "requiredChangeForReview": "Place trusted candidate-bound five-finding pre-sign gate before entry into key-bearing job/environment, and post-sign verification before publication; apply same contract to authorized OTA release path",
+    "implementedInActiveWorkflow": false
   }
 }

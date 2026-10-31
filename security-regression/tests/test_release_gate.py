@@ -11,7 +11,7 @@ class GateTests(unittest.TestCase):
   self.bind_cleanup(self.cleanup)
   self.approval={'kind':'github-environment-review-v1','repository':'m-as23/ICC-Reports','environment':'maintrack-production-approval','reviewer':'m-as23','runId':12,'sourceCommit':self.commit,'artifactSha256':self.apk,'approved':True}
   client=b'synthetic overlaid client';self.native_hash=hashlib.sha256(client).hexdigest();(self.root/'client.js').write_bytes(client)
-  headers=[{'source':s,'headers':[{'key':'Content-Security-Policy','value':"default-src 'self'; frame-ancestors 'self'"},{'key':'X-Frame-Options','value':'SAMEORIGIN'}]} for s in ('/','/index.html','/inventory-reference.html')]
+  headers=[{'source':s,'headers':[{'key':'Content-Security-Policy','value':"default-src 'self'; frame-ancestors 'self'"},{'key':'X-Frame-Options','value':'SAMEORIGIN'}]} for s in ('/','/index.html','/index','/inventory-reference.html','/inventory-reference','/qa-security.html','/qa-security','/security-final-check.html','/security-final-check')]
   provenance={'schema':1,'sourceCommit':self.commit,'canonicalLocksModified':False,'changes':[{'path':p,'before':'d'*64,'after':self.native_hash,'origin':'PR27'} for p in ('web/secure-assets/index-inline-1.js','native/www/secure-assets/index-inline-1.js')],'headerPolicy':headers}
   (self.root/'provenance.json').write_text(json.dumps(provenance));(self.root/'headers.json').write_text(json.dumps({'headers':headers}))
   entry=lambda p:{'path':p,'sha256':hashlib.sha256((self.root/p).read_bytes()).hexdigest()}

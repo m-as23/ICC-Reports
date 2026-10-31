@@ -37,7 +37,7 @@ def candidate_build_proven(root,record,commit,native_hash):
         changes=provenance.get('changes',[])
         for path,digest in [('web/secure-assets/index-inline-1.js',client_hash),('native/www/secure-assets/index-inline-1.js',native_hash)]:
             if not digest or not any(x.get('path')==path and x.get('after')==digest and x.get('before')!=digest and x.get('origin')=='PR27' for x in changes):return False
-        for path in ('/','/index.html','/inventory-reference.html'):
+        for path in ('/','/index.html','/index','/inventory-reference.html','/inventory-reference','/qa-security.html','/qa-security','/security-final-check.html','/security-final-check'):
             rules=[x for x in headers if x.get('source')==path]
             if not rules:return False
             values={h['key'].lower():h['value'] for h in rules[0]['headers']}
