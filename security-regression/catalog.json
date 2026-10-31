@@ -112,7 +112,12 @@
         "ops/maintrack/tests/login-queue.test.mjs",
         "ops/maintrack/tests/login-idle-recovery.test.mjs",
         "ops/maintrack/security/qa-login-lease.mjs",
-        "ops/maintrack/tests/qa-login-lease.test.mjs"
+        "ops/maintrack/tests/qa-login-lease.test.mjs",
+        "ops/maintrack/tests/fixtures/qa-core-bundle-contract.mjs.fixture",
+        "ops/maintrack/scripts/prepare-qa-login-rpc.mjs",
+        "ops/maintrack/tests/qa-login-rpc.test.mjs",
+        "ops/maintrack/security/qa-login-rpc.sql",
+        "ops/maintrack/security/qa-login-rpc.rollback.sql"
       ],
       "command": [
         "{python}",
@@ -507,7 +512,8 @@
         "ops/maintrack/security/login-turnstile-client.mjs",
         "ops/maintrack/scripts/prepare-login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-gateway.mjs",
-        "ops/maintrack/security/vercel-login-entry.mjs"
+        "ops/maintrack/security/vercel-login-entry.mjs",
+        "ops/maintrack/tests/fixtures/qa-core-bundle-contract.mjs.fixture"
       ],
       "reason": "Requires real QA Vercel overwrite/forged-header attestation, private gateway assertion, single-use provider proof, multi-instance/per-source concurrency and NAT/legitimate-account availability, provider failure/latency and Web/Android compatibility. Current candidate not activated; local provider/header simulation is never Cloud PASS. No client IP header is trusted directly in Supabase. No automatic provider configuration or Direct Transport mode."
     },

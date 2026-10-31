@@ -21,6 +21,12 @@ class DependencySelectionTests(unittest.TestCase):
   cases=json.loads((pathlib.Path(__file__).resolve().parents[1]/'catalog.json').read_text())['cases']
   self.assertIn('ops/maintrack/tests/login-idle-recovery.test.mjs',next(c for c in cases if c['id']=='login-rate-local')['inputs'])
   self.assertIn('login-rate-local',select_impacted(cases,['ops/maintrack/tests/login-idle-recovery.test.mjs']))
+ def test_bundle_and_rpc_sources_invalidate_login_proof(self):
+  cases=json.loads((pathlib.Path(__file__).resolve().parents[1]/'catalog.json').read_text())['cases']
+  for name in ['ops/maintrack/tests/fixtures/qa-core-bundle-contract.mjs.fixture','ops/maintrack/scripts/prepare-qa-login-rpc.mjs','ops/maintrack/tests/qa-login-rpc.test.mjs','ops/maintrack/security/qa-login-rpc.sql','ops/maintrack/security/qa-login-rpc.rollback.sql']:
+   with self.subTest(path=name):
+    self.assertIn(name,next(c for c in cases if c['id']=='login-rate-local')['inputs'])
+    self.assertIn('login-rate-local',select_impacted(cases,[name]))
  def test_lock_change_selects_parser_without_retesting_cron(self):
   cases=json.loads((pathlib.Path(__file__).resolve().parents[1]/'catalog.json').read_text())['cases']
   selected=select_impacted(cases,['ops/maintrack/inventory/backend/package-lock.json'])
