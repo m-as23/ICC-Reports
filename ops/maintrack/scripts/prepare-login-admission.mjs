@@ -9,7 +9,7 @@ export function protectQaLoginSource(source){
  const errors='e instanceof AppError||e instanceof LoginRateError';if(!source.includes(errors))throw Error('LOGIN_ERROR_CONTRACT_CHANGED');
  const start='async function login(b,source){',end='return issue(u,c);\n });';
  if(source.split(start).length!==2||source.split(end).length!==2)throw Error('QA_LOGIN_BUDGET_CONTRACT_CHANGED');
- source=source.replace(start,'async function login(b,source,admissionPolicy){').replace(end,'return issue(u,c);\n },admissionPolicy);');
+ source=source.replace(start,"async function login(b,source,admissionPolicy:{kind:'verified-gateway-v1'}){").replace(end,'return issue(u,c);\n },admissionPolicy);');
  const prefix=`import {createAdmissionLogin,LoginAdmissionError} from './login-admission.mjs';
 import {createGatewayAdmissionLogin} from './login-gateway.mjs';
 if(Deno.env.get('MT_LOGIN_ADMISSION_PROJECT_REF')!=='szhstrafzkxzstjdcynl')throw Error('QA_ADMISSION_PROJECT_CONFIG_REQUIRED');

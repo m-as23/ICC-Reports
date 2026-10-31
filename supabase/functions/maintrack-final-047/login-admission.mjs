@@ -10,6 +10,7 @@ async function boundedJson(response,signal){
  const all=new Uint8Array(bytes);let offset=0;for(const part of parts){all.set(part,offset);offset+=part.length;}
  return JSON.parse(new TextDecoder().decode(all));
 }
+/** @param {{secret?:string,allowedHostnames?:string[],login?:(body:Record<string,unknown>,source?:string)=>Promise<unknown>,fetchImpl?:typeof fetch,timeoutMs?:number,now?:()=>number}} [options] */
 export function createAdmissionLogin({secret,allowedHostnames,login,fetchImpl=fetch,timeoutMs=2500,now=Date.now}={}){
  if(typeof secret!=='string'||secret.length<20||secret.length>4096||!Array.isArray(allowedHostnames)||!allowedHostnames.length||allowedHostnames.some(x=>typeof x!=='string'||! /^[a-z0-9.-]+$/.test(x)||x.startsWith('.')||x.endsWith('.'))||typeof login!=='function'||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>10000)throw Error('ADMISSION_CONFIGURATION_REQUIRED');
  const hosts=new Set(allowedHostnames);
