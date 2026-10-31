@@ -178,7 +178,9 @@
         "supabase/functions/maintrack-final-047/login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-proof.mjs",
         "ops/maintrack/security/login-turnstile-client.mjs",
-        "ops/maintrack/scripts/prepare-login-admission.mjs"
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs"
       ],
       "reason": "Needs the explicitly approved one-shot synthetic-account window; never auto-opens QA"
     },
@@ -215,7 +217,9 @@
         "supabase/functions/maintrack-final-047/login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-proof.mjs",
         "ops/maintrack/security/login-turnstile-client.mjs",
-        "ops/maintrack/scripts/prepare-login-admission.mjs"
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs"
       ],
       "reason": "A copied pre-logout bearer must be rejected after logout"
     },
@@ -285,7 +289,9 @@
         "supabase/functions/maintrack-final-047/login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-proof.mjs",
         "ops/maintrack/security/login-turnstile-client.mjs",
-        "ops/maintrack/scripts/prepare-login-admission.mjs"
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs"
       ],
       "reason": "Trusted positive control plus wrong-host/untrusted negative controls; no credentials in fixture requests"
     },
@@ -458,7 +464,9 @@
         "supabase/functions/maintrack-final-047/login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-proof.mjs",
         "ops/maintrack/security/login-turnstile-client.mjs",
-        "ops/maintrack/scripts/prepare-login-admission.mjs"
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs"
       ],
       "reason": "Instrumented debug QA APK does not certify the operational binary's transport/updater/signing path"
     },
@@ -497,9 +505,11 @@
         "supabase/functions/maintrack-final-047/login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-proof.mjs",
         "ops/maintrack/security/login-turnstile-client.mjs",
-        "ops/maintrack/scripts/prepare-login-admission.mjs"
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs"
       ],
-      "reason": "New optional acceptance candidate is NOT activated. Requires real configured provider QA evidence for direct/alias bypass, cross-account binding, single use across instances, provider outage/latency, valid-token multi-account fairness and Web/Android compatibility. Local Siteverify contract simulation never satisfies this case; no trusted IP claim or Direct Transport mode."
+      "reason": "Requires real QA Vercel overwrite/forged-header attestation, private gateway assertion, single-use provider proof, multi-instance/per-source concurrency and NAT/legitimate-account availability, provider failure/latency and Web/Android compatibility. Current candidate not activated; local provider/header simulation is never Cloud PASS. No client IP header is trusted directly in Supabase. No automatic provider configuration or Direct Transport mode."
     },
     {
       "id": "qa-ssl-console-local",
@@ -532,14 +542,21 @@
         "ops/maintrack/scripts/prepare-login-admission.mjs",
         "ops/maintrack/tests/login-admission.test.mjs",
         "ops/maintrack/tests/login-admission-bundle.test.mjs",
-        "ops/maintrack/tests/login-admission-client.test.mjs"
+        "ops/maintrack/tests/login-admission-client.test.mjs",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs",
+        "ops/maintrack/tests/login-gateway.test.mjs",
+        "ops/maintrack/tests/login-gateway-entry.test.mjs",
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
       ],
       "command": [
         "node",
         "--test",
         "ops/maintrack/tests/login-admission.test.mjs",
         "ops/maintrack/tests/login-admission-bundle.test.mjs",
-        "ops/maintrack/tests/login-admission-client.test.mjs"
+        "ops/maintrack/tests/login-admission-client.test.mjs",
+        "ops/maintrack/tests/login-gateway.test.mjs",
+        "ops/maintrack/tests/login-gateway-entry.test.mjs"
       ],
       "timeout": 15
     },
@@ -555,7 +572,10 @@
         "supabase/functions/maintrack-final-047/index.ts",
         "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
         "ops/maintrack/tests/login-admission.integration.test.mjs",
-        "security-regression/finding_tests.py"
+        "security-regression/finding_tests.py",
+        "supabase/functions/maintrack-final-047/login-gateway.mjs",
+        "ops/maintrack/security/vercel-login-entry.mjs",
+        "ops/maintrack/tests/login-gateway-isolation.test.mjs"
       ],
       "command": [
         "{python}",

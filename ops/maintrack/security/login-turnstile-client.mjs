@@ -15,9 +15,20 @@ export function createTurnstileTokenProvider({widget,element,sitekey,timeoutMs=4
  };
 }
 
-export function installLoginProofClient({scope=window,...options}={}){
- if(scope.MainTrackLoginProof!==undefined)throw Error('LOGIN_PROOF_CLIENT_ALREADY_INSTALLED');
+export function createGatewayLoginClient({authorize,gatewayUrl,allowedGatewayHost,fetchImpl=fetch}={}){
+ let url;try{url=new URL(gatewayUrl);}catch{throw Error('QA_LOGIN_GATEWAY_REQUIRED');}
+ if(typeof authorize!=='function'||url.protocol!=='https:'||url.hostname!==allowedGatewayHost||url.pathname!=='/api/login'||url.username||url.password||url.search||url.hash)throw Error('QA_LOGIN_GATEWAY_REQUIRED');
+ return async body=>{
+  if(body?.action!=='login')throw Error('LOGIN_ONLY_GATEWAY');
+  const admitted=await authorize(body);const outgoing=Object.fromEntries(Object.entries(admitted).filter(([key])=>key!=='token'));
+  const r=await fetchImpl(url.href,{method:'POST',redirect:'error',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify(outgoing),signal:AbortSignal.timeout(10000)});
+  const data=await r.json();if(!data||typeof data!=='object'||Array.isArray(data))throw Error('LOGIN_GATEWAY_RESPONSE');if(!r.ok&&!data.error)throw Error('LOGIN_GATEWAY_RESPONSE');return data;
+ };
+}
+export function installLoginProofClient({scope=window,gatewayUrl,allowedGatewayHost,fetchImpl,...options}={}){
+ if(scope.MainTrackLoginProof!==undefined||scope.MainTrackGatewayLogin!==undefined)throw Error('LOGIN_PROOF_CLIENT_ALREADY_INSTALLED');
  const authorize=createLoginProofClient({obtainToken:createTurnstileTokenProvider(options)});
- scope.MainTrackLoginProof=authorize;
- return ()=>{if(scope.MainTrackLoginProof===authorize)delete scope.MainTrackLoginProof;};
+ const gatewayLogin=createGatewayLoginClient({authorize,gatewayUrl,allowedGatewayHost,fetchImpl});
+ scope.MainTrackLoginProof=authorize;scope.MainTrackGatewayLogin=gatewayLogin;
+ return ()=>{if(scope.MainTrackLoginProof===authorize)delete scope.MainTrackLoginProof;if(scope.MainTrackGatewayLogin===gatewayLogin)delete scope.MainTrackGatewayLogin;};
 }

@@ -11,7 +11,7 @@ test('SEC003 actual browser blocks external framing for every RC HTML page; same
  try{
   const protectedOrigin=await serve((req,res)=>{try{let route=new URL(req.url,'http://local').pathname;for(const rule of config.headers)if(rule.source==='/(.*)'||rule.source===route)for(const h of rule.headers)res.setHeader(h.key,h.value);
    if(route==='/')route='/index.html';else if(!path.extname(route))route+='.html';const file=path.resolve(folder,'web','.'+route);assert.ok(file.startsWith(path.resolve(folder,'web')+path.sep));
-   res.setHeader('Content-Type',route.endsWith('.js')?'text/javascript':route.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(file));}catch{res.writeHead(404);res.end('NOT_FOUND');}});
+   res.setHeader('Content-Type',['.js','.mjs'].includes(path.extname(route))?'text/javascript':route.endsWith('.json')?'application/json':route.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(file));}catch{res.writeHead(404);res.end('NOT_FOUND');}});
   const attackerOrigin=await serve((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>LOCAL FRAMING TEST</title>');});
   browser=await chromium.launch({headless:true,...(process.env.MAINTRACK_BROWSER_EXECUTABLE?{executablePath:process.env.MAINTRACK_BROWSER_EXECUTABLE}:{})});
   const ctx=await browser.newContext({serviceWorkers:'block'});await ctx.route('**/*',route=>{const u=new URL(route.request().url());return [protectedOrigin,attackerOrigin].includes(u.origin)?route.continue():route.abort();});

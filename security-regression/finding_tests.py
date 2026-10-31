@@ -1,4 +1,4 @@
-"""Bounded local MT-SEC-001/004 checks. No automatic setup, HTTP or cloud access."""
+"""Bounded local MT-SEC-001/004 checks. No automatic setup or cloud access; admission tests use loopback HTTP only."""
 import argparse,os,pathlib,urllib.parse,sys
 from engine import execute_bounded
 from inventory_adapter import resolve_node
@@ -14,7 +14,7 @@ def main():
    u=urllib.parse.urlsplit(os.environ.get('LOGIN_PG_URL',''))
    if u.scheme not in ('postgres','postgresql') or u.hostname not in ('127.0.0.1','localhost') or u.path!='/maintrack_auth_local' or u.query or u.fragment or u.username not in ('mt_local_admin','mt_lab_admin'):raise ValueError()
   except ValueError:print('BLOCKED: LOGIN_PG_URL must identify the explicitly owned loopback login fixture');return 78
-  files={'login-admission':['ops/maintrack/tests/login-admission.integration.test.mjs'],'login-hosted':['ops/maintrack/tests/login-hosted-admission.test.mjs'],'login-idle':['ops/maintrack/tests/login-idle-recovery.test.mjs'],'login-lease':['ops/maintrack/tests/qa-login-lease.test.mjs','ops/maintrack/tests/qa-login-rpc.test.mjs'],'login':['ops/maintrack/tests/login-rate-limit.test.mjs','ops/maintrack/tests/login-hosted-admission.test.mjs','ops/maintrack/tests/login-queue.test.mjs','ops/maintrack/tests/login-idle-recovery.test.mjs','ops/maintrack/tests/qa-login-lease.test.mjs','ops/maintrack/tests/qa-login-rpc.test.mjs']}[a.case]
+  files={'login-admission':['ops/maintrack/tests/login-admission.integration.test.mjs','ops/maintrack/tests/login-gateway-isolation.test.mjs'],'login-hosted':['ops/maintrack/tests/login-hosted-admission.test.mjs'],'login-idle':['ops/maintrack/tests/login-idle-recovery.test.mjs'],'login-lease':['ops/maintrack/tests/qa-login-lease.test.mjs','ops/maintrack/tests/qa-login-rpc.test.mjs'],'login':['ops/maintrack/tests/login-rate-limit.test.mjs','ops/maintrack/tests/login-hosted-admission.test.mjs','ops/maintrack/tests/login-queue.test.mjs','ops/maintrack/tests/login-idle-recovery.test.mjs','ops/maintrack/tests/qa-login-lease.test.mjs','ops/maintrack/tests/qa-login-rpc.test.mjs']}[a.case]
  else:
   # import-service imports the existing seven real-parser cases; avoid duplicating them.
   files=['ops/maintrack/inventory/backend/test/import-service.test.mjs','ops/maintrack/inventory/backend/test/yauzl-security.test.mjs']

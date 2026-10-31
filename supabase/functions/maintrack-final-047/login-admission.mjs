@@ -13,7 +13,7 @@ async function boundedJson(response,signal){
 export function createAdmissionLogin({secret,allowedHostnames,login,fetchImpl=fetch,timeoutMs=2500,now=Date.now}={}){
  if(typeof secret!=='string'||secret.length<20||secret.length>4096||!Array.isArray(allowedHostnames)||!allowedHostnames.length||allowedHostnames.some(x=>typeof x!=='string'||! /^[a-z0-9.-]+$/.test(x)||x.startsWith('.')||x.endsWith('.'))||typeof login!=='function'||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>10000)throw Error('ADMISSION_CONFIGURATION_REQUIRED');
  const hosts=new Set(allowedHostnames);
- return async body=>{
+ return async (body,verifiedSource)=>{
   const proof=body?.admission;
   if(!proof||typeof proof.token!=='string'||proof.token.length<1||proof.token.length>2048||/\s/.test(proof.token)||typeof proof.requestId!=='string'||!/^[a-f0-9]{32}$/.test(proof.requestId)||typeof body.code!=='string'||!/^\d{1,32}$/.test(body.code))throw new LoginAdmissionError('LOGIN_PROOF_REQUIRED');
   const expected=await loginProofBinding(body.code,proof.requestId);
@@ -28,6 +28,6 @@ export function createAdmissionLogin({secret,allowedHostnames,login,fetchImpl=fe
   if(!hosts.has(data.hostname)||data.action!=='maintrack_login'||data.cdata!==expected||!Number.isFinite(issued)||issued>now()+10000||now()-issued>300000)throw new LoginAdmissionError('LOGIN_PROOF_BINDING');
   // Siteverify is authoritative for single use across Edge instances; no local replay cache.
   // Only admitted requests reach the unchanged account lockout/password/work-slot logic.
-  return login(body);
+  return login(body,verifiedSource);
  };
 }

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {createTurnstileTokenProvider,installLoginProofClient} from '../security/login-turnstile-client.mjs';
+import {createTurnstileTokenProvider,installLoginProofClient,createGatewayLoginClient} from '../security/login-turnstile-client.mjs';
 import {createLoginProofClient} from '../../../supabase/functions/maintrack-final-047/login-proof.mjs';
 test('Web/WebView widget passes action/binding only and removes its native instance after success',async()=>{
  let options,removed=0;const widget={render(el,o){options=o;return 'instance';},execute(){queueMicrotask(()=>options.callback('single-use-token'));},remove(id){assert.equal(id,'instance');removed++;}};
@@ -11,5 +11,11 @@ test('widget timeout fails without retry, cleans the instance and permits a fres
 
 test('explicit install binds the actual Web/native post hook and uninstall removes it',async()=>{
  const scope={};let options;const widget={render(el,o){options=o;return 'id';},execute(){queueMicrotask(()=>options.callback('one-token'));},remove(){}};
- const uninstall=installLoginProofClient({scope,widget,element:{},sitekey:'public-synthetic-key'});const b=await scope.MainTrackLoginProof({action:'login',code:'90000001',pw:'SyntheticOnly7'});assert.equal(b.admission.token,'one-token');assert.throws(()=>installLoginProofClient({scope,widget,element:{},sitekey:'public-synthetic-key'}),/ALREADY_INSTALLED/);uninstall();assert.equal(scope.MainTrackLoginProof,undefined);
+ const uninstall=installLoginProofClient({scope,widget,element:{},sitekey:'public-synthetic-key',gatewayUrl:'https://qa-gw.example/api/login',allowedGatewayHost:'qa-gw.example'});const b=await scope.MainTrackLoginProof({action:'login',code:'90000001',pw:'SyntheticOnly7'});assert.equal(b.admission.token,'one-token');assert.throws(()=>installLoginProofClient({scope,widget,element:{},sitekey:'public-synthetic-key'}),/ALREADY_INSTALLED/);uninstall();assert.equal(scope.MainTrackLoginProof,undefined);
+});
+
+test('client uses only the exact HTTPS QA gateway, strips old opaque tokens and never sends a server assertion',async()=>{
+ let sent;const login=createGatewayLoginClient({gatewayUrl:'https://qa-gw.example/api/login',allowedGatewayHost:'qa-gw.example',authorize:async b=>({...b,admission:{token:'provider-token',requestId:'a'.repeat(32)}}),fetchImpl:async(url,opts)=>{sent={url,opts};return Response.json({token:'issued-session'});}});
+ assert.equal((await login({action:'login',code:'90000001',pw:'SyntheticOnly7',token:'old-session'})).token,'issued-session');assert.equal(JSON.parse(sent.opts.body).token,undefined);assert.equal(sent.opts.headers['x-maintrack-admission'],undefined);assert.equal(sent.url,'https://qa-gw.example/api/login');
+ for(const gatewayUrl of ['http://qa-gw.example/api/login','https://evil.example/api/login','https://qa-gw.example/other'])assert.throws(()=>createGatewayLoginClient({authorize:async b=>b,gatewayUrl,allowedGatewayHost:'qa-gw.example'}),/GATEWAY_REQUIRED/);
 });

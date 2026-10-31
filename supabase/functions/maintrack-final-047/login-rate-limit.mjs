@@ -13,9 +13,11 @@ export function trustedLoginSource(info,env){
  return createHash('sha256').update('maintrack-login-source-v1:'+host).digest('hex');
 }
 const outstandingByPool=new WeakMap();
-export async function withLoginBudget(pool,source,code,work){
+export async function withLoginBudget(pool,source,code,work,policy){
  // Hosted callers deliberately omit source: no proxy/header identity is assumed.
  const hasSource=source!==undefined&&source!==null;
+ const gatewayMode=policy?.kind==='verified-gateway-v1';
+ if(policy!==undefined&&(!gatewayMode||!hasSource))throw new LoginRateError('LOGIN_INGRESS_UNVERIFIED',503);
  if(hasSource&&(typeof source!=='string'||!/^[a-f0-9]{64}$/.test(source)))throw new LoginRateError('LOGIN_INGRESS_UNVERIFIED',503);
  const outstanding=outstandingByPool.get(pool)||0;if(outstanding>=8)throw new LoginRateError('LOGIN_BUSY');outstandingByPool.set(pool,outstanding+1);
  let c,begun=false,connectionError,rejectConnection;
@@ -26,7 +28,7 @@ export async function withLoginBudget(pool,source,code,work){
  const onConnectionError=e=>{connectionError ||= e;rejectConnection(connectionError);};
  try{c=await pool.connect();
  c.on?.('error',onConnectionError);
- if(hasSource){
+ if(hasSource&&!gatewayMode){
  // Reserve in a separate bounded transaction: failed credentials still consume
  // quota, while row contention cannot hold a pooled connection indefinitely.
  await c.query('BEGIN');begun=true;
@@ -42,7 +44,11 @@ export async function withLoginBudget(pool,source,code,work){
  await c.query("SET LOCAL idle_in_transaction_session_timeout='5s'");
  await c.query("SET LOCAL lock_timeout='750ms'");
  const lock=async key=>(await c.query('SELECT pg_try_advisory_xact_lock(hashtextextended($1,0)) AS locked',[key])).rows[0].locked;
- if(hasSource&&!await lock('maintrack-login-source:'+source))throw new LoginRateError('LOGIN_BUSY');
+ if(gatewayMode){
+  // Only server-verified gateway proofs select this mode. No persistent NAT quota.
+  let sourceSlot=false;for(let i=0;i<2;i++)if(await lock('maintrack-login-gateway-source:'+source+':'+i)){sourceSlot=true;break;}
+  if(!sourceSlot)throw new LoginRateError('LOGIN_BUSY');
+ }else if(hasSource&&!await lock('maintrack-login-source:'+source))throw new LoginRateError('LOGIN_BUSY');
  // Reject duplicate account work before it can occupy shared work slots.
  if(!await lock('maintrack-login-account:'+code))throw new LoginRateError('LOGIN_BUSY');
  let slot=false;for(let i=0;i<4;i++){if(await lock('maintrack-login-slot:'+i)){slot=true;break;}}if(!slot)throw new LoginRateError('LOGIN_BUSY');
