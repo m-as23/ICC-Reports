@@ -25,6 +25,7 @@ jobs:
           --health-cmd="pg_isready -U mt_lab_admin -d maintrack_cleanup_ci"
           --health-interval=5s --health-timeout=3s --health-retries=5
     env:
+      MAINTRACK_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       PGHOST: 127.0.0.1
       PGPORT: '5432'
       PGUSER: mt_lab_admin
@@ -34,6 +35,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
