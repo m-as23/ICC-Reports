@@ -172,7 +172,11 @@
         "Scan-QA-WebView-Storage.mjs",
         "ops/maintrack/scripts/security-client-overlay.mjs",
         "ops/maintrack/scripts/prepare-security-rc.mjs",
-        "security-regression/release_gate.py"
+        "security-regression/release_gate.py",
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs"
       ],
       "reason": "Needs the explicitly approved one-shot synthetic-account window; never auto-opens QA"
     },
@@ -205,7 +209,11 @@
         "Scan-QA-WebView-Storage.mjs",
         "ops/maintrack/scripts/security-client-overlay.mjs",
         "ops/maintrack/scripts/prepare-security-rc.mjs",
-        "security-regression/release_gate.py"
+        "security-regression/release_gate.py",
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs"
       ],
       "reason": "A copied pre-logout bearer must be rejected after logout"
     },
@@ -271,7 +279,11 @@
         "Scan-QA-WebView-Storage.mjs",
         "ops/maintrack/scripts/security-client-overlay.mjs",
         "ops/maintrack/scripts/prepare-security-rc.mjs",
-        "security-regression/release_gate.py"
+        "security-regression/release_gate.py",
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs"
       ],
       "reason": "Trusted positive control plus wrong-host/untrusted negative controls; no credentials in fixture requests"
     },
@@ -440,7 +452,11 @@
         "ops/maintrack/scripts/prepare-security-rc.mjs",
         "security-regression/release_gate.py",
         "ops/maintrack/inventory/backend/package.json",
-        "ops/maintrack/inventory/backend/package-lock.json"
+        "ops/maintrack/inventory/backend/package-lock.json",
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs"
       ],
       "reason": "Instrumented debug QA APK does not certify the operational binary's transport/updater/signing path"
     },
@@ -475,9 +491,13 @@
         "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
         "ops/maintrack/tests/login-hosted-admission.test.mjs",
         "ops/maintrack/security/qa-login-lease.mjs",
-        "ops/maintrack/tests/qa-login-lease.test.mjs"
+        "ops/maintrack/tests/qa-login-lease.test.mjs",
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs"
       ],
-      "reason": "Requires approved source-independent account admission policy and actual QA Login/header-spoof/lock isolation evidence. No hosted client-IP attribution is claimed or required as an authentication identity; no Direct Transport mode may be enabled."
+      "reason": "New optional acceptance candidate is NOT activated. Requires real configured provider QA evidence for direct/alias bypass, cross-account binding, single use across instances, provider outage/latency, valid-token multi-account fairness and Web/Android compatibility. Local Siteverify contract simulation never satisfies this case; no trusted IP claim or Direct Transport mode."
     },
     {
       "id": "qa-ssl-console-local",
@@ -498,6 +518,51 @@
         "ops/maintrack/tests/terminal-process.test.mjs"
       ],
       "timeout": 15
+    },
+    {
+      "id": "login-admission-candidate-local",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "ops/maintrack/tests/login-admission.test.mjs",
+        "ops/maintrack/tests/login-admission-bundle.test.mjs",
+        "ops/maintrack/tests/login-admission-client.test.mjs"
+      ],
+      "command": [
+        "node",
+        "--test",
+        "ops/maintrack/tests/login-admission.test.mjs",
+        "ops/maintrack/tests/login-admission-bundle.test.mjs",
+        "ops/maintrack/tests/login-admission-client.test.mjs"
+      ],
+      "timeout": 15
+    },
+    {
+      "id": "login-admission-http-postgres-local",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "supabase/functions/maintrack-final-047/login-admission.mjs",
+        "supabase/functions/maintrack-final-047/login-proof.mjs",
+        "ops/maintrack/security/login-turnstile-client.mjs",
+        "ops/maintrack/scripts/prepare-login-admission.mjs",
+        "supabase/functions/maintrack-final-047/index.ts",
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
+        "ops/maintrack/tests/login-admission.integration.test.mjs",
+        "security-regression/finding_tests.py"
+      ],
+      "command": [
+        "{python}",
+        "-X",
+        "utf8",
+        "security-regression/finding_tests.py",
+        "login-admission"
+      ],
+      "timeout": 45
     }
   ]
 }
