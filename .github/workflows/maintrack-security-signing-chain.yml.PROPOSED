@@ -14,7 +14,8 @@ jobs:
     environment: maintrack-production-approval
     steps:
       # Independently reviewed trusted runner must fetch actual candidate artifact,
-      # exact run/commit metadata, explicit digest+certificate review and real
+      # exact run/commit metadata, explicit digest+certificate review, trusted PR author/latest-pusher identities,
+      # enforced latest-push approval, and real
       # environment approval timestamps. Candidate report fields are insufficient.
       - name: Require trusted receipt provider
         run: |

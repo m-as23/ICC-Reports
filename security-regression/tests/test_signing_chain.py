@@ -10,7 +10,7 @@ class ChainTests(unittest.TestCase):
   digest=hashlib.sha256(self.unsigned.read_bytes()).hexdigest();self.now=datetime.datetime(2026,10,29,0,5,tzinfo=datetime.timezone.utc)
   self.c={'repository':'m-as23/ICC-Reports','sourceCommit':'a'*40,'artifactId':11,'buildRunId':22,'artifactSha256':digest,'certificateSha256':'c'*64,'workflowPath':'.github/workflows/security-release.yml','prAuthor':'author'}
   common={'sourceCommit':'a'*40,'artifactId':11,'artifactSha256':digest}
-  self.p={'repository':'m-as23/ICC-Reports','build':{**common,'runId':22,'conclusion':'success','attempt':1,'workflowPath':self.c['workflowPath'],'actor':'builder','completedAt':'2026-10-29T00:01:00Z'},'review':{**common,'state':'APPROVED','authorized':True,'reviewer':'independent-reviewer','certificateSha256':'c'*64,'submittedAt':'2026-10-29T00:02:00Z'},'approval':{**common,'state':'approved','reviewer':'m-as23','actor':'builder','authorized':True,'preventSelfReview':True,'adminBypass':False,'environment':'maintrack-production-approval','buildRunId':22,'certificateSha256':'c'*64,'approvedAt':'2026-10-29T00:03:00Z'},'securityGate':{**common,'status':'PASS','cases':{x:'PASS' for x in REQUIRED}}}
+  self.p={'repository':'m-as23/ICC-Reports','build':{**common,'runId':22,'conclusion':'success','attempt':1,'workflowPath':self.c['workflowPath'],'actor':'builder','completedAt':'2026-10-29T00:01:00Z'},'review':{**common,'prAuthor':'author','latestPusher':'last-pusher','lastPushApprovalEnforced':True,'state':'APPROVED','authorized':True,'reviewer':'independent-reviewer','certificateSha256':'c'*64,'submittedAt':'2026-10-29T00:02:00Z'},'approval':{**common,'state':'approved','reviewer':'m-as23','actor':'builder','authorized':True,'preventSelfReview':True,'adminBypass':False,'environment':'maintrack-production-approval','buildRunId':22,'certificateSha256':'c'*64,'approvedAt':'2026-10-29T00:03:00Z'},'securityGate':{**common,'status':'PASS','cases':{x:'PASS' for x in REQUIRED}}}
  def apk(self,p,signature=False,client=b'original-client'):
   with zipfile.ZipFile(p,'w') as z:
    z.writestr('AndroidManifest.xml',b'synthetic-manifest');z.writestr('classes.dex',client)
@@ -64,4 +64,13 @@ class ChainTests(unittest.TestCase):
   with patch('signing_chain.verify_certificate',return_value='c'*64):
    self.assertEqual(post_sign(r,self.unsigned,self.signed,apksigner='fixture',signing=receipt)['status'],'BLOCKED')
    self.assertEqual(post_sign(r,self.unsigned,self.signed,apksigner='fixture')['status'],'BLOCKED')
+ def test_trusted_review_cannot_approve_its_own_author_or_latest_push(self):
+  for key in ('prAuthor','latestPusher'):
+   p=copy.deepcopy(self.p);p['review'][key]=p['review']['reviewer'];self.assertEqual(self.result(p=p)['status'],'BLOCKED')
+ def test_candidate_author_field_cannot_substitute_for_trusted_identity(self):
+  p=copy.deepcopy(self.p);p['review'].pop('prAuthor',None)
+  self.assertEqual(self.result(p=p)['status'],'BLOCKED')
+ def test_missing_last_push_platform_enforcement_blocks(self):
+  p=copy.deepcopy(self.p);p['review']['lastPushApprovalEnforced']=False
+  self.assertEqual(self.result(p=p)['status'],'BLOCKED')
 if __name__=='__main__':unittest.main()

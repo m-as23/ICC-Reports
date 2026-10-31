@@ -12,7 +12,9 @@
         "security-regression/catalog.json",
         "security-regression/release_gate.py",
         "security-regression/node_tests.py",
-        "ops/maintrack/security/qa-cleanup-lease.sql"
+        "ops/maintrack/security/qa-cleanup-lease.sql",
+        "security-regression/signing_chain.py",
+        "security-regression/platform_approval.py"
       ],
       "command": [
         "{python}",

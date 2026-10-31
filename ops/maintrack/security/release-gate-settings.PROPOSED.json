@@ -75,5 +75,18 @@
     "currentChecks": "Historical check-final-047-qa helper; not the five-finding release gate",
     "requiredChangeForReview": "Place trusted candidate-bound five-finding pre-sign gate before entry into key-bearing job/environment, and post-sign verification before publication; apply same contract to authorized OTA release path",
     "implementedInActiveWorkflow": false
-  }
+  },
+  "trustedReviewReceiptRequiredFields": [
+    "prAuthor",
+    "latestPusher",
+    "lastPushApprovalEnforced",
+    "reviewer",
+    "sourceCommit",
+    "artifactId",
+    "artifactSha256",
+    "certificateSha256",
+    "submittedAt"
+  ],
+  "reviewReceiptPolicy": "Identities and enforcement must be derived by reviewed platform integration from authoritative GitHub data/effective protections. Candidate author fields or local test reports cannot supply authority. Reject absent author/pusher identity, self review, missing last-push approval enforcement or missing authoritative timestamps.",
+  "singleOwnerReviewPath": "Requires a real independent collaborator/reviewer and a run initiator eligible for a different authorized approver. If Owner authored/pushed/triggered the run and no independent human exists, remain BLOCKED; do not enable an unrecoverable protection configuration or synthesize approval."
 }

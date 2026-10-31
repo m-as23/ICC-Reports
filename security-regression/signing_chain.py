@@ -65,7 +65,11 @@ def pre_sign(candidate,unsigned_apk,*,platform=None,now=None):
   if type(candidate.get('artifactId')) is not int or candidate['artifactId']<=0 or type(candidate.get('buildRunId')) is not int or candidate['buildRunId']<=0:reasons.append('INVALID_PLATFORM_ID')
   if build.get('runId')!=candidate.get('buildRunId') or build.get('conclusion')!='success' or build.get('attempt')!=1 or build.get('workflowPath')!=candidate.get('workflowPath'):reasons.append('TRUSTED_BUILD_REQUIRED')
   if not isinstance(candidate.get('workflowPath'),str) or not re.fullmatch(r'\.github/workflows/[A-Za-z0-9_-]+\.ya?ml',candidate['workflowPath']):reasons.append('REVIEWED_WORKFLOW_REQUIRED')
-  if review.get('state')!='APPROVED' or review.get('authorized') is not True or not review.get('reviewer') or review.get('reviewer') in [candidate.get('prAuthor'),build.get('actor')]:reasons.append('INDEPENDENT_HUMAN_REVIEW_REQUIRED')
+  # These identities must be supplied by reviewed platform integration, never candidate fields.
+  trusted_author=review.get('prAuthor');trusted_pusher=review.get('latestPusher')
+  if not isinstance(trusted_author,str) or not trusted_author or not isinstance(trusted_pusher,str) or not trusted_pusher or review.get('lastPushApprovalEnforced') is not True:reasons.append('TRUSTED_PR_AND_PUSH_IDENTITIES_REQUIRED')
+  if candidate.get('prAuthor')!=trusted_author:reasons.append('PR_AUTHOR_PLATFORM_MISMATCH')
+  if review.get('state')!='APPROVED' or review.get('authorized') is not True or not review.get('reviewer') or review.get('reviewer') in [trusted_author,trusted_pusher,build.get('actor')]:reasons.append('INDEPENDENT_HUMAN_REVIEW_REQUIRED')
   if approval.get('state')!='approved' or approval.get('reviewer')!='m-as23' or approval.get('reviewer') in [approval.get('actor'),build.get('actor')] or approval.get('authorized') is not True or approval.get('preventSelfReview') is not True or approval.get('adminBypass') is not False or approval.get('environment')!=ENV:reasons.append('REAL_PROTECTED_OWNER_APPROVAL_REQUIRED')
   if approval.get('buildRunId')!=candidate.get('buildRunId') or review.get('certificateSha256')!=cert or approval.get('certificateSha256')!=cert:reasons.append('REVIEWED_SIGNING_BINDING_MISMATCH')
   if gate.get('status')!='PASS' or any(gate.get('cases',{}).get(x)!='PASS' for x in REQUIRED):reasons.append('MANDATORY_SECURITY_GATE_NOT_PASS')
