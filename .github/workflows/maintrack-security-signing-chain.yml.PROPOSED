@@ -1,5 +1,5 @@
 # REVIEW PROPOSAL ONLY. Extension prevents GitHub Actions execution.
-# Never rename to .yml until trusted receipt provider, reviewer and protected
+# Never rename to .yml until trusted receipt provider, Owner artifact receipts and protected
 # environments are real, and all alternate publish/sign paths enforce same gate.
 name: MainTrack reviewed pre-sign and post-sign chain
 on:
@@ -13,13 +13,13 @@ jobs:
     timeout-minutes: 5
     environment: maintrack-production-approval
     steps:
-      # Independently reviewed trusted runner must fetch actual candidate artifact,
-      # exact run/commit metadata, explicit digest+certificate review, trusted PR author/latest-pusher identities,
-      # enforced latest-push approval, and real
-      # environment approval timestamps. Candidate report fields are insufficient.
+      # Source-pinned trusted runner under Owner-approved single-owner policy must fetch actual candidate artifact,
+      # exact run/commit metadata, explicit Owner digest+certificate signoff through the GitHub API,
+      # artifact substitution rejection, and real
+      # environment approval and gated-job-start ordering. Candidate report fields are insufficient.
       - name: Require trusted receipt provider
         run: |
-          echo 'BLOCKED: trusted platform review/approval receipt integration required'
+          echo 'BLOCKED: actual Owner artifact comment/environment receipt and mandatory QA evidence required'
           exit 1
       # Call signing_chain.pre_sign(unsigned APK, trusted normalized receipts).
       # No certificate verification is demanded from an unsigned APK here.

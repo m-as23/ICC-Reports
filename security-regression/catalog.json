@@ -17,7 +17,8 @@
         "security-regression/platform_approval.py",
         "security-regression/legacy_signing_fence.py",
         ".github/workflows/*.yml",
-        ".github/workflows/*.yaml"
+        ".github/workflows/*.yaml",
+        "security-regression/single_owner_approval.py"
       ],
       "command": [
         "{python}",

@@ -45,11 +45,14 @@ def candidate_build_proven(root,record,commit,native_hash):
         return headers==provenance.get('headerPolicy')
     except (KeyError,ValueError,OSError,TypeError,AttributeError):return False
 
-def evaluate(root,record,commit,artifact,*,approval=None,native_client_sha256=None):
+def evaluate(root,record,commit,artifact,*,approval=None,native_client_sha256=None,governance_policy="independent-v1"):
     root=pathlib.Path(root).resolve();reasons=[]
     # Only a trusted platform integration may supply this argument. Record fields
     # cannot confer approval. CLI has no such integration and remains fail-closed.
-    if not isinstance(approval,dict) or not all((approval.get('kind')=='github-environment-review-v1',approval.get('repository')=='m-as23/ICC-Reports',approval.get('environment')=='maintrack-production-approval',approval.get('reviewer')=='m-as23',type(approval.get('runId')) is int and approval.get('runId',0)>0,approval.get('sourceCommit')==commit,approval.get('artifactSha256')==artifact,approval.get('approved') is True)):
+    owner_receipt=isinstance(approval,dict) and approval.get('kind')=='github-single-owner-artifact-approval-v1' and approval.get('governancePolicy')=='single-owner-v1' and approval.get('independentReview') is False
+    single_owner=governance_policy=='single-owner-v1' or owner_receipt
+    if single_owner and not owner_receipt:reasons.append('REAL_OWNER_ARTIFACT_APPROVAL_REQUIRED')
+    if not isinstance(approval,dict) or not all(((owner_receipt or (not single_owner and approval.get('kind')=='github-environment-review-v1')),approval.get('repository')=='m-as23/ICC-Reports',approval.get('environment')=='maintrack-production-approval',approval.get('reviewer')=='m-as23',type(approval.get('runId')) is int and approval.get('runId',0)>0,approval.get('sourceCommit')==commit,approval.get('artifactSha256')==artifact,approval.get('approved') is True)):
         reasons.append('VERIFIED_PLATFORM_APPROVAL_REQUIRED')
     readiness=record.get('findingReadiness',{})
     if not isinstance(readiness,dict):readiness={}
@@ -62,7 +65,7 @@ def evaluate(root,record,commit,artifact,*,approval=None,native_client_sha256=No
     if record.get('sourceCommit')!=commit:reasons.append('SOURCE_MISMATCH')
     if not artifact or record.get('artifactSha256')!=artifact:reasons.append('APK_MISMATCH_OR_MISSING')
     if record.get('productionSourceProven') is not True:reasons.append('OPERATIONAL_SOURCE_UNPROVEN')
-    if record.get('independentApproval') is not True:reasons.append('INDEPENDENT_RELEASE_APPROVAL_REQUIRED')
+    if not single_owner and record.get('independentApproval') is not True:reasons.append('INDEPENDENT_RELEASE_APPROVAL_REQUIRED')
     findings=record.get('findings')
     if not isinstance(findings,list):reasons.append('FINDINGS_REVIEW_MISSING')
     else:
@@ -87,7 +90,8 @@ def evaluate(root,record,commit,artifact,*,approval=None,native_client_sha256=No
             except (KeyError,ValueError,OSError,TypeError):reasons.append(case_id+':INVALID_EVIDENCE')
     return {'releaseDecision':'NO-GO' if reasons else 'GO','reasons':reasons,'deploymentAuthorized':False,'sourceCommit':commit,'artifactSha256':artifact,'requiredCases':list(REQUIRED)}
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--evidence',required=True);p.add_argument('--artifact',required=True);p.add_argument('--output',required=True);p.add_argument('--platform-run');p.add_argument('--platform-artifact');p.add_argument('--apksigner');p.add_argument('--certificate-sha256');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--evidence',required=True);p.add_argument('--artifact',required=True);p.add_argument('--output',required=True);p.add_argument('--platform-run');p.add_argument('--platform-artifact');p.add_argument('--apksigner');p.add_argument('--certificate-sha256')
+    p.add_argument('--owner-approval-run');p.add_argument('--owner-comment');p.add_argument('--owner-build-workflow');p.add_argument('--owner-build-workflow-sha256');p.add_argument('--owner-gate-workflow');p.add_argument('--owner-gate-workflow-sha256');a=p.parse_args()
     root=pathlib.Path(__file__).resolve().parents[1]
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
     dirty=source_dirty(root)
@@ -98,9 +102,13 @@ def main():
         from platform_approval import fetch_approval,native_client_hash,verify_certificate
         try:
             verify_certificate(a.apksigner,a.artifact,a.certificate_sha256)
-            approval=fetch_approval(a.platform_run,commit,digest,a.platform_artifact,apk.name);native_hash=native_client_hash(apk)
-        except (ValueError,OSError,subprocess.SubprocessError):platform_error=True
-    result=evaluate(root,record,commit,digest,approval=approval,native_client_sha256=native_hash)
+            if a.owner_approval_run:
+                from single_owner_approval import fetch_owner_approval
+                approval=fetch_owner_approval(int(a.platform_run),int(a.owner_approval_run),int(a.platform_artifact),int(a.owner_comment),commit,digest,apk.name,a.certificate_sha256,workflow_path=a.owner_gate_workflow,workflow_sha256=a.owner_gate_workflow_sha256,build_workflow_path=a.owner_build_workflow,build_workflow_sha256=a.owner_build_workflow_sha256)
+            else:approval=fetch_approval(a.platform_run,commit,digest,a.platform_artifact,apk.name)
+            native_hash=native_client_hash(apk)
+        except (ValueError,TypeError,OSError,subprocess.SubprocessError):platform_error=True
+    result=evaluate(root,record,commit,digest,approval=approval,native_client_sha256=native_hash,governance_policy="single-owner-v1")
     if platform_error:result['reasons'].append('PLATFORM_OR_APK_VERIFICATION_FAILED');result['releaseDecision']='NO-GO'
     if dirty:result['reasons'].append('UNCOMMITTED_SOURCE_CHANGES');result['releaseDecision']='NO-GO'
     output=pathlib.Path(a.output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(result,indent=2)+'\n')

@@ -1,5 +1,5 @@
 {
-  "applied": false,
+  "applied": true,
   "productionDeploymentAuthorized": false,
   "targetBranches": [
     "main",
@@ -9,16 +9,16 @@
     "security-local",
     "logout-contract"
   ],
-  "requiredApprovingReviews": 1,
-  "requireCodeOwnerReview": true,
+  "requiredApprovingReviews": 0,
+  "requireCodeOwnerReview": false,
   "requireUpToDateBranch": true,
   "deploymentEnvironment": "maintrack-production-approval",
   "requiredEnvironmentReviewer": "repository owner",
-  "preventSelfReview": true,
+  "preventSelfReview": false,
   "cloudScheduleEnabled": false,
-  "notes": "Proposal only. Live read-only checks on 2026-10-31 confirm both requested branches unprotected and no effective rules. Historical contexts App15368 are not proof for the latest local SHA. No active protection/environment/workflow changed; independent reviewer and trusted receipt integration remain mandatory. Do not add the unimplemented candidate evidence context as a required PR check or create an unrecoverable self-review deadlock.",
+  "notes": "Branch protections and Owner environment approvals applied/read back on both named operational branches. Fourteen legacy signing workflows disabled globally. Single-owner does not claim independent human review. Actual artifact-specific Owner comment and protected-environment approval remain required; no signing or deployment authorized.",
   "requiredCheckAppId": 15368,
-  "requireLastPushApproval": true,
+  "requireLastPushApproval": false,
   "dismissStaleReviews": true,
   "requiredConversationResolution": true,
   "allowForcePush": false,
@@ -30,7 +30,7 @@
     "implementedInCI": false,
     "requiredForSigningAndDeployment": true,
     "mustNotBeAddedAsRequiredPRCheckBeforeImplementation": true,
-    "status": "BLOCKED_PENDING_TRUSTED_PLATFORM_APPROVAL_INTEGRATION"
+    "status": "LIVE_CONTROL_BASELINE_APPLIED_ARTIFACT_SIGNOFF_AND_QA_PENDING"
   },
   "readOnlyVerification20261031": {
     "repository": "m-as23/ICC-Reports",
@@ -147,5 +147,7 @@
     "freshArtifactMatch": "UNAVAILABLE_ARTIFACT_EXPIRED_OR_REMOVED",
     "productionAuthority": "PENDING_CONFIRMATION_NOT_SELECTED_AUTOMATICALLY"
   },
-  "codeownersActivation": "Needs actual authorized reviewer login; do not assign only PR author or use a placeholder as active CODEOWNERS"
+  "codeownersActivation": "Needs actual authorized reviewer login; do not assign only PR author or use a placeholder as active CODEOWNERS",
+  "governancePolicy": "single-owner-v1",
+  "policyApproval": "Explicit Owner instruction 2026-11-01; not artifact/signing approval"
 }

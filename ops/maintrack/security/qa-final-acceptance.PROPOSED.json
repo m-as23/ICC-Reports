@@ -149,5 +149,16 @@
     "nativeCredentialManagerCompilation": "PASS_LOCAL_QA_ONLY",
     "cloudAndPhoneFlow": "NOT TESTED",
     "rawSnapshotsPreserved": true
+  },
+  "approvedOwnerPolicy": {
+    "maxRegisteredPasskeys": 2,
+    "syncedAllowed": true,
+    "physicalDeviceLimit": false,
+    "independentSessions": true,
+    "logoutScope": "CURRENT_TOKEN",
+    "recoveryScope": "AFFECTED_PRINCIPAL_CREDENTIALS_AND_SESSIONS",
+    "principalQuotas": true,
+    "governance": "single-owner-v1",
+    "artifactSigningApproval": "NOT_GRANTED"
   }
 }

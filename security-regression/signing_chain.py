@@ -46,7 +46,7 @@ def payload(apk,*,unsigned=False):
  if not result or 'AndroidManifest.xml' not in result:raise ValueError('APK_PAYLOAD_REQUIRED')
  return result
 
-def pre_sign(candidate,unsigned_apk,*,platform=None,now=None):
+def pre_sign(candidate,unsigned_apk,*,platform=None,now=None,owner_approval=None):
  """Separate trusted platform argument cannot be supplied by candidate evidence.
  Normalized receipts include artifact/cert review binding and authoritative times.
  Missing/unavailable real review timestamps fail closed; do not infer them locally.
@@ -59,25 +59,33 @@ def pre_sign(candidate,unsigned_apk,*,platform=None,now=None):
   cert=candidate.get('certificateSha256');
   if not isinstance(cert,str) or not re.fullmatch('[a-f0-9]{64}',cert):reasons.append('REVIEWED_PUBLIC_CERTIFICATE_REQUIRED')
   build=platform.get('build',{});review=platform.get('review',{});approval=platform.get('approval',{});gate=platform.get('securityGate',{})
+  single=owner_approval is not None
+  if single:
+   review=approval=owner_approval if isinstance(owner_approval,dict) else {}
+   if review.get('kind')!='github-single-owner-artifact-approval-v1' or review.get('governancePolicy')!='single-owner-v1' or review.get('repository')!=REPO or review.get('reviewer')!='m-as23' or review.get('approved') is not True or review.get('independentReview') is not False:reasons.append('REAL_SINGLE_OWNER_PROOF_REQUIRED')
   if platform.get('repository')!=REPO:reasons.append('TRUSTED_PLATFORM_RECEIPTS_REQUIRED')
   for proof in [build,review,approval,gate]:
    if proof.get('sourceCommit')!=commit or proof.get('artifactSha256')!=digest or proof.get('artifactId')!=candidate.get('artifactId'):reasons.append('PLATFORM_BINDING_MISMATCH')
   if type(candidate.get('artifactId')) is not int or candidate['artifactId']<=0 or type(candidate.get('buildRunId')) is not int or candidate['buildRunId']<=0:reasons.append('INVALID_PLATFORM_ID')
   if build.get('runId')!=candidate.get('buildRunId') or build.get('conclusion')!='success' or build.get('attempt')!=1 or build.get('workflowPath')!=candidate.get('workflowPath'):reasons.append('TRUSTED_BUILD_REQUIRED')
   if not isinstance(candidate.get('workflowPath'),str) or not re.fullmatch(r'\.github/workflows/[A-Za-z0-9_-]+\.ya?ml',candidate['workflowPath']):reasons.append('REVIEWED_WORKFLOW_REQUIRED')
-  # These identities must be supplied by reviewed platform integration, never candidate fields.
-  trusted_author=review.get('prAuthor');trusted_pusher=review.get('latestPusher')
-  if not isinstance(trusted_author,str) or not trusted_author or not isinstance(trusted_pusher,str) or not trusted_pusher or review.get('lastPushApprovalEnforced') is not True:reasons.append('TRUSTED_PR_AND_PUSH_IDENTITIES_REQUIRED')
-  if candidate.get('prAuthor')!=trusted_author:reasons.append('PR_AUTHOR_PLATFORM_MISMATCH')
-  if review.get('state')!='APPROVED' or review.get('authorized') is not True or not review.get('reviewer') or review.get('reviewer') in [trusted_author,trusted_pusher,build.get('actor')]:reasons.append('INDEPENDENT_HUMAN_REVIEW_REQUIRED')
-  if approval.get('state')!='approved' or approval.get('reviewer')!='m-as23' or approval.get('reviewer') in [approval.get('actor'),build.get('actor')] or approval.get('authorized') is not True or approval.get('preventSelfReview') is not True or approval.get('adminBypass') is not False or approval.get('environment')!=ENV:reasons.append('REAL_PROTECTED_OWNER_APPROVAL_REQUIRED')
+  if not single:
+   # These identities must be supplied by reviewed platform integration, never candidate fields.
+   trusted_author=review.get('prAuthor');trusted_pusher=review.get('latestPusher')
+   if not isinstance(trusted_author,str) or not trusted_author or not isinstance(trusted_pusher,str) or not trusted_pusher or review.get('lastPushApprovalEnforced') is not True:reasons.append('TRUSTED_PR_AND_PUSH_IDENTITIES_REQUIRED')
+   if candidate.get('prAuthor')!=trusted_author:reasons.append('PR_AUTHOR_PLATFORM_MISMATCH')
+   if review.get('state')!='APPROVED' or review.get('authorized') is not True or not review.get('reviewer') or review.get('reviewer') in [trusted_author,trusted_pusher,build.get('actor')]:reasons.append('INDEPENDENT_HUMAN_REVIEW_REQUIRED')
+   if approval.get('state')!='approved' or approval.get('reviewer')!='m-as23' or approval.get('reviewer') in [approval.get('actor'),build.get('actor')] or approval.get('authorized') is not True or approval.get('preventSelfReview') is not True or approval.get('adminBypass') is not False or approval.get('environment')!=ENV:reasons.append('REAL_PROTECTED_OWNER_APPROVAL_REQUIRED')
+  elif approval.get('environment')!=ENV or approval.get('preventSelfReview') is not False or approval.get('adminBypass') is not False:reasons.append('REAL_PROTECTED_OWNER_APPROVAL_REQUIRED')
   if approval.get('buildRunId')!=candidate.get('buildRunId') or review.get('certificateSha256')!=cert or approval.get('certificateSha256')!=cert:reasons.append('REVIEWED_SIGNING_BINDING_MISMATCH')
   if gate.get('status')!='PASS' or any(gate.get('cases',{}).get(x)!='PASS' for x in REQUIRED):reasons.append('MANDATORY_SECURITY_GATE_NOT_PASS')
   current=now or datetime.datetime.now(datetime.timezone.utc)
-  if not(time(build['completedAt'])<=time(review['submittedAt'])<time(approval['approvedAt'])<=current):reasons.append('REVIEW_APPROVAL_ORDER_INVALID')
+  if single:
+   if not(time(build['completedAt'])<=time(review['ownerSignoffAt'])<=time(approval['approvalObservedBy'])<=current):reasons.append('REVIEW_APPROVAL_ORDER_INVALID')
+  elif not(time(build['completedAt'])<=time(review['submittedAt'])<time(approval['approvedAt'])<=current):reasons.append('REVIEW_APPROVAL_ORDER_INVALID')
  except (KeyError,TypeError,ValueError,OSError,zipfile.BadZipFile):
   reasons.append('INCOMPLETE_OR_INVALID_PRE_SIGN_PROOF');commit=candidate.get('sourceCommit');digest=None;manifest=None;cert=candidate.get('certificateSha256')
- return {'kind':'maintrack-pre-sign-contract-v1','stage':'PRE_SIGN','status':'BLOCKED' if reasons else 'PASS','reasons':sorted(set(reasons)),'sourceCommit':commit,'unsignedSha256':digest,'payload':manifest,'certificateSha256':cert,'approvedAt':platform.get('approval',{}).get('approvedAt'),'artifactId':candidate.get('artifactId'),'buildRunId':candidate.get('buildRunId'),'signingAuthorized':False,'deploymentAuthorized':False}
+ return {'kind':'maintrack-pre-sign-contract-v1','stage':'PRE_SIGN','status':'BLOCKED' if reasons else 'PASS','reasons':sorted(set(reasons)),'sourceCommit':commit,'unsignedSha256':digest,'payload':manifest,'certificateSha256':cert,'approvedAt':owner_approval.get('ownerSignoffAt') if isinstance(owner_approval,dict) else platform.get('approval',{}).get('approvedAt'),'approvalObservedBy':owner_approval.get('approvalObservedBy') if isinstance(owner_approval,dict) else None,'governancePolicy':'single-owner-v1' if owner_approval is not None else 'independent-v1','artifactId':candidate.get('artifactId'),'buildRunId':candidate.get('buildRunId'),'signingAuthorized':False,'deploymentAuthorized':False}
 
 def post_sign(pre,unsigned_apk,signed_apk,*,apksigner,signing=None):
  reasons=[];signed_digest=None;pre=pre if isinstance(pre,dict) else {}
@@ -89,6 +97,7 @@ def post_sign(pre,unsigned_apk,signed_apk,*,apksigner,signing=None):
   receipt=signing if isinstance(signing,dict) else {}
   if receipt.get('kind')!='trusted-signing-job-v1' or receipt.get('sourceCommit')!=pre.get('sourceCommit') or receipt.get('unsignedSha256')!=pre.get('unsignedSha256') or receipt.get('signedSha256')!=signed_digest or receipt.get('certificateSha256')!=pre.get('certificateSha256') or receipt.get('buildRunId')!=pre.get('buildRunId') or type(receipt.get('signingRunId')) is not int or receipt['signingRunId']<=0:reasons.append('TRUSTED_SIGNING_RECEIPT_REQUIRED')
   if not receipt.get('signedAt') or not pre.get('approvedAt') or time(receipt['signedAt'])<time(pre['approvedAt']):reasons.append('SIGNING_PRECEDES_APPROVAL_OR_TIME_UNPROVEN')
+  if pre.get('approvalObservedBy') and time(receipt['signedAt'])<time(pre['approvalObservedBy']):reasons.append('SIGNING_PRECEDES_ENVIRONMENT_APPROVAL_OBSERVATION')
   verify_certificate(apksigner,signed_apk,pre.get('certificateSha256'))
  except Exception as e:
   # No signing/deploy side effect; all verifier, ZIP and process failures block.
