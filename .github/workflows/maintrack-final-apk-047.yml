@@ -111,7 +111,8 @@ jobs:
   sign-final:
     name: Sign Final 407 with original certificate (artifact only)
     needs: assemble
-    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/release/maintrack-047-final-20261024'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: maintrack-android-release

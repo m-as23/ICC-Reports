@@ -70,7 +70,8 @@ jobs:
           retention-days: 14
   signed-release:
     needs: package-review-candidates
-    if: ${{ github.ref == 'refs/heads/android/stage14-ota-native-lab' && (github.event_name == 'push' || inputs.sign_apk) && vars.MT_STAGE14_SIGNING_READY == 'true' }}
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     environment: maintrack-android-release
@@ -192,7 +193,8 @@ jobs:
 
   publish-signed-ota:
     needs: signed-release
-    if: needs.signed-release.result == 'success'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: maintrack-android-release

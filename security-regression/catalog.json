@@ -14,7 +14,10 @@
         "security-regression/node_tests.py",
         "ops/maintrack/security/qa-cleanup-lease.sql",
         "security-regression/signing_chain.py",
-        "security-regression/platform_approval.py"
+        "security-regression/platform_approval.py",
+        "security-regression/legacy_signing_fence.py",
+        ".github/workflows/*.yml",
+        ".github/workflows/*.yaml"
       ],
       "command": [
         "{python}",

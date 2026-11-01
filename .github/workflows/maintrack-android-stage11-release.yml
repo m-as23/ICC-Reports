@@ -21,7 +21,8 @@ permissions:
   contents: read
 jobs:
   signed-release:
-    if: ${{ vars.MT_ANDROID_SIGNING_READY == 'true' && github.event_name == 'workflow_dispatch' }}
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     environment: maintrack-android-release
