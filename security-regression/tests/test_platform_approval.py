@@ -75,11 +75,17 @@ class DebugCertificateTests(unittest.TestCase):
 
 class CollectorTests(unittest.TestCase):
  setUp=BoundReviewTests.setUp
+ def test_missing_trusted_workflow_pin_is_rejected_before_platform_access(self):
+  from unittest.mock import patch
+  from platform_approval import fetch_pr_artifact_review
+  with patch('platform_approval.api') as api:
+   with self.assertRaisesRegex(ValueError,'TRUSTED_WORKFLOW_PIN_REQUIRED'):fetch_pr_artifact_review(28,3,2,'a'*40,'b'*64,'candidate.apk','c'*64,expected_workflow_path=None,expected_workflow_sha256=None)
+   api.assert_not_called()
  def test_draft_stops_before_artifact_download(self):
   from unittest.mock import patch
   from platform_approval import fetch_pr_artifact_review
   with patch('platform_approval.api',return_value={**self.pr,'draft':True}) as api,patch('platform_approval.subprocess.check_output') as download:
-   with self.assertRaises(ValueError):fetch_pr_artifact_review(28,3,2,'a'*40,'b'*64,'candidate.apk','c'*64)
+   with self.assertRaises(ValueError):fetch_pr_artifact_review(28,3,2,'a'*40,'b'*64,'candidate.apk','c'*64,expected_workflow_path='.github/workflows/fixture.yml',expected_workflow_sha256=hashlib.sha256(b'fixture-workflow').hexdigest())
    self.assertEqual(api.call_count,1);download.assert_not_called()
  def test_collector_binds_real_archive_and_api_permissions(self):
   import io
@@ -90,11 +96,16 @@ class CollectorTests(unittest.TestCase):
   archive=b.getvalue();digest=hashlib.sha256(b'unsigned-fixture').hexdigest()
   import json
   review={**self.review,'body':json.dumps({'kind':'maintrack-artifact-review-v1',**{k:(digest if k=='artifactSha256' else v) for k,v in self.subject.items() if k!='buildActor'}})}
-  replies={'pulls/28':self.pr,'actions/runs/3':{'head_sha':'a'*40,'repository':{'full_name':'m-as23/ICC-Reports'},'run_attempt':1,'status':'completed','conclusion':'success','actor':{'login':'builder'}},'actions/artifacts/2':{'size_in_bytes':len(archive),'expired':False,'workflow_run':{'id':3,'head_sha':'a'*40},'digest':'sha256:'+hashlib.sha256(archive).hexdigest()},'actions/runs/3/jobs?per_page=100':{'total_count':1,'jobs':[{'status':'completed','conclusion':'success','completed_at':'2026-11-01T01:00:00Z'}]},'pulls/28/reviews?per_page=100':[review],'collaborators/reviewer/permission':self.permissions['reviewer']}
+  replies={'pulls/28':self.pr,'actions/runs/3':{'head_sha':'a'*40,'repository':{'full_name':'m-as23/ICC-Reports'},'run_attempt':1,'status':'completed','conclusion':'success','actor':{'login':'builder'},'path':'.github/workflows/fixture.yml','event':'workflow_dispatch'},'actions/artifacts/2':{'size_in_bytes':len(archive),'expired':False,'workflow_run':{'id':3,'head_sha':'a'*40},'digest':'sha256:'+hashlib.sha256(archive).hexdigest()},'actions/runs/3/jobs?per_page=100':{'total_count':1,'jobs':[{'status':'completed','conclusion':'success','completed_at':'2026-11-01T01:00:00Z'}]},'pulls/28/reviews?per_page=100':[review],'collaborators/reviewer/permission':self.permissions['reviewer']}
+  import base64
+  replies['contents/.github/workflows/fixture.yml?ref='+'a'*40]={'type':'file','path':'.github/workflows/fixture.yml','encoding':'base64','size':len(b'fixture-workflow'),'content':base64.b64encode(b'fixture-workflow').decode()}
   with patch('platform_approval.api',side_effect=lambda route:replies[route]),patch('platform_approval.subprocess.check_output',return_value=archive):
-   result=fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64)
+   result=fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64,expected_workflow_path='.github/workflows/fixture.yml',expected_workflow_sha256=hashlib.sha256(b'fixture-workflow').hexdigest())
    self.assertEqual(result['artifactSha256'],digest);self.assertFalse(result['signingAuthorized'])
+   replies['actions/runs/3']['path']='.github/workflows/unreviewed.yml'
+   with self.assertRaisesRegex(ValueError,'TRUSTED_BUILD_WORKFLOW_REQUIRED'):fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64,expected_workflow_path='.github/workflows/fixture.yml',expected_workflow_sha256=hashlib.sha256(b'fixture-workflow').hexdigest())
+   replies['actions/runs/3']['path']='.github/workflows/fixture.yml'
    replies['collaborators/reviewer/permission']={'permission':'read','user':{'login':'reviewer'}}
-   with self.assertRaises(ValueError):fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64)
+   with self.assertRaises(ValueError):fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64,expected_workflow_path='.github/workflows/fixture.yml',expected_workflow_sha256=hashlib.sha256(b'fixture-workflow').hexdigest())
 
 if __name__=='__main__':unittest.main()

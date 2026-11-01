@@ -1,0 +1,54 @@
+// Compose a disabled local derivative only. No SQL install, deploy or provider setup.
+import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
+export function prepareRegisteredBundle(bundle){
+ if(bundle?.projectRef!=='szhstrafzkxzstjdcynl'||bundle.deploy!==false||!Array.isArray(bundle.files))throw Error('OFFLINE_QA_BUNDLE_REQUIRED');
+ if(bundle.registeredIdentity)throw Error('REGISTERED_BUNDLE_ALREADY_PREPARED');
+ const files=bundle.files.map(x=>({...x}));if(new Set(files.map(f=>f.name)).size!==files.length)throw Error('DUPLICATE_MODULE');
+ const entry=files.find(f=>f.name==='index.ts');if(!entry||entry.content.includes('createRegisteredLogin'))throw Error('REVIEWED_CORE_REQUIRED');
+ let source=entry.content;
+ const initialization=/^const admittedLogin=createGatewayAdmissionLogin\([^\n]+\);\r?$/m;
+ if((source.match(initialization)||[]).length!==1)throw Error('GATEWAY_CONTRACT_CHANGED');
+ source=source.replace(initialization,'let admittedLogin;');
+ const importLine="import {createGatewayAdmissionLogin} from './login-gateway.mjs';";
+ if(source.split(importLine).length!==2)throw Error('GATEWAY_IMPORT_CHANGED');
+ source=source.replace(importLine,"import {createGatewayVerifier} from './login-gateway.mjs';\nimport {createRegisteredLogin,PgIdentityStore,registeredPrincipalSource} from './registered-login.mjs';");
+ const sig="async function login(b,source,admissionPolicy:{kind:'verified-gateway-v1'})";
+ if(source.split(sig).length!==2)throw Error('LOGIN_SIGNATURE_CHANGED');source=source.replace(sig,sig.slice(0,-1)+',identity:any)');
+ const budget='return withLoginBudget(pool,source,code,async c=>{';
+ if(source.split(budget).length!==2)throw Error('PASSWORD_WORK_CHANGED');source=source.replace(budget,budget+'\n await registeredStore.assertCurrent(c,identity);');
+ const anchor='const qaChannel=createQaChannel({pool});';if(source.split(anchor).length!==2)throw Error('QA_POOL_CHANNEL_ATTESTATION_REQUIRED');
+ const init=`
+if(Deno.env.get('MT_REGISTERED_LOGIN_MODE')!=='qa-reviewed-v1')throw Error('REGISTERED_LOGIN_NOT_ACTIVATED');
+const registeredStore=new PgIdentityStore(pool);
+const registeredGateway=createGatewayVerifier({secret:Deno.env.get('MT_LOGIN_GATEWAY_SECRET')});
+const registeredProvider=createAdmissionLogin({login:async()=>true,secret:Deno.env.get('MT_LOGIN_TURNSTILE_SECRET'),allowedHostnames:(Deno.env.get('MT_LOGIN_TURNSTILE_HOSTNAMES')||'').split(',').filter(Boolean)});
+const registeredHandler=createRegisteredLogin({store:registeredStore,rpID:Deno.env.get('MT_REGISTERED_RP_ID'),origin:Deno.env.get('MT_REGISTERED_ORIGIN'),androidOrigins:(Deno.env.get('MT_REGISTERED_ANDROID_ORIGINS')||'').split(',').filter(Boolean),challengeSecret:Deno.env.get('MT_REGISTERED_CHALLENGE_SECRET'),verifyIngress:async(req,body)=>registeredGateway(req,body),verifyProvider:async body=>registeredProvider(body),passwordLogin:(body,identity)=>login(body,registeredPrincipalSource(identity.principal),{kind:'verified-gateway-v1'},identity)});
+admittedLogin=async(req,body)=>{try{return await registeredHandler(req,body);}catch(e){if(e instanceof AppError||e instanceof LoginRateError||e instanceof LoginAdmissionError)throw e;throw new LoginAdmissionError('REGISTERED_LOGIN_REJECTED');}};
+`;
+ source=source.replace(anchor,anchor+init);entry.content=source;
+ if(source.includes("a==='login'?await login(b)"))throw Error('PASSWORD_ONLY_BYPASS');
+ const module=fs.readFileSync(new URL('../security/registered-login.mjs',import.meta.url),'utf8').replace("'@simplewebauthn/server'","'npm:@simplewebauthn/server@14.0.3'").replace("'../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs'","'./login-rate-limit.mjs'");
+ files.push({name:'registered-login.mjs',content:module});
+ return {...bundle,files,deploy:false,registeredIdentity:{status:'LOCAL_DERIVATIVE_NOT_ACTIVATED',cloudAcceptance:'NOT TESTED',operatorEnrollment:'REQUIRES_OWNER_POLICY',runtimeRoles:'NOT_GRANTED',qaChannelGatewayBinding:'NOT_VERIFIED',android:'NOT_TESTED',noPasswordOnlyFallback:true,library:'@simplewebauthn/server@14.0.3'},sha256:Object.fromEntries(files.map(f=>[f.name,createHash('sha256').update(f.content).digest('hex')]))};
+}
+
+export function composeRegisteredReview({baseDirectory,outputDirectory}){
+ const root=path.resolve(import.meta.dirname,'../../..'),base=fs.realpathSync(baseDirectory),out=path.resolve(outputDirectory),audit=path.join(root,'audit-output')+path.sep;
+ if(!base.startsWith(audit)||!out.startsWith(audit)||fs.existsSync(out))throw Error('NEW_OWNED_REVIEW_DIRECTORY_REQUIRED');
+ const old=JSON.parse(fs.readFileSync(path.join(base,'review-manifest.json'),'utf8'));
+ if(old.projectRef!=='szhstrafzkxzstjdcynl'||old.deploy!==false||!old.activationBlocked)throw Error('DISABLED_QA_PARENT_REQUIRED');
+ for(const entry of old.files){const target=path.resolve(base,entry.path);if(!target.startsWith(base+path.sep)||fs.lstatSync(target).isSymbolicLink()||createHash('sha256').update(fs.readFileSync(target)).digest('hex')!==entry.sha256)throw Error('PARENT_ASSET_IDENTITY_CHANGED');}
+ if(execFileSync('git',['status','--porcelain'],{cwd:root,encoding:'utf8'}).trim())throw Error('CLEAN_LOCAL_COMMIT_REQUIRED');
+ const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+ const files=fs.readdirSync(path.join(base,'qa-core')).map(name=>({name,content:fs.readFileSync(path.join(base,'qa-core',name),'utf8')}));
+ const result=prepareRegisteredBundle({projectRef:old.projectRef,deploy:false,files});
+ fs.cpSync(base,out,{recursive:true,errorOnExist:true});for(const file of result.files)fs.writeFileSync(path.join(out,'qa-core',file.name),file.content);
+ const client=fs.readFileSync(new URL('../security/registered-login-client.mjs',import.meta.url));
+ for(const variant of ['web','native/www']){
+  const dir=path.join(out,variant),assets=path.join(dir,'secure-assets');fs.writeFileSync(path.join(assets,'registered-login-client.mjs'),client);
+  const boot=path.join(assets,'login-admission-bootstrap.mjs');let text=fs.readFileSync(boot,'utf8');text="import {installRegisteredClient} from './registered-login-client.mjs';\n"+text+"\ninstallRegisteredClient({scope:window,endpoint:config.gatewayUrl,allowedGatewayHost:config.gatewayHost,enabled:config.registeredIdentity?.enabled===true});\n";fs.writeFileSync(boot,text);
+  const config=path.join(assets,'login-admission-public.json'),value=JSON.parse(fs.readFileSync(config,'utf8'));value.enabled=false;value.registeredIdentity={enabled:false,enrollmentPolicyApproved:false,androidVerified:false};fs.writeFileSync(config,JSON.stringify(value,null,2)+'\n');
+ }
+ const entries=fs.readdirSync(out,{recursive:true}).map(p=>p.replaceAll('\\','/')).filter(p=>p!=='review-manifest.json'&&fs.statSync(path.join(out,p)).isFile()).sort().map(p=>({path:p,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,p))).digest('hex')}));
+ const manifest={...old,sourceCommit,sourceTreeClean:true,parentReviewSource:old.sourceCommit,deploy:false,activationBlocked:true,providerConfigured:false,gatewayIngressVerified:false,registeredIdentity:result.registeredIdentity,profile:'LOCAL_REGISTERED_QA_DERIVATIVE_NOT_OPERATIONAL_EQUIVALENT',files:entries};fs.writeFileSync(path.join(out,'review-manifest.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
+}

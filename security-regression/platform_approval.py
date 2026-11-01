@@ -2,7 +2,7 @@
 Must execute from independently reviewed trusted workflow code before secrets/signing.
 https://docs.github.com/en/rest/actions/workflow-runs#get-the-review-history-for-a-workflow-run
 """
-import json,subprocess,hashlib,zipfile,io,re,datetime
+import json,subprocess,hashlib,zipfile,io,re,datetime,base64
 REPO='m-as23/ICC-Reports'
 ENVIRONMENT='maintrack-production-approval'
 def api(path):
@@ -96,10 +96,12 @@ def verify_pr_artifact_review(pr,reviews,permissions,subject,build_completed_at)
  except (KeyError,TypeError,AttributeError) as e:raise ValueError('INCOMPLETE_PLATFORM_REVIEW') from e
 
 
-def fetch_pr_artifact_review(pr_number,build_run_id,artifact_id,commit,apk_digest,apk_name,certificate):
+def fetch_pr_artifact_review(pr_number,build_run_id,artifact_id,commit,apk_digest,apk_name,certificate,*,expected_workflow_path=None,expected_workflow_sha256=None):
  """Read-only, bounded collector. No submission/approval/signing/deployment.
  Trusted workflow policy must supply IDs and certificate, not an untrusted report.
  """
+ if not isinstance(expected_workflow_path,str) or not re.fullmatch(r'\.github/workflows/[A-Za-z0-9_-]+\.ya?ml',expected_workflow_path) or not isinstance(expected_workflow_sha256,str) or not re.fullmatch('[a-f0-9]{64}',expected_workflow_sha256):raise ValueError('TRUSTED_WORKFLOW_PIN_REQUIRED')
+ if not re.fullmatch('[a-f0-9]{40}',commit or ''):raise ValueError('SOURCE_COMMIT_REQUIRED')
  for value in [pr_number,build_run_id,artifact_id]:
   if type(value) is not int or value<=0:raise ValueError('PLATFORM_ID_REQUIRED')
  if not re.fullmatch('[A-Za-z0-9._-]+[.]apk',apk_name):raise ValueError('APK_BASENAME_REQUIRED')
@@ -107,6 +109,12 @@ def fetch_pr_artifact_review(pr_number,build_run_id,artifact_id,commit,apk_diges
  if pr.get('draft') is not False or pr.get('state')!='open':raise ValueError('PR_NOT_REVIEWABLE')
  run=api(f'actions/runs/{build_run_id}')
  if run.get('head_sha')!=commit or run.get('repository',{}).get('full_name')!=REPO or run.get('run_attempt')!=1 or run.get('conclusion')!='success' or run.get('status')!='completed':raise ValueError('TRUSTED_BUILD_REQUIRED')
+ if run.get('path')!=expected_workflow_path or run.get('event') not in ['push','workflow_dispatch']:raise ValueError('TRUSTED_BUILD_WORKFLOW_REQUIRED')
+ workflow=api(f'contents/{expected_workflow_path}?ref={commit}')
+ if workflow.get('type')!='file' or workflow.get('path')!=expected_workflow_path or workflow.get('encoding')!='base64' or type(workflow.get('size')) is not int or not 0<workflow['size']<=262144 or len(workflow.get('content',''))>360000:raise ValueError('TRUSTED_WORKFLOW_SOURCE_REQUIRED')
+ try:workflow_bytes=base64.b64decode(''.join(workflow['content'].split()),validate=True)
+ except (ValueError,TypeError) as e:raise ValueError('TRUSTED_WORKFLOW_SOURCE_REQUIRED') from e
+ if len(workflow_bytes)!=workflow['size'] or hashlib.sha256(workflow_bytes).hexdigest()!=expected_workflow_sha256:raise ValueError('TRUSTED_WORKFLOW_PIN_MISMATCH')
  meta=api(f'actions/artifacts/{artifact_id}')
  if not isinstance(meta.get('size_in_bytes'),int) or not 0<meta['size_in_bytes']<=256*1024*1024:raise ValueError('ARTIFACT_BUDGET')
  archive=subprocess.check_output(['gh','api',f'repos/{REPO}/actions/artifacts/{artifact_id}/zip'],timeout=60)

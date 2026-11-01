@@ -513,9 +513,19 @@
         "ops/maintrack/scripts/prepare-login-admission.mjs",
         "supabase/functions/maintrack-final-047/login-gateway.mjs",
         "ops/maintrack/security/vercel-login-entry.mjs",
-        "ops/maintrack/tests/fixtures/qa-core-bundle-contract.mjs.fixture"
+        "ops/maintrack/tests/fixtures/qa-core-bundle-contract.mjs.fixture",
+        "ops/maintrack/security/registered-login.mjs",
+        "ops/maintrack/security/registered-login.sql",
+        "ops/maintrack/security/registered-login-rpc.sql",
+        "ops/maintrack/security/registered-login-client.mjs",
+        "ops/maintrack/security/package.json",
+        "ops/maintrack/security/package-lock.json",
+        "ops/maintrack/scripts/prepare-registered-login.mjs",
+        "ops/maintrack/tests/registered-login.test.mjs",
+        "ops/maintrack/tests/registered-login-bundle.test.mjs",
+        "ops/maintrack/tests/registered-login.integration.test.mjs"
       ],
-      "reason": "Requires real QA Vercel overwrite/forged-header attestation, private gateway assertion, single-use provider proof, multi-instance/per-source concurrency and NAT/legitimate-account availability, provider failure/latency and Web/Android compatibility. Current candidate not activated; local provider/header simulation is never Cloud PASS. No client IP header is trusted directly in Supabase. No automatic provider configuration or Direct Transport mode."
+      "reason": "Requires real QA Vercel overwrite/forged-header attestation, private gateway assertion, single-use provider proof, multi-instance/per-source concurrency and NAT/legitimate-account availability, provider failure/latency and Web/Android compatibility. Current candidate not activated; local provider/header simulation is never Cloud PASS. No client IP header is trusted directly in Supabase. No automatic provider configuration or Direct Transport mode. Registered-principal derivative additionally requires real authorized enrollment/recovery, restricted RPC role attestation, Web and Android RP binding, same-NAT known-principal and compromised-multiple-principal availability acceptance. Local virtual authenticators are not human or Android/cloud approval."
     },
     {
       "id": "qa-ssl-console-local",
@@ -591,6 +601,31 @@
         "login-admission"
       ],
       "timeout": 45
+    },
+    {
+      "id": "registered-principal-local",
+      "required": true,
+      "mode": "local",
+      "inputs": [
+        "ops/maintrack/security/registered-login.mjs",
+        "ops/maintrack/security/registered-login.sql",
+        "ops/maintrack/security/registered-login-rpc.sql",
+        "ops/maintrack/security/registered-login-client.mjs",
+        "ops/maintrack/security/package.json",
+        "ops/maintrack/security/package-lock.json",
+        "ops/maintrack/scripts/prepare-registered-login.mjs",
+        "ops/maintrack/tests/registered-login.test.mjs",
+        "ops/maintrack/tests/registered-login-bundle.test.mjs",
+        "ops/maintrack/tests/registered-login.integration.test.mjs",
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
+      ],
+      "command": [
+        "node",
+        "--test",
+        "ops/maintrack/tests/registered-login.test.mjs",
+        "ops/maintrack/tests/registered-login-bundle.test.mjs"
+      ],
+      "timeout": 15
     }
   ]
 }

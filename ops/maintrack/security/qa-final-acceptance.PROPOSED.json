@@ -2,12 +2,12 @@
   "projectRef": "szhstrafzkxzstjdcynl",
   "state": "BLOCKED",
   "cloudMutationExecuted": false,
-  "sourceRuntimeReference": "73a32592b9bea66e575d05d93085245b8f05ca0c",
+  "sourceRuntimeReference": "Resolve exact clean local commit from new registered review manifest; not deployed",
   "windowFeasibility": "UNVERIFIED",
   "automaticAdmission": false,
   "preconditions": [
-    "Owner-approved identity/enrollment design or explicit measured residual-risk decision; current source-only profile cannot satisfy unconditional Same-NAT fairness",
-    "Trusted registration, revocation and recovery before implementing registered identity; Web RP origin and Android integration not available",
+    "Owner-approved verified employee enrollment/recovery policy; local WebAuthn lifecycle exists but is not activated",
+    "Private RPC owner/runtime/operator grants attested; real RP origin, Android credential integration and Digital Asset Links verified before cutover",
     "QA-only gateway and Turnstile configured securely; no .example/default profile or disabled client admission",
     "Independent SQL/Edge stop and targeted rollback proven; schema-only capture is not data/Storage/Edge rollback",
     "Current roles/RLS/source/lease/jobs snapshot and secure existing synthetic credentials; no rotation",
@@ -54,7 +54,7 @@
     "test": "Count each manifest HTTP exchange and each provider subrequest; widget resources must be observed, not assumed",
     "recoveryReserve": "Mandatory distinct reserved request/time budget for token revocation, stop, targeted baseline restoration and independent verification; unavailable measurement blocks Arm",
     "timing": "Actual provider/management/reconnect tail measurements unavailable. Prior 130-minute failure prevents using normal local timings as upper bound.",
-    "old20Minute60AttemptScope": "Not proven sufficient and not reused automatically",
+    "old20Minute60AttemptScope": "60 attempts INSUFFICIENT for proposed full manifest; 20-minute feasibility UNVERIFIED",
     "concurrency": "No external parallel calls or load beyond separately accepted bounded execution scope",
     "stopCriteria": [
       "Any wrong project/runtime/source",
@@ -63,7 +63,27 @@
       "Ambiguous write: no unsafe retry",
       "Remaining budget reaches reserved cleanup boundary",
       "Recovery or independent verification fails"
-    ]
+    ],
+    "staticLowerBound": {
+      "fourSuccessfulSessionLogins": 20,
+      "twoWebAuthnEnrollmentsHttpHops": 12,
+      "eightNegativeCasesAtLeastOneAttemptEach": 8,
+      "logoutReplayCoreInventorySiblingIdempotent": 5,
+      "nineHtmlAndAliasHeaderReads": 9,
+      "oneRealExternalFramingNavigation": 2,
+      "minimumPreflightReads": 6,
+      "subtotalBeforeCleanupReserve": 62,
+      "reservedCleanupAndIndependentVerification": 20,
+      "minimumWithReserve": 82,
+      "excludedAndMustBeMeasured": [
+        "Widget resources",
+        "Deployment and SQL installation calls",
+        "Additional provider/gateway retries (no ambiguous writes retried)",
+        "Android additional requests",
+        "Other actual SQL/network roundtrips and timeout outcomes"
+      ],
+      "interpretation": "Static floor for proposed full manifest, not an observed complete cloud budget or authorization. Existing60-attempt cap is insufficient for this manifest."
+    }
   },
   "reuse": [
     "API36 historical scope",
@@ -72,11 +92,11 @@
   ],
   "notAuthorized": [
     "Production",
-    "Push/Merge",
     "Signing/distribution",
     "Password rotation",
     "Unresolved Storage deletion",
-    "Automatic new QA window"
+    "Automatic new QA window",
+    "Merge; Push only under separately verified standing safe-branch authorization"
   ],
   "independentGates": [
     "SEC001 actual accepted risk/design",
@@ -84,5 +104,25 @@
     "SEC003 hosted browser proof",
     "SEC004 runtime provenance",
     "SEC005 human/platform approval"
-  ]
+  ],
+  "registeredPrincipalDesign": {
+    "status": "LOCAL_IMPLEMENTED_NOT_DEPLOYED",
+    "method": "WebAuthn ES256 + required user verification; trusted operator invitation linked to existing active employee ID",
+    "hardwareBoundClaim": false,
+    "syncedPasskeys": "Supported by verifier; not claimed to be hardware-bound",
+    "credentialLimitPerPrincipal": 2,
+    "activePasswordWorkPerPrincipal": 1,
+    "globalPasswordWorkSlots": 4,
+    "actualQaPoolMaxFromRetainedSource": 2,
+    "scope": "One malicious enrolled principal cannot gain additional bcrypt slots using extra devices or NAT changes. Four compromised registered principals can occupy all global slots; two can occupy existing QA pool. Not absolute availability or DDoS protection.",
+    "operatorVerification": "Human identity check and secure invitation delivery required; verification_ref is an audit pointer, not automatic proof",
+    "recovery": "Operator re-verifies employee; increments epoch and revokes old admission credentials. Existing Core sessions require separately verified Core session revocation. No password-only route",
+    "rollout": "Pre-enroll and verify employee device support before cutover. Remain disabled until all affected legitimate users have an approved enrollment/recovery route. No password-only parallel bypass after activation.",
+    "remaining": [
+      "Owner enrollment/operator/recovery policy",
+      "Cloud least-privilege RPC install and rollback proof",
+      "Android Credential Manager or compatible WebView/RP integration and reviewed PUBLIC cert/DAL",
+      "Bounded multi-principal threat model and measured QA service latency/availability"
+    ]
+  }
 }

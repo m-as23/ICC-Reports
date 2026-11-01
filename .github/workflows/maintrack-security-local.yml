@@ -51,6 +51,8 @@ jobs:
           psql -X --no-password -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_cleanup_ci IS 'MAINTRACK_CLEANUP_EPHEMERAL_V2'"
       - name: Install locked local parser dependencies without lifecycle scripts
         run: npm --prefix ops/maintrack/inventory/backend ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned registered admission verifier without lifecycle scripts
+        run: npm --prefix ops/maintrack/security ci --omit=dev --ignore-scripts --no-audit --no-fund
       - name: Create the separate owned disposable login fixture
         run: |
           createdb --no-password maintrack_auth_local

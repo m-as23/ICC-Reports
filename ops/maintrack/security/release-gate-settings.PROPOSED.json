@@ -108,5 +108,27 @@
     ],
     "knownQaDebugCertificateRejected": true,
     "collectorAuthorizesSigning": false
+  },
+  "alternateSigningPaths": {
+    "state": "BLOCKED_NOT_ENFORCED",
+    "referenceOnlyNotSecretExposure": true,
+    "workflows": [
+      ".github/workflows/maintrack-android-stage11-release.yml",
+      ".github/workflows/maintrack-background-release.yml",
+      ".github/workflows/maintrack-employee-signing-preflight.yml",
+      ".github/workflows/maintrack-final-apk-047.yml",
+      ".github/workflows/maintrack-owner-ota.yml",
+      ".github/workflows/maintrack-owner-pilot-043.yml",
+      ".github/workflows/maintrack-owner-qa-apk-044.yml",
+      ".github/workflows/maintrack-owner-qa-apk-045.yml",
+      ".github/workflows/maintrack-owner-qa-apk-046.yml",
+      ".github/workflows/maintrack-owner-qa-apk-047.yml",
+      ".github/workflows/maintrack-stage14-candidate.yml",
+      ".github/workflows/maintrack-stage22-044-owner-lab-publish.yml",
+      ".github/workflows/maintrack-stage22-owner-key-signonly.yml",
+      ".github/workflows/maintrack-unified-four-owner-key-preflight.yml"
+    ],
+    "requiredBeforeActivation": "Restrict/retire all alternate signing paths at actual secret/environment boundary; candidate-only workflow edits do not secure historical refs. Do not activate an unreviewed signer.",
+    "ownerAction": "Assign real reviewer/build actors; protect secret environment and required checks; approve reviewed trusted workflow pin and public release certificate. No key extraction/rotation performed."
   }
 }
