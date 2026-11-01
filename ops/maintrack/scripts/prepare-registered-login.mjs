@@ -58,7 +58,7 @@ export function prepareRegisteredPermanentRuntime(bundle){
  entry.content=entry.content.replace(lease,'const qaLease=qaLeaseHarness(pool);');
  const action='const a=text(b.action';
  if(entry.content.split(action).length!==2)throw Error('REGISTERED_ACTION_CONTRACT_CHANGED');
- entry.content=entry.content.replace(action,"if(!['login','logout','session','profile'].includes(b.action))die('QA_ACTION_DENIED',403);"+action);
+ entry.content=entry.content.replace(action,"if(typeof b.action!=='string'||!['login','logout','session','profile'].includes(b.action))die('QA_ACTION_DENIED',403);"+action);
  const origins=/const MT_ALLOWED_ORIGINS=new Set\(\[[\s\S]*?\]\);/g;
  if((entry.content.match(origins)||[]).length!==1)throw Error('REGISTERED_ORIGIN_CONTRACT_CHANGED');
  entry.content=entry.content.replace(origins,"const MT_ALLOWED_ORIGINS=new Set(['https://localhost',Deno.env.get('MT_REGISTERED_ORIGIN')]);");
