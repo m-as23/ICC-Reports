@@ -48,6 +48,36 @@ admittedLogin=async(req:Request,body:RequestBody)=>{try{return await registeredH
  return {...bundle,files,deploy:false,registeredIdentity:{status:'LOCAL_DERIVATIVE_NOT_ACTIVATED',cloudAcceptance:'NOT TESTED',operatorEnrollment:'REQUIRES_OWNER_POLICY',runtimeRoles:'NOT_GRANTED',qaChannelGatewayBinding:'NOT_VERIFIED',android:'NOT_TESTED',noPasswordOnlyFallback:true,library:'@simplewebauthn/server@14.0.3'},sha256:Object.fromEntries(files.map(f=>[f.name,createHash('sha256').update(f.content).digest('hex')]))};
 }
 
+export function prepareRegisteredPermanentRuntime(bundle){
+ if(bundle?.projectRef!=='szhstrafzkxzstjdcynl'||bundle.deploy!==false||!bundle.registeredIdentity)throw Error('REGISTERED_PERMANENT_QA_ONLY');
+ const result={...bundle,files:bundle.files.map(f=>({...f}))};
+ const file=name=>{const f=result.files.find(f=>f.name===name);if(!f)throw Error('PERMANENT_MODULE_REQUIRED:'+name);return f;};
+ const entry=file('index.ts');
+ const lease=/const qaLease=qaLeaseHarness\(pool,"[a-f0-9-]{36}"\);/g;
+ if((entry.content.match(lease)||[]).length!==1)throw Error('REGISTERED_LEASE_CONTRACT_CHANGED');
+ entry.content=entry.content.replace(lease,'const qaLease=qaLeaseHarness(pool);');
+ const action='const a=text(b.action';
+ if(entry.content.split(action).length!==2)throw Error('REGISTERED_ACTION_CONTRACT_CHANGED');
+ entry.content=entry.content.replace(action,"if(!['login','logout','session','profile'].includes(b.action))die('QA_ACTION_DENIED',403);"+action);
+ const origins=/const MT_ALLOWED_ORIGINS=new Set\(\[[\s\S]*?\]\);/g;
+ if((entry.content.match(origins)||[]).length!==1)throw Error('REGISTERED_ORIGIN_CONTRACT_CHANGED');
+ entry.content=entry.content.replace(origins,"const MT_ALLOWED_ORIGINS=new Set(['https://localhost',Deno.env.get('MT_REGISTERED_ORIGIN')]);");
+ const boundary='{attest:()=>pool.attest(),activeAuthorized:qaChannel.activeAuthorized}';
+ if(entry.content.split(boundary).length!==2)throw Error('REGISTERED_GUARD_BINDING_CHANGED');
+ entry.content=entry.content.replace(boundary,"{attest:()=>pool.attest(),activeAuthorized:qaChannel.activeAuthorized,registeredOrigin:Deno.env.get('MT_REGISTERED_ORIGIN')}");
+ file('qa-login-lease.mjs').content=fs.readFileSync(new URL('../security/qa-permanent-adapter.mjs',import.meta.url),'utf8')+'\nexport {permanentHarness as qaLeaseHarness};\n';
+ file('channel.mjs').content="import {permanentChannel} from './qa-login-lease.mjs';export const createQaChannel=({pool})=>permanentChannel(pool);export const BUCKET='maintrack-security-qa-20261025';export function guardStorageRequest(){throw Error('QA_STORAGE_DISABLED');}\n";
+ const guard=file('qa-guard.mjs');for(const field of ['accounts','active_accounts','synthetic_accounts']){
+  const before=`x.${field}===4`;if(guard.content.split(before).length!==2)throw Error('REGISTERED_ACTOR_CONTRACT_CHANGED');guard.content=guard.content.replace(before,`x.${field}===2`);
+ }
+ const signature='activeAuthorized=()=>false}';if(guard.content.split(signature).length!==2)throw Error('REGISTERED_GUARD_ORIGIN_CHANGED');
+ guard.content=guard.content.replace(signature,"activeAuthorized=()=>false,registeredOrigin=''}").replace("origin&&origin!=='https://localhost'","origin&&origin!=='https://localhost'&&origin!==registeredOrigin");
+ guard.content=guard.content.replace('activeAuthorized?:()=>boolean|Promise<boolean>','activeAuthorized?:()=>boolean|Promise<boolean>,registeredOrigin?:string');
+ guard.content=guard.content.replace("'90000001','90000002','90000003','90000004'","'90000001','90000002'");
+ result.registeredIdentity={...bundle.registeredIdentity,leaseBackend:'maintrack_qa_permanent',syntheticActorCount:2};
+ result.sha256=Object.fromEntries(result.files.map(f=>[f.name,createHash('sha256').update(f.content).digest('hex')]));return result;
+}
+
 export function composeRegisteredReview({baseDirectory,outputDirectory}){
  const root=path.resolve(import.meta.dirname,'../../..'),base=fs.realpathSync(baseDirectory),out=path.resolve(outputDirectory),audit=path.join(root,'audit-output')+path.sep;
  if(!base.startsWith(audit)||!out.startsWith(audit)||fs.existsSync(out))throw Error('NEW_OWNED_REVIEW_DIRECTORY_REQUIRED');
@@ -57,7 +87,7 @@ export function composeRegisteredReview({baseDirectory,outputDirectory}){
  if(execFileSync('git',['status','--porcelain'],{cwd:root,encoding:'utf8'}).trim())throw Error('CLEAN_LOCAL_COMMIT_REQUIRED');
  const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
  const files=fs.readdirSync(path.join(base,'qa-core')).map(name=>({name,content:fs.readFileSync(path.join(base,'qa-core',name),'utf8')}));
- const result=prepareRegisteredBundle({projectRef:old.projectRef,deploy:false,files});
+ const result=prepareRegisteredPermanentRuntime(prepareRegisteredBundle({projectRef:old.projectRef,deploy:false,files}));
  for(const variant of ['web','native/www'])for(const relative of ['secure-assets/login-admission-bootstrap.mjs','login-admission-public.json'])if(!fs.statSync(path.join(base,variant,relative)).isFile())throw Error('CLIENT_PARENT_CONTRACT_CHANGED');
  fs.cpSync(base,out,{recursive:true,errorOnExist:true});for(const file of result.files)fs.writeFileSync(path.join(out,'qa-core',file.name),file.content);
  const client=fs.readFileSync(new URL('../security/registered-login-client.mjs',import.meta.url));
