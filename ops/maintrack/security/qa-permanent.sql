@@ -1,6 +1,9 @@
 -- Local-reviewed QA-only baseline. Scheduler activation is a separate approved step.
 BEGIN;
 CREATE ROLE maintrack_qa_permanent_executor NOLOGIN NOINHERIT;
+-- PG17 managed installers are not superusers. Permit ownership transfer only
+-- during this atomic migration, without inherited executor privileges.
+GRANT maintrack_qa_permanent_executor TO CURRENT_USER WITH INHERIT FALSE, SET TRUE;
 CREATE SCHEMA maintrack_qa_permanent;
 REVOKE ALL ON SCHEMA maintrack_qa_permanent FROM PUBLIC;
 CREATE TABLE maintrack_qa_permanent.windows(id uuid PRIMARY KEY,admit_until timestamptz NOT NULL,state text NOT NULL CHECK(state IN('ARMED','RECOVERING','FAILED','COMPLETE')),cap_hash text NOT NULL UNIQUE,plan_hash text NOT NULL,attempts int NOT NULL DEFAULT 0,requests int NOT NULL DEFAULT 0,last_request timestamptz,issued int NOT NULL DEFAULT 0,baseline jsonb NOT NULL,error text,started_at timestamptz NOT NULL DEFAULT clock_timestamp());
@@ -98,12 +101,6 @@ CREATE POLICY qa_private_worker ON maintrack_qa_permanent.events TO maintrack_qa
 CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.mt_users TO maintrack_qa_permanent_executor USING(employee_code IN('90000001','90000002') AND starts_with(name,'QA_FINAL_'));
 CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.mt_login_attempts TO maintrack_qa_permanent_executor USING(employee_code IN('90000001','90000002'));
 CREATE POLICY qa_permanent_executor ON qa_security_final_20261025.mt_sessions TO maintrack_qa_permanent_executor USING(user_id IN(SELECT id FROM qa_security_final_20261025.mt_users WHERE employee_code IN('90000001','90000002')));
-ALTER FUNCTION maintrack_qa_permanent.owns_session(text) OWNER TO maintrack_qa_permanent_executor;
-ALTER FUNCTION maintrack_qa_permanent.is_open() OWNER TO maintrack_qa_permanent_executor;
-ALTER FUNCTION maintrack_qa_permanent.counter_state() OWNER TO maintrack_qa_permanent_executor;
-ALTER FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) OWNER TO maintrack_qa_permanent_executor;
-ALTER FUNCTION maintrack_qa_permanent.admit(text) OWNER TO maintrack_qa_permanent_executor;
-ALTER FUNCTION maintrack_qa_permanent.mutate(text,text,text) OWNER TO maintrack_qa_permanent_executor;
 GRANT USAGE ON SCHEMA maintrack_qa_permanent TO maintrack_qa_cleanup_worker;
 GRANT ALL ON ALL TABLES IN SCHEMA maintrack_qa_permanent TO maintrack_qa_cleanup_worker;
 CREATE FUNCTION maintrack_qa_permanent.auth_write_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$ BEGIN IF current_user='maintrack_qa_permanent_executor' OR pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') THEN RETURN NULL; END IF;RAISE EXCEPTION 'QA_DIRECT_WRITE_DENIED';END $$;
@@ -123,4 +120,14 @@ REVOKE INSERT,UPDATE,DELETE ON qa_security_final_20261025.mt_users,qa_security_f
 CREATE POLICY qa_permanent_users ON qa_security_final_20261025.mt_users AS RESTRICTIVE TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime USING(maintrack_qa_permanent.is_open() AND employee_code IN('90000001','90000002'));
 CREATE POLICY qa_permanent_sessions ON qa_security_final_20261025.mt_sessions AS RESTRICTIVE TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime USING(maintrack_qa_permanent.is_open() AND expires_at>clock_timestamp() AND maintrack_qa_permanent.owns_session(token_hash));
 CREATE POLICY qa_permanent_counters ON qa_security_final_20261025.mt_login_attempts AS RESTRICTIVE TO maintrack_qa_final_runtime USING(maintrack_qa_permanent.is_open() AND employee_code IN('90000001','90000002'));
+-- Finish ACL changes while still owning the functions; SET-only membership does
+-- not grant inherited owner authority. Remove the temporary SET membership;
+-- PG17 retains its implicit creator ADMIN-only membership (no SET/INHERIT).
+ALTER FUNCTION maintrack_qa_permanent.owns_session(text) OWNER TO maintrack_qa_permanent_executor;
+ALTER FUNCTION maintrack_qa_permanent.is_open() OWNER TO maintrack_qa_permanent_executor;
+ALTER FUNCTION maintrack_qa_permanent.counter_state() OWNER TO maintrack_qa_permanent_executor;
+ALTER FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) OWNER TO maintrack_qa_permanent_executor;
+ALTER FUNCTION maintrack_qa_permanent.admit(text) OWNER TO maintrack_qa_permanent_executor;
+ALTER FUNCTION maintrack_qa_permanent.mutate(text,text,text) OWNER TO maintrack_qa_permanent_executor;
+REVOKE maintrack_qa_permanent_executor FROM CURRENT_USER;
 COMMIT;
