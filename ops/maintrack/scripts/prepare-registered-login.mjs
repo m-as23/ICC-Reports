@@ -66,7 +66,7 @@ export function prepareRegisteredPermanentRuntime(bundle){
  if(entry.content.split(boundary).length!==2)throw Error('REGISTERED_GUARD_BINDING_CHANGED');
  entry.content=entry.content.replace(boundary,"{attest:()=>pool.attest(),activeAuthorized:qaChannel.activeAuthorized,registeredOrigin:Deno.env.get('MT_REGISTERED_ORIGIN')}");
  file('qa-login-lease.mjs').content=fs.readFileSync(new URL('../security/qa-permanent-adapter.mjs',import.meta.url),'utf8')+'\nexport {permanentHarness as qaLeaseHarness};\n';
- file('channel.mjs').content="import {permanentChannel} from './qa-login-lease.mjs';export const createQaChannel=({pool})=>permanentChannel(pool);export const BUCKET='maintrack-security-qa-20261025';export function guardStorageRequest(){throw Error('QA_STORAGE_DISABLED');}\n";
+ file('channel.mjs').content="import {permanentChannel} from './qa-login-lease.mjs';export const createQaChannel=({pool})=>{const origin=Deno.env.get('MT_REGISTERED_ORIGIN');return permanentChannel(pool,{allowedOrigins:origin?['https://localhost',origin]:['https://localhost']})};export const BUCKET='maintrack-security-qa-20261025';export function guardStorageRequest(){throw Error('QA_STORAGE_DISABLED');}\n";
  const guard=file('qa-guard.mjs');for(const field of ['accounts','active_accounts','synthetic_accounts']){
   const before=`x.${field}===4`;if(guard.content.split(before).length!==2)throw Error('REGISTERED_ACTOR_CONTRACT_CHANGED');guard.content=guard.content.replace(before,`x.${field}===2`);
  }

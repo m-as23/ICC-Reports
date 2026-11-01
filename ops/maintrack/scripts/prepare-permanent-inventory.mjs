@@ -22,6 +22,8 @@ export function preparePermanentInventory(snapshotDirectory,runtimeLock){
  if(lock?.version!=='5'||Object.keys(lock.specifiers||{}).length!==3||['pg@8.13.3','exceljs@4.4.0','yauzl@3.2.1'].some(s=>lock.specifiers['npm:'+s]!==s.slice(s.lastIndexOf('@')+1))||!Object.values(lock.npm||{}).length||Object.values(lock.npm).some(x=>!/^sha512-/.test(x.integrity||'')))throw Error('REVIEWED_RUNTIME_LOCK_REQUIRED');
  files.push({name:'deno.lock',content:runtimeLock});
  const guard=files.find(x=>x.name==='inventory-guard.mjs');
+ if(guard.content.split('activeAuthorized=()=>false}').length!==2)throw Error('INVENTORY_ORIGIN_GUARD_CHANGED');
+ guard.content=guard.content.replace('activeAuthorized=()=>false}',"activeAuthorized=()=>false,registeredOrigin=''}").replace("origin&&origin!=='https://localhost'","origin&&origin!=='https://localhost'&&origin!==registeredOrigin");
  for(const field of ['accounts','active_accounts','synthetic_accounts']){
   const before=`x.${field}===4`;if(!guard.content.includes(before))throw Error('QA_ATTESTATION_CONTRACT');
   guard.content=guard.content.replace(before,`x.${field}===2`);
@@ -60,7 +62,9 @@ import {createQaPool,withQaIsolation} from './inventory-guard.mjs';
 import {createQaChannel,BUCKET} from './channel.mjs';
 import {createReviewInventoryHttpHandler} from './backend/create-review-http-handler.mjs';
 const pool=createQaPool({Pool:pg.Pool,envGet:k=>Deno.env.get(k)});
-const channel=createQaChannel(pool);
+const registeredOrigin=Deno.env.get('MT_REGISTERED_ORIGIN');
+const allowedOrigins=registeredOrigin?['https://localhost',registeredOrigin]:['https://localhost'];
+const channel=createQaChannel(pool,{allowedOrigins});
 const denied=()=>{throw Error('QA_STORAGE_OBJECT_OPERATIONS_DISABLED');};
 const storage={async getBucket(bucket){
  if(bucket!==BUCKET||Deno.env.get('SUPABASE_URL')!=='https://szhstrafzkxzstjdcynl.supabase.co')throw Error('QA_STORAGE_TARGET_MISMATCH');
@@ -71,7 +75,7 @@ const storage={async getBucket(bucket){
  return {data};
 },from(bucket){if(bucket!==BUCKET)throw Error('QA_STORAGE_TARGET_MISMATCH');return {upload:denied,remove:denied,download:denied};}};
 let initialized;
-const initialize=()=>initialized??=createReviewInventoryHttpHandler({pool,storage,bucket:BUCKET,allowedOrigins:['https://localhost']}).catch(e=>{initialized=undefined;throw e;});
+const initialize=()=>initialized??=createReviewInventoryHttpHandler({pool,storage,bucket:BUCKET,allowedOrigins}).catch(e=>{initialized=undefined;throw e;});
 const readonlyActions=new Set(['inventorySnapshot','inventoryVersion','inventorySearch','inventorySearchPage','inventoryItem','inventoryHistory','inventoryVersions','inventoryActivity','inventorySearchCapabilities']);
 async function boundedBody(req){
  const reader=req.body?.getReader();if(!reader)throw Error('INVALID_BODY');const parts=[];let length=0;
@@ -84,7 +88,7 @@ const handler=async req=>{
   return await (await initialize())(new Request(req.url,{method:'POST',headers:req.headers,body:bytes}));
  }catch{return new Response('QA_INVENTORY_UNAVAILABLE',{status:503});}
 };
-Deno.serve(channel.wrap(withQaIsolation(handler,{attest:()=>pool.attest(),activeAuthorized:()=>channel.activeAuthorized()})));
+Deno.serve(channel.wrap(withQaIsolation(handler,{attest:()=>pool.attest(),activeAuthorized:()=>channel.activeAuthorized(),registeredOrigin})));
 `;
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const [snapshot,out,lock]=process.argv.slice(2);if(!snapshot||!out||!lock)throw Error('SNAPSHOT_OUTPUT_AND_REVIEWED_DENO_LOCK_REQUIRED');

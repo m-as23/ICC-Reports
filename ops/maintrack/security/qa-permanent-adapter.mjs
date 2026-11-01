@@ -7,10 +7,16 @@ export function permanentHarness(pool){let halted=false;return {async ready(){co
  * @param {string|null} [hash]
  */
 async mutate(c,op,code,hash=null){if(halted)throw Error('QA_HALTED');try{return await c.query('SELECT maintrack_qa_permanent.mutate($1,$2,$3)',[op,code,hash]);}catch(e){if(!e.code||['ECONNRESET','ETIMEDOUT','08006'].includes(e.code))halted=true;throw e;}}};}
-export function permanentChannel(pool){return {async activeAuthorized(){return (await pool.query('SELECT maintrack_qa_permanent.is_open() AS active')).rows[0].active;},wrap:handler=>async req=>{
+export function permanentChannel(pool,{allowedOrigins=['https://localhost']}={}){
+ if(!Array.isArray(allowedOrigins)||!allowedOrigins.length||allowedOrigins.length>2||allowedOrigins.some(x=>{try{return new URL(x).origin!==x||!x.startsWith('https:')}catch{return true}}))throw Error('QA_ORIGINS_REQUIRED');
+ const origins=new Set(allowedOrigins);
+ return {async activeAuthorized(){return (await pool.query('SELECT maintrack_qa_permanent.is_open() AS active')).rows[0].active;},wrap:handler=>async req=>{
  try{
+ const origin=req.headers.get('origin');
+ if(origin&&!origins.has(origin))return new Response('QA_ORIGIN_FORBIDDEN',{status:403});
+ if(req.method==='OPTIONS')return origin&&origins.has(origin)?new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization,content-type,x-request-id,x-maintrack-qa-run-id,x-maintrack-qa-capability','vary':'Origin','cache-control':'no-store'}}):new Response('QA_PREFLIGHT_DENIED',{status:403});
  if(req.method==='GET'&&new URL(req.url).pathname.endsWith('/readyz')){
-  if(req.headers.get('x-maintrack-qa-run-id')!=='SECURITY_FINAL_20261025'||(req.headers.has('origin')&&req.headers.get('origin')!=='https://localhost'))return new Response('QA_PREFLIGHT_DENIED',{status:403});
+  if(req.headers.get('x-maintrack-qa-run-id')!=='SECURITY_FINAL_20261025'||(req.headers.has('origin')&&!origins.has(req.headers.get('origin'))))return new Response('QA_PREFLIGHT_DENIED',{status:403});
   // Catalog/runtime attestation only. No actor/session read, admission or handler.
   const r=await permanentHarness(pool).ready();return new Response(JSON.stringify({status:r.compatible?'ready':'hold',metadataOnly:true,activeTestsAuthorized:r.active&&r.compatible,checks:r.checks}),{status:r.compatible?200:503,headers:{'content-type':'application/json','cache-control':'no-store'}});
  }

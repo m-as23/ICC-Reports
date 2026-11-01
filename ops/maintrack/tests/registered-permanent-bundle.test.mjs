@@ -10,7 +10,7 @@ test('registered QA composition uses permanent lease, two actors and bounded Cor
  const b=builder.prepareRegisteredBundle(input);
  const out=builder.prepareRegisteredPermanentRuntime(b),file=n=>out.files.find(f=>f.name===n).content;
  assert.match(file('qa-login-lease.mjs'),/maintrack_qa_permanent\.mutate/);assert.doesNotMatch(file('qa-login-lease.mjs'),/maintrack_qa_lease\./);
- assert.match(file('channel.mjs'),/permanentChannel\(pool\)/);assert.doesNotMatch(file('channel.mjs'),/qa_control/);
+ assert.match(file('channel.mjs'),/permanentChannel\(pool,\{allowedOrigins:/);assert.match(file('channel.mjs'),/MT_REGISTERED_ORIGIN/);assert.doesNotMatch(file('channel.mjs'),/qa_control/);
  assert.match(file('index.ts'),/const qaLease=qaLeaseHarness\(pool\);/);assert.match(file('index.ts'),/QA_ACTION_DENIED/);
  assert.match(file('qa-guard.mjs'),/x.accounts===2/);assert.doesNotMatch(file('qa-guard.mjs'),/x\.(accounts|active_accounts|synthetic_accounts)===4/);
  assert.match(file('qa-guard.mjs'),/origin!==registeredOrigin/);assert.match(file('index.ts'),/registeredOrigin:Deno.env.get\('MT_REGISTERED_ORIGIN'\)/);
