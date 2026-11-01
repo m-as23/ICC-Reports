@@ -1,5 +1,6 @@
 // Compose a disabled local derivative only. No SQL install, deploy or provider setup.
 import {typeCoreSource} from './prepare-qa-login-rpc.mjs';
+import {frameHostingConfig} from './security-client-overlay.mjs';
 import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
 export function prepareRegisteredBundle(bundle){
  if(bundle?.projectRef!=='szhstrafzkxzstjdcynl'||bundle.deploy!==false||!Array.isArray(bundle.files))throw Error('OFFLINE_QA_BUNDLE_REQUIRED');
@@ -70,6 +71,8 @@ export function composeRegisteredReview({baseDirectory,outputDirectory}){
   fs.writeFileSync(boot,text);
   const config=path.join(dir,'login-admission-public.json'),value=JSON.parse(fs.readFileSync(config,'utf8'));value.enabled=false;value.registeredIdentity={enabled:false,enrollmentPolicyApproved:false,androidVerified:false};fs.writeFileSync(config,JSON.stringify(value,null,2)+'\n');
  }
+ const pages=fs.readdirSync(path.join(out,'web'),{recursive:true}).filter(p=>p.endsWith('.html')).sort().map(name=>({name:name.replaceAll('\\','/'),html:fs.readFileSync(path.join(out,'web',name),'utf8')}));
+ fs.writeFileSync(path.join(out,'web/vercel.json'),JSON.stringify(frameHostingConfig(pages),null,2)+'\n');
  const entries=fs.readdirSync(out,{recursive:true}).map(p=>p.replaceAll('\\','/')).filter(p=>p!=='review-manifest.json'&&fs.statSync(path.join(out,p)).isFile()).sort().map(p=>({path:p,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,p))).digest('hex')}));
  const manifest={...old,sourceCommit,sourceTreeClean:true,parentReviewSource:old.sourceCommit,deploy:false,activationBlocked:true,providerConfigured:false,gatewayIngressVerified:false,registeredIdentity:result.registeredIdentity,profile:'LOCAL_REGISTERED_QA_DERIVATIVE_NOT_OPERATIONAL_EQUIVALENT',files:entries};fs.writeFileSync(path.join(out,'review-manifest.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
 }

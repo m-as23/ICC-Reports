@@ -4,7 +4,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {prepareFinal047} from './prepare-final-047.mjs';
-import {applyLogoutClient,frameHeaderRules} from './security-client-overlay.mjs';
+import {applyLogoutClient,frameHeaderRules,frameHostingConfig} from './security-client-overlay.mjs';
 const root=path.resolve(import.meta.dirname,'../../..');
 const folder=process.env.MAINTRACK_SECURITY_RC_FOLDER||'security-rc';
 if(!/^security-rc(?:-[a-z0-9-]+)?$/.test(folder))throw Error('INVALID_RC_OUTPUT_FOLDER');
@@ -22,7 +22,7 @@ for(const folder of ['web','native/www']) {
 const htmlPaths=(await fs.readdir(path.join(target,'web'),{recursive:true})).filter(name=>name.endsWith('.html')).sort();
 const pages=await Promise.all(htmlPaths.map(async name=>({name:name.replaceAll('\\','/'),html:await fs.readFile(path.join(target,'web',name),'utf8')})));
 const rules=frameHeaderRules(pages);
-await fs.writeFile(path.join(target,'web/vercel.json'),JSON.stringify({headers:rules},null,2)+'\n');
+await fs.writeFile(path.join(target,'web/vercel.json'),JSON.stringify(frameHostingConfig(pages),null,2)+'\n');
 const report={schema:1,sourceCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),baseCommit:'54476212144c02a4d730dac5337c343691bd5a48',acceptedSource:base.sourceCommit,canonicalLocksModified:false,changes,headerPolicy:rules,deploy:false,releaseDecision:'NO-GO',reason:'Candidate-bound QA and operational deployment parity require independent evidence'};
 await fs.writeFile(path.join(target,'security-provenance.json'),JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({status:'PASS',sourceCommit:report.sourceCommit,changes:changes.length,target,deploy:false}));

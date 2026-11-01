@@ -1,7 +1,7 @@
 // Offline QA derivative only. Does not install SQL, deploy, configure a provider or touch canonical code.
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
 import {prepareQaLoginRpc,typeCoreSource} from './prepare-qa-login-rpc.mjs';
-import {frameHeaderRules} from './security-client-overlay.mjs';
+import {frameHostingConfig} from './security-client-overlay.mjs';
 export function protectQaLoginSource(source){
  if(source.includes('const admittedLogin='))throw Error('ADMISSION_ALREADY_PROTECTED');
  if(!source.includes('createQaPool')||!source.includes('createQaChannel'))throw Error('EXISTING_QA_ISOLATION_REQUIRED');
@@ -94,7 +94,7 @@ export function buildAdmissionReview({baselineDirectory,canonicalDirectory,outpu
   const html=prepareAdmissionHtml(fs.readFileSync(path.join(target,'index.html'),'utf8'),'https://qa-gw.example');fs.writeFileSync(path.join(target,'index.html'),html);
  }
  const pages=fs.readdirSync(path.join(out,'web'),{recursive:true}).filter(p=>p.endsWith('.html')).sort().map(name=>({name:name.replaceAll('\\','/'),html:fs.readFileSync(path.join(out,'web',name),'utf8')}));
- fs.writeFileSync(path.join(out,'web/vercel.json'),JSON.stringify({headers:frameHeaderRules(pages)},null,2)+'\n');
+ fs.writeFileSync(path.join(out,'web/vercel.json'),JSON.stringify(frameHostingConfig(pages),null,2)+'\n');
  const server=path.join(out,'vercel-api/server'),api=path.join(out,'vercel-api/api');fs.mkdirSync(server,{recursive:true});fs.mkdirSync(api,{recursive:true});
  for(const name of ['login-gateway.mjs','login-admission.mjs','login-proof.mjs'])fs.writeFileSync(path.join(server,name),read('supabase/functions/maintrack-final-047/'+name));
  fs.writeFileSync(path.join(api,'login.mjs'),read('ops/maintrack/security/vercel-login-entry.mjs').replace('../../../supabase/functions/maintrack-final-047/login-gateway.mjs','../server/login-gateway.mjs'));

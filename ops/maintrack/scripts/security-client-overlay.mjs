@@ -41,3 +41,9 @@ export function frameHeaderRules(pages) {
  }
  return rules;
 }
+
+// Header rules do not create routes: explicitly serve the same HTML at aliases.
+export function frameHostingConfig(pages) {
+ const headers=frameHeaderRules(pages); // Also validates every destination path.
+ return {headers,rewrites:pages.map(({name})=>({source:'/'+name.replace(/\.html$/,''),destination:'/'+name}))};
+}
