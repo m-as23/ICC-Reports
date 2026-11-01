@@ -1,19 +1,20 @@
 // Offline QA derivative only. Does not install SQL, deploy, configure a provider or touch canonical code.
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
-import {prepareQaLoginRpc} from './prepare-qa-login-rpc.mjs';
+import {prepareQaLoginRpc,typeCoreSource} from './prepare-qa-login-rpc.mjs';
 import {frameHeaderRules} from './security-client-overlay.mjs';
 export function protectQaLoginSource(source){
  if(source.includes('const admittedLogin='))throw Error('ADMISSION_ALREADY_PROTECTED');
  if(!source.includes('createQaPool')||!source.includes('createQaChannel'))throw Error('EXISTING_QA_ISOLATION_REQUIRED');
+ source=typeCoreSource(source);
  const route="a==='login'?await login(b)";if(source.split(route).length!==2)throw Error('LOGIN_ROUTER_CONTRACT_CHANGED');
  const errors='e instanceof AppError||e instanceof LoginRateError';if(!source.includes(errors))throw Error('LOGIN_ERROR_CONTRACT_CHANGED');
- const start='async function login(b,source){',end='return issue(u,c);\n });';
+ const start='async function login(b:RequestBody,source?:string){',end='return issue(u,c);\n });';
  if(source.split(start).length!==2||source.split(end).length!==2)throw Error('QA_LOGIN_BUDGET_CONTRACT_CHANGED');
- source=source.replace(start,"async function login(b,source,admissionPolicy:{kind:'verified-gateway-v1'}){").replace(end,'return issue(u,c);\n },admissionPolicy);');
+ source=source.replace(start,"async function login(b:RequestBody,source:string|undefined,admissionPolicy:{kind:'verified-gateway-v1'}){").replace(end,'return issue(u,c);\n },admissionPolicy);');
  const prefix=`import {createAdmissionLogin,LoginAdmissionError} from './login-admission.mjs';
 import {createGatewayAdmissionLogin} from './login-gateway.mjs';
 if(Deno.env.get('MT_LOGIN_ADMISSION_PROJECT_REF')!=='szhstrafzkxzstjdcynl')throw Error('QA_ADMISSION_PROJECT_CONFIG_REQUIRED');
-const admittedLogin=createGatewayAdmissionLogin({secret:Deno.env.get('MT_LOGIN_GATEWAY_SECRET'),admissionLogin:createAdmissionLogin({login:(body,source)=>login(body,source,{kind:'verified-gateway-v1'}),secret:Deno.env.get('MT_LOGIN_TURNSTILE_SECRET'),allowedHostnames:(Deno.env.get('MT_LOGIN_TURNSTILE_HOSTNAMES')||'').split(',').filter(Boolean)})});
+const admittedLogin=createGatewayAdmissionLogin({secret:Deno.env.get('MT_LOGIN_GATEWAY_SECRET'),admissionLogin:createAdmissionLogin({login:(body:RequestBody,source?:string)=>login(body,source,{kind:'verified-gateway-v1'}),secret:Deno.env.get('MT_LOGIN_TURNSTILE_SECRET'),allowedHostnames:(Deno.env.get('MT_LOGIN_TURNSTILE_HOSTNAMES')||'').split(',').filter(Boolean)})});
 `;
  return prefix+source.replace(route,"a==='login'?await admittedLogin(req,b)").replaceAll(errors,errors+'||e instanceof LoginAdmissionError');
 }
@@ -62,7 +63,7 @@ export function prepareAdmissionHtml(html,gatewayOrigin){
 export function prepareAdmissionBundle(bundle){
  if(bundle?.projectRef!=='szhstrafzkxzstjdcynl'||bundle.deploy!==false||!Array.isArray(bundle.files))throw Error('REVIEWED_OFFLINE_QA_BUNDLE_REQUIRED');
  if(new Set(bundle.files.map(x=>x.name)).size!==bundle.files.length||bundle.files.some(x=>typeof x.name!=='string'||x.name.startsWith('/')||x.name.includes('\\')||x.name.split('/').includes('..')))throw Error('BUNDLE_FILE_IDENTITY');
- const files=bundle.files.map(x=>({...x})),entry=files.find(x=>x.name==='index.ts');if(!entry)throw Error('CORE_ENTRY_REQUIRED');entry.content=protectQaLoginSource(entry.content);
+ const files=bundle.files.map(x=>({...x}));if(!files.some(x=>x.name==='core-types.ts'))files.push({name:'core-types.ts',content:fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/core-types.ts',import.meta.url),'utf8')});const entry=files.find(x=>x.name==='index.ts');if(!entry)throw Error('CORE_ENTRY_REQUIRED');entry.content=protectQaLoginSource(entry.content);
  const base=new URL('../../../supabase/functions/maintrack-final-047/',import.meta.url);
  for(const name of ['login-admission.mjs','login-proof.mjs','login-gateway.mjs']){if(files.some(x=>x.name===name))throw Error('ADMISSION_MODULE_COLLISION');files.push({name,content:fs.readFileSync(new URL(name,base),'utf8')});}
  for(const file of files)for(const m of file.content.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g)){

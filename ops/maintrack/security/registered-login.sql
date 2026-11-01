@@ -26,3 +26,18 @@ REVOKE ALL ON ALL TABLES IN SCHEMA mt_registered_identity FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA mt_registered_identity FROM PUBLIC;
 -- No anonymous RLS policies; no SECURITY DEFINER; no role membership or public API grants.
 -- Local owner bypass is not evidence that a cloud runtime role is ready.
+CREATE TABLE mt_registered_identity.session_binding(
+ token_hash text PRIMARY KEY CHECK(token_hash ~ '^[a-f0-9]{64}$'),
+ principal uuid NOT NULL REFERENCES mt_registered_identity.principal(id),
+ credential_id text NOT NULL REFERENCES mt_registered_identity.credential(id),
+ epoch integer NOT NULL CHECK(epoch>0));
+CREATE INDEX ON mt_registered_identity.session_binding(principal,credential_id);
+ALTER TABLE mt_registered_identity.session_binding ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON mt_registered_identity.session_binding FROM PUBLIC;
+
+-- At most one verified provider operation per principal, including across runtimes.
+CREATE TABLE mt_registered_identity.provider_pending(
+ principal uuid PRIMARY KEY REFERENCES mt_registered_identity.principal(id),
+ nonce text NOT NULL CHECK(nonce ~ '^[a-f0-9]{32}$'), expires timestamptz NOT NULL);
+ALTER TABLE mt_registered_identity.provider_pending ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON mt_registered_identity.provider_pending FROM PUBLIC;

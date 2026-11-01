@@ -1,20 +1,23 @@
 // Compose a disabled local derivative only. No SQL install, deploy or provider setup.
+import {typeCoreSource} from './prepare-qa-login-rpc.mjs';
 import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
 export function prepareRegisteredBundle(bundle){
  if(bundle?.projectRef!=='szhstrafzkxzstjdcynl'||bundle.deploy!==false||!Array.isArray(bundle.files))throw Error('OFFLINE_QA_BUNDLE_REQUIRED');
  if(bundle.registeredIdentity)throw Error('REGISTERED_BUNDLE_ALREADY_PREPARED');
  const files=bundle.files.map(x=>({...x}));if(new Set(files.map(f=>f.name)).size!==files.length)throw Error('DUPLICATE_MODULE');
  const entry=files.find(f=>f.name==='index.ts');if(!entry||entry.content.includes('createRegisteredLogin'))throw Error('REVIEWED_CORE_REQUIRED');
- let source=entry.content;
+ let source=typeCoreSource(entry.content.replace("async function login(b,source,admissionPolicy:{kind:'verified-gateway-v1'})","async function login(b:RequestBody,source:string|undefined,admissionPolicy:{kind:'verified-gateway-v1'})"));
+ if(!files.some(f=>f.name==='core-types.ts'))files.push({name:'core-types.ts',content:fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/core-types.ts',import.meta.url),'utf8')});
  const initialization=/^const admittedLogin=createGatewayAdmissionLogin\([^\n]+\);\r?$/m;
  if((source.match(initialization)||[]).length!==1)throw Error('GATEWAY_CONTRACT_CHANGED');
  source=source.replace(initialization,'let admittedLogin;');
  const importLine="import {createGatewayAdmissionLogin} from './login-gateway.mjs';";
  if(source.split(importLine).length!==2)throw Error('GATEWAY_IMPORT_CHANGED');
  source=source.replace(importLine,"import {createGatewayVerifier} from './login-gateway.mjs';\nimport {createRegisteredLogin,PgIdentityStore,registeredPrincipalSource} from './registered-login.mjs';");
- const sig="async function login(b,source,admissionPolicy:{kind:'verified-gateway-v1'})";
- if(source.split(sig).length!==2)throw Error('LOGIN_SIGNATURE_CHANGED');source=source.replace(sig,sig.slice(0,-1)+',identity:any)');
- const budget='return withLoginBudget(pool,source,code,async c=>{';
+ const sig="async function login(b:RequestBody,source:string|undefined,admissionPolicy:{kind:'verified-gateway-v1'})";
+ source=source.replace("async function login(b:RequestBody,source,admissionPolicy:{kind:'verified-gateway-v1'})",sig);
+ if(source.split(sig).length!==2)throw Error('LOGIN_SIGNATURE_CHANGED');source=source.replace(sig,sig.slice(0,-1)+',identity:{id:string;principal:string;epoch:number})');
+ const budget='return withLoginBudget(pool,source,code,async (c:SqlConnection)=>{';
  if(source.split(budget).length!==2)throw Error('PASSWORD_WORK_CHANGED');source=source.replace(budget,budget+'\n await registeredStore.assertCurrent(c,identity);');
  const anchor='const qaChannel=createQaChannel({pool});';if(source.split(anchor).length!==2)throw Error('QA_POOL_CHANNEL_ATTESTATION_REQUIRED');
  const init=`
@@ -23,10 +26,13 @@ const registeredStore=new PgIdentityStore(pool);
 const registeredGateway=createGatewayVerifier({secret:Deno.env.get('MT_LOGIN_GATEWAY_SECRET')});
 const registeredProvider=createAdmissionLogin({login:async()=>true,secret:Deno.env.get('MT_LOGIN_TURNSTILE_SECRET'),allowedHostnames:(Deno.env.get('MT_LOGIN_TURNSTILE_HOSTNAMES')||'').split(',').filter(Boolean)});
 const registeredHandler=createRegisteredLogin({store:registeredStore,rpID:Deno.env.get('MT_REGISTERED_RP_ID'),origin:Deno.env.get('MT_REGISTERED_ORIGIN'),androidOrigins:(Deno.env.get('MT_REGISTERED_ANDROID_ORIGINS')||'').split(',').filter(Boolean),challengeSecret:Deno.env.get('MT_REGISTERED_CHALLENGE_SECRET'),verifyIngress:async(req,body)=>registeredGateway(req,body),verifyProvider:async body=>(await registeredProvider(body))===true,passwordLogin:(body,identity)=>login(body,registeredPrincipalSource(identity.principal),{kind:'verified-gateway-v1'},identity)});
-admittedLogin=async(req:Request,body:any)=>{try{return await registeredHandler(req,body);}catch(e){if(e instanceof AppError||e instanceof LoginRateError||e instanceof LoginAdmissionError)throw e;throw new LoginAdmissionError('REGISTERED_LOGIN_REJECTED');}};
+admittedLogin=async(req:Request,body:RequestBody)=>{try{return await registeredHandler(req,body);}catch(e){if(e instanceof AppError||e instanceof LoginRateError||e instanceof LoginAdmissionError)throw e;throw new LoginAdmissionError('REGISTERED_LOGIN_REJECTED');}};
 `;
+ const issuePattern=/return issue\(u,c\);(?=\r?\n \},admissionPolicy\);)/;
+ if(!issuePattern.test(source))throw Error('SESSION_ISSUE_CONTRACT_CHANGED');
+ source=source.replace(issuePattern,"const issued=await issue(u,c);if(await registeredStore.bindSession(c,identity,sha(issued.token))!==true)throw new LoginAdmissionError('IDENTITY_SESSION_BINDING_REQUIRED');return issued;");
  source=source.replace(anchor,anchor+init);entry.content=source;
- const gateway=files.find(f=>f.name==='login-gateway.mjs');if(!gateway)throw Error('GATEWAY_MODULE_REQUIRED');gateway.content=gateway.content.replace('export function createGatewayVerifier(', '/** @param {{secret?:string,expectedPath?:string,now?:()=>number}} [options] */\nexport function createGatewayVerifier(');
+ if(!files.some(f=>f.name==='login-gateway.mjs'))throw Error('GATEWAY_MODULE_REQUIRED');
  if(source.includes("a==='login'?await login(b)"))throw Error('PASSWORD_ONLY_BYPASS');
  const module=fs.readFileSync(new URL('../security/registered-login.mjs',import.meta.url),'utf8').replace("'@simplewebauthn/server'","'npm:@simplewebauthn/server@14.0.3'").replace("'../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs'","'./login-rate-limit.mjs'");
  if(files.some(f=>['registered-login.mjs','deno.lock'].includes(f.name)))throw Error('REGISTERED_MODULE_COLLISION');
@@ -49,7 +55,12 @@ export function composeRegisteredReview({baseDirectory,outputDirectory}){
  const client=fs.readFileSync(new URL('../security/registered-login-client.mjs',import.meta.url));
  for(const variant of ['web','native/www']){
   const dir=path.join(out,variant),assets=path.join(dir,'secure-assets');fs.writeFileSync(path.join(assets,'registered-login-client.mjs'),client);
-  const boot=path.join(assets,'login-admission-bootstrap.mjs');let text=fs.readFileSync(boot,'utf8');text="import {installRegisteredClient} from './registered-login-client.mjs';\n"+text+"\ninstallRegisteredClient({scope:window,endpoint:config.gatewayUrl,allowedGatewayHost:config.gatewayHost,enabled:config.registeredIdentity?.enabled===true});\n";fs.writeFileSync(boot,text);
+  const boot=path.join(assets,'login-admission-bootstrap.mjs');let text=fs.readFileSync(boot,'utf8');
+  if(variant==='native/www'){
+   fs.copyFileSync(new URL('../security/registered-login-native-client.mjs',import.meta.url),path.join(assets,'registered-login-native-client.mjs'));
+   text="import {installRegisteredNativeClient} from './registered-login-native-client.mjs';\n"+text+"\nif(!window.Capacitor?.PluginHeaders?.some(p=>p.name==='MainTrackPasskey'))throw Error('NATIVE_PASSKEY_BUILD_REQUIRED');\nconst nativeBridge={create:request=>Capacitor.nativePromise('MainTrackPasskey','create',request),get:request=>Capacitor.nativePromise('MainTrackPasskey','get',request)};\ninstallRegisteredNativeClient({scope:window,bridge:nativeBridge,endpoint:config.gatewayUrl,allowedGatewayHost:config.gatewayHost,enabled:config.registeredIdentity?.enabled===true});\n";
+  }else text="import {installRegisteredClient} from './registered-login-client.mjs';\n"+text+"\ninstallRegisteredClient({scope:window,endpoint:config.gatewayUrl,allowedGatewayHost:config.gatewayHost,enabled:config.registeredIdentity?.enabled===true});\n";
+  fs.writeFileSync(boot,text);
   const config=path.join(dir,'login-admission-public.json'),value=JSON.parse(fs.readFileSync(config,'utf8'));value.enabled=false;value.registeredIdentity={enabled:false,enrollmentPolicyApproved:false,androidVerified:false};fs.writeFileSync(config,JSON.stringify(value,null,2)+'\n');
  }
  const entries=fs.readdirSync(out,{recursive:true}).map(p=>p.replaceAll('\\','/')).filter(p=>p!=='review-manifest.json'&&fs.statSync(path.join(out,p)).isFile()).sort().map(p=>({path:p,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,p))).digest('hex')}));

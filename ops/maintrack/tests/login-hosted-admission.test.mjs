@@ -3,12 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {createRequire} from 'node:module';
+import {createRequire,stripTypeScriptTypes} from 'node:module';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {withLoginBudget,LoginRateError,trustedLoginSource} from '../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs';
+const coreGuards=vm.runInNewContext(stripTypeScriptTypes(fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/core-types.ts',import.meta.url),'utf8'),{mode:'transform'}).replace(/^export /gm,'')+';({sessionUser,isRequestBody,actor})');
 const {Pool}=createRequire(new URL('../inventory/backend/package.json',import.meta.url))('pg');
 const source=fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/index.ts',import.meta.url),'utf8');
-const declaration=name=>{const a=source.indexOf('async function '+name+'(');assert.ok(a>=0);const b=source.indexOf('\nasync function ',a+1);return source.slice(a,b);};
+const declaration=name=>{const a=source.indexOf('async function '+name+'(');assert.ok(a>=0);const b=source.indexOf('\nasync function ',a+1);return stripTypeScriptTypes(source.slice(a,b),{mode:'transform'});};
 
 test('hosted admission is source-independent without losing account limits',{skip:!process.env.LOGIN_PG_URL?'owned LOGIN_PG_URL required':false},async t=>{
  const raw=process.env.LOGIN_PG_URL,u=new URL(raw);
@@ -21,9 +22,9 @@ test('hosted admission is source-independent without losing account limits',{ski
   const handlers=pools.map(pool=>{
    class AppError extends Error{constructor(code,status=400){super(code);this.code=code;this.status=status;}}
    let handler,env;
-   const ctx={pool,withLoginBudget,trustedLoginSource,LoginRateError,AppError,randomBytes,randomUUID,URL,Request,Response,sha:x=>createHash('sha256').update(x).digest('hex'),validEmployeeCode:x=>typeof x==='string'&&/^[0-9]{1,32}$/.test(x),first:async(c,q,p)=>(await c.query(q,p)).rows[0]||null,die:(code,status)=>{throw new AppError(code,status);},MT_ALLOWED_ORIGINS:new Set(),text:x=>String(x),console:{info:x=>logs.push(x),error:x=>logs.push(x)},Deno:{env:{get:()=>env},serve:fn=>{handler=fn;}}};
+   const ctx={...coreGuards,pool,withLoginBudget,trustedLoginSource,LoginRateError,AppError,randomBytes,randomUUID,URL,Request,Response,sha:x=>createHash('sha256').update(x).digest('hex'),validEmployeeCode:x=>typeof x==='string'&&/^[0-9]{1,32}$/.test(x),first:async(c,q,p)=>(await c.query(q,p)).rows[0]||null,die:(code,status)=>{throw new AppError(code,status);},MT_ALLOWED_ORIGINS:new Set(),text:x=>String(x),console:{info:x=>logs.push(x),error:x=>logs.push(x)},Deno:{env:{get:()=>env},serve:fn=>{handler=fn;}}};
    ctx.issue=vm.runInNewContext('('+declaration('issue')+')',ctx);ctx.login=vm.runInNewContext('('+declaration('login')+')',ctx);
-   const router=source.slice(source.lastIndexOf('Deno.serve(')).replace('body:any','body').replace('const h:Record<string,string>','const h');
+   const router=stripTypeScriptTypes(source.slice(source.lastIndexOf('Deno.serve(')),{mode:'transform'});
    vm.runInNewContext(router,ctx);
    return {call:async(code,pw,headers={},body={},mode)=>{env=mode;const req=new Request('https://qa.invalid/api',{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify({action:'login',code,pw,...body})});return handler(req,new Proxy({},{get(){throw Error('TRANSPORT_METADATA_MUST_NOT_BE_USED');}}));}};
   });

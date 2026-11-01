@@ -39,6 +39,16 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.22.2'
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5, official verified release
+        with:
+          deno-version: 'v2.9.8'
+      - name: Strict Core typecheck and runtime domain contracts
+        run: |
+          deno check --frozen --lock=ops/maintrack/security/registered-login.deno.lock supabase/functions/maintrack-final-047/index.ts
+          deno test --frozen --lock=ops/maintrack/security/registered-login.deno.lock ops/maintrack/tests/core-types.test.ts
       - name: Mark the owned disposable SQL fixture
         env:
           CLEANUP_CONTAINER_ID: ${{ job.services.cleanup-postgres.id }}
@@ -62,7 +72,7 @@ jobs:
         run: |
           python - <<'PY'
           import hashlib,json,os,subprocess,sys
-          versions={'python':sys.version,'node':subprocess.check_output(['node','--version'],text=True).strip(),'postgresImage':os.environ['MAINTRACK_CLEANUP_IMAGE'],'runnerImage':os.environ.get('ImageVersion','unknown')}
+          versions={'python':sys.version,'node':subprocess.check_output(['node','--version'],text=True).strip(),'deno':subprocess.check_output(['deno','--version'],text=True).strip(),'postgresImage':os.environ['MAINTRACK_CLEANUP_IMAGE'],'runnerImage':os.environ.get('ImageVersion','unknown')}
           with open(os.environ['GITHUB_ENV'],'a') as f:
               f.write('MAINTRACK_CACHE_RUNTIME='+hashlib.sha256(json.dumps(versions,sort_keys=True).encode()).hexdigest()+'\n')
           PY

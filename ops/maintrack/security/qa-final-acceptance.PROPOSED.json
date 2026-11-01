@@ -2,7 +2,7 @@
   "projectRef": "szhstrafzkxzstjdcynl",
   "state": "BLOCKED",
   "cloudMutationExecuted": false,
-  "sourceRuntimeReference": "Resolve exact clean local commit from new registered review manifest; not deployed",
+  "sourceRuntimeReference": "Resolve final reviewed clean commit; QA current v10/v9 not updated",
   "windowFeasibility": "UNVERIFIED",
   "automaticAdmission": false,
   "preconditions": [
@@ -12,7 +12,9 @@
     "Independent SQL/Edge stop and targeted rollback proven; schema-only capture is not data/Storage/Edge rollback",
     "Current roles/RLS/source/lease/jobs snapshot and secure existing synthetic credentials; no rotation",
     "Independent real source egress available; forged headers do not simulate distinct trusted sources",
-    "Measured provider, deployment and recovery durations; budget approved before Arm"
+    "Measured provider, deployment and recovery durations; budget approved before Arm",
+    "Admission provider/gateway/RP secret names were absent on QA in CLI metadata; configure only through an approved secure channel, no values in chat.",
+    "Reviewer still not supplied; this does not block local tests but blocks protected release."
   ],
   "syntheticActorsProposed": [
     "90000001",
@@ -116,13 +118,36 @@
     "actualQaPoolMaxFromRetainedSource": 2,
     "scope": "One malicious enrolled principal cannot gain additional bcrypt slots using extra devices or NAT changes. Four compromised registered principals can occupy all global slots; two can occupy existing QA pool. Not absolute availability or DDoS protection.",
     "operatorVerification": "Human identity check and secure invitation delivery required; verification_ref is an audit pointer, not automatic proof",
-    "recovery": "Operator re-verifies employee; increments epoch and revokes old admission credentials. Existing Core sessions require separately verified Core session revocation. No password-only route",
+    "recovery": "Concrete same-transaction credential->token_hash binding; recovery/revoke requires trusted scoped Core invalidation, exact true acknowledgement or rollback. Public/QA adapters preserve sibling on credential revoke and revoke all same-principal sessions on verified recovery. No legacy-unbound per-device guesses.",
     "rollout": "Pre-enroll and verify employee device support before cutover. Remain disabled until all affected legitimate users have an approved enrollment/recovery route. No password-only parallel bypass after activation.",
     "remaining": [
       "Owner enrollment/operator/recovery policy",
       "Cloud least-privilege RPC install and rollback proof",
       "Android Credential Manager or compatible WebView/RP integration and reviewed PUBLIC cert/DAL",
       "Bounded multi-principal threat model and measured QA service latency/availability"
-    ]
+    ],
+    "providerIsolation": "Real WebAuthn/invitation capability verified before distributed one-per-principal provider reservation. 5sec expiry, exact-nonce release required before further work, no DB connection over provider wait. Global preflight cap released only after durable reservation."
+  },
+  "operationalBoundary": {
+    "projectRef": "tdnkeskczcsukcujwinu",
+    "core": "maintrack-final-047 v3",
+    "inventory": "maintrack-inventory-final-047 v1",
+    "web": "https://maintrack-final-security-qa.vercel.app/",
+    "projectNameWarning": "QA/Staging names identify OPERATIONAL resources here; never treat as disposable QA",
+    "activeUsersVerified": 2,
+    "rolesVerified": {
+      "owner": 1,
+      "engineer": 1
+    },
+    "engineerTestPurpose": "OWNER_REPORTED_NOT_INFERRED_FROM_ROLE",
+    "inventoryItemsVerified": 3674,
+    "mutationAuthorizedByThisFile": false
+  },
+  "localProgress": {
+    "canonicalCoreTypecheck": "PASS_ZERO_DIAGNOSTICS",
+    "composedCoreTypecheck": "PASS_ZERO_DIAGNOSTICS",
+    "nativeCredentialManagerCompilation": "PASS_LOCAL_QA_ONLY",
+    "cloudAndPhoneFlow": "NOT TESTED",
+    "rawSnapshotsPreserved": true
   }
 }

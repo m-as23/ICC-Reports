@@ -130,5 +130,22 @@
     ],
     "requiredBeforeActivation": "Restrict/retire all alternate signing paths at actual secret/environment boundary; candidate-only workflow edits do not secure historical refs. Do not activate an unreviewed signer.",
     "ownerAction": "Assign real reviewer/build actors; protect secret environment and required checks; approve reviewed trusted workflow pin and public release certificate. No key extraction/rotation performed."
-  }
+  },
+  "operationalMappingConfirmedByOwner": {
+    "supabase": "tdnkeskczcsukcujwinu",
+    "vercelProject": "prj_7l6q0Qx7vV7K5LP52MUNXjBOD3ZQ",
+    "productionDeployment": "dpl_E2sSGF9H132q19eMfpDSLc1UZ6xp",
+    "priorSignedBuildCommit": "16a0475b782a5d041f63c59a81a30e4692967e8e",
+    "priorSignedBuildRun": 40101009236,
+    "vercelSourceCommit": "UNVERIFIED",
+    "currentPhoneOrOta": "UNVERIFIED"
+  },
+  "historicalPublicCertificate": {
+    "sha256": "07a35f17c9a7a17b24b1867e839fab2043d83f998bb604701776f3f64c807d5b",
+    "debug": false,
+    "localHistoricalApkSha256": "ca125232329e384a276d0690ce6136f8c7791905217eb07f7fed83e7c630640c",
+    "freshArtifactMatch": "UNAVAILABLE_ARTIFACT_EXPIRED_OR_REMOVED",
+    "productionAuthority": "PENDING_CONFIRMATION_NOT_SELECTED_AUTOMATICALLY"
+  },
+  "codeownersActivation": "Needs actual authorized reviewer login; do not assign only PR author or use a placeholder as active CODEOWNERS"
 }

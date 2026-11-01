@@ -1,3 +1,4 @@
+import {stripTypeScriptTypes} from 'node:module';
 import {spawnSync} from 'node:child_process';import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {applyQaLoginLease,qaWindowHarness,qaLeaseHarness} from '../security/qa-login-lease.mjs';
 const id='11111111-2222-4333-8444-555555555555';
 test('restricted source adapter is unique and leaves operational bytes immutable',()=>{const source=fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/index.ts',import.meta.url),'utf8'),copy=source;const out=applyQaLoginLease(source,id);assert.equal(source,copy);assert.ok(!out.includes('leaseLoginIssue'));assert.ok(!out.includes('INSERT INTO maintrack_qa_lease.sessions'));assert.ok(out.includes("qaLease.mutate(c,'reset',code)"));assert.throws(()=>applyQaLoginLease(out,id));assert.throws(()=>applyQaLoginLease(source,'invalid'));});
@@ -12,7 +13,7 @@ test('offline bundle retains isolation modules and routes Logout before auth',as
  const out=prepareQaLoginRpc(baseline,source,id,read('../security/qa-login-lease.mjs'),'// rate budget');
  const index=out.files.find(f=>f.name==='index.ts').content;
  assert.ok(index.includes("a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b)"));
- assert.ok(index.includes('SYNTHETIC_OFFLINE_FIXTURE_NOT_DEPLOYABLE'));const parsed=spawnSync(process.execPath,['--check','--input-type=module'],{input:index,encoding:'utf8',timeout:5000});assert.equal(parsed.status,0,parsed.stderr);assert.ok(index.includes('withQaIsolation'));assert.equal(out.files.find(f=>f.name==='channel.mjs').content,baseline.files[2].content);assert.equal(out.deploy,false);
+ assert.ok(index.includes('SYNTHETIC_OFFLINE_FIXTURE_NOT_DEPLOYABLE'));const parsed=spawnSync(process.execPath,['--check','--input-type=module'],{input:stripTypeScriptTypes(index,{mode:'transform'}),encoding:'utf8',timeout:5000});assert.equal(parsed.status,0,parsed.stderr);assert.ok(index.includes('withQaIsolation'));assert.equal(out.files.find(f=>f.name==='channel.mjs').content,baseline.files[2].content);assert.equal(out.deploy,false);
 });
 
 test('management and application attempts share one non-resettable budget',async()=>{let clock=0;const h=qaWindowHarness({now:()=>clock,sleep:async n=>{clock+=n;},send:async()=>({status:200})});await h.external('szhstrafzkxzstjdcynl',async()=>({preflight:true}));await h.request('https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api',{});assert.equal(h.state.count,2);assert.equal(clock,2600);await assert.rejects(()=>h.external('production',async()=>{}),/DENIED/);assert.equal(h.state.count,2);});

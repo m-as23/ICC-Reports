@@ -1,0 +1,6 @@
+import {isRequestBody,requiredMinutes,sessionUser,actor} from '../../../supabase/functions/maintrack-final-047/core-types.ts';
+function assert(value:unknown,message:string){if(!value)throw Error(message);}
+function rejects(fn:()=>unknown){let threw=false;try{fn();}catch{threw=true;}assert(threw,'invalid domain input accepted');}
+Deno.test('untrusted JSON object narrowing rejects null arrays and primitives',()=>{for(const value of [null,[],true,42,'x'])assert(!isRequestBody(value),'non-object accepted');assert(isRequestBody({action:'login',code:42}),'object rejected');});
+Deno.test('database session actor validators retain claims and reject malformed claims',()=>{const user={id:'a',employee_code:'90000001',name:'QA_FINAL_A',role:'technician',token_version:0,must_change:false,active:true};assert(actor(user).active,'active claim lost');assert(sessionUser(user).employee_code===user.employee_code,'employee code lost');for(const patch of [{role:'admin'},{token_version:'1'},{must_change:'false'},{id:3},{active:'true'}])rejects(()=>actor({...user,...patch}));rejects(()=>actor(null));});
+Deno.test('validated time arithmetic preserves midnight minutes and rejects malformed inputs',()=>{assert(requiredMinutes('00:00')===0,'midnight changed');assert(requiredMinutes('23:59:00')===1439,'end day changed');rejects(()=>requiredMinutes('bad'));});

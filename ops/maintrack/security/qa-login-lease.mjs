@@ -13,7 +13,14 @@ export async function qaLoginPrivileges(c){
 export function qaLeaseHarness(pool,runId){
  if(!/^[a-f0-9-]{36}$/.test(runId))throw Error('QA_RUN_ID_REQUIRED');
  let halted=false;
- return {async mutate(c,op,code,hash=null){
+ return {
+ /**
+  * @param {{query:(sql:string,args:unknown[])=>Promise<unknown>}} c
+  * @param {string} op
+  * @param {string|null} code
+  * @param {string|null} [hash]
+  */
+ async mutate(c,op,code,hash=null){
   if(halted)throw Error('QA_HARNESS_HALTED_NO_RETRY');
   try{return await c.query('SELECT maintrack_qa_lease.login_mutate($1::uuid,$2::text,$3::text,$4::text)',[runId,op,code,hash]);}
   catch(e){if(!e.code||['ECONNRESET','ETIMEDOUT','08006','57P01'].includes(e.code)){halted=true;throw Error('QA_AMBIGUOUS_WRITE_NO_RETRY');}if(e.code==='P0002')throw new LoginRateError('QA_LEASE_OR_ACTOR_CLOSED',403);if(e.code==='P0001'&&['QA_CALLER_DENIED','QA_ACTOR_DENIED','QA_PROJECT_DENIED','QA_SESSION_BUDGET_OR_HASH','QA_TOKEN_NOT_OWNED','QA_OPERATION_DENIED'].includes(e.message))throw new LoginRateError(e.message,403);throw e;}

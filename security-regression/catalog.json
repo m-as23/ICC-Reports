@@ -87,7 +87,8 @@
         "web/maintrack/public/*",
         "ops/maintrack/inventory/backend/src/*.mjs",
         "ops/maintrack/security/owner-047-preview-source.json",
-        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
+        "supabase/functions/maintrack-final-047/core-types.ts"
       ],
       "command": [
         "{python}",
@@ -117,7 +118,8 @@
         "ops/maintrack/scripts/prepare-qa-login-rpc.mjs",
         "ops/maintrack/tests/qa-login-rpc.test.mjs",
         "ops/maintrack/security/qa-login-rpc.sql",
-        "ops/maintrack/security/qa-login-rpc.rollback.sql"
+        "ops/maintrack/security/qa-login-rpc.rollback.sql",
+        "supabase/functions/maintrack-final-047/core-types.ts"
       ],
       "command": [
         "{python}",
@@ -524,7 +526,11 @@
         "ops/maintrack/tests/registered-login.test.mjs",
         "ops/maintrack/tests/registered-login-bundle.test.mjs",
         "ops/maintrack/tests/registered-login.integration.test.mjs",
-        "ops/maintrack/security/registered-login.deno.lock"
+        "ops/maintrack/security/registered-login.deno.lock",
+        "supabase/functions/maintrack-final-047/core-types.ts",
+        "ops/maintrack/scripts/prepare-production-security.mjs",
+        "ops/maintrack/tests/production-security-bundle.test.mjs",
+        "ops/maintrack/tests/gateway-target.test.mjs"
       ],
       "reason": "Requires real QA Vercel overwrite/forged-header attestation, private gateway assertion, single-use provider proof, multi-instance/per-source concurrency and NAT/legitimate-account availability, provider failure/latency and Web/Android compatibility. Current candidate not activated; local provider/header simulation is never Cloud PASS. No client IP header is trusted directly in Supabase. No automatic provider configuration or Direct Transport mode. Registered-principal derivative additionally requires real authorized enrollment/recovery, restricted RPC role attestation, Web and Android RP binding, same-NAT known-principal and compromised-multiple-principal availability acceptance. Local virtual authenticators are not human or Android/cloud approval."
     },
@@ -592,7 +598,8 @@
         "security-regression/finding_tests.py",
         "supabase/functions/maintrack-final-047/login-gateway.mjs",
         "ops/maintrack/security/vercel-login-entry.mjs",
-        "ops/maintrack/tests/login-gateway-isolation.test.mjs"
+        "ops/maintrack/tests/login-gateway-isolation.test.mjs",
+        "supabase/functions/maintrack-final-047/core-types.ts"
       ],
       "command": [
         "{python}",
@@ -619,13 +626,26 @@
         "ops/maintrack/tests/registered-login-bundle.test.mjs",
         "ops/maintrack/tests/registered-login.integration.test.mjs",
         "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
-        "ops/maintrack/security/registered-login.deno.lock"
+        "ops/maintrack/security/registered-login.deno.lock",
+        "ops/maintrack/security/qa-core-session-invalidator.mjs",
+        "ops/maintrack/tests/qa-core-session-invalidator.test.mjs",
+        "ops/maintrack/tests/registered-login.sessions.test.mjs",
+        "ops/maintrack/security/registered-login-native-client.mjs",
+        "ops/maintrack/security/registered-login-native-client.test.mjs",
+        "supabase/functions/maintrack-final-047/core-types.ts",
+        "android/maintrack-app/native/MainTrackPasskeyPlugin.java",
+        "ops/maintrack/scripts/prepare-production-security.mjs",
+        "ops/maintrack/tests/production-security-bundle.test.mjs",
+        "ops/maintrack/tests/gateway-target.test.mjs"
       ],
       "command": [
         "node",
         "--test",
         "ops/maintrack/tests/registered-login.test.mjs",
-        "ops/maintrack/tests/registered-login-bundle.test.mjs"
+        "ops/maintrack/tests/registered-login-bundle.test.mjs",
+        "ops/maintrack/security/registered-login-native-client.test.mjs",
+        "ops/maintrack/tests/production-security-bundle.test.mjs",
+        "ops/maintrack/tests/gateway-target.test.mjs"
       ],
       "timeout": 15
     }
