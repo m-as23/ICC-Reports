@@ -63,7 +63,8 @@ export function createProductionGateway(options,configuration){
  return {files,manifest};
 }
 export function writeProductionSecurityReview({outputDirectory,...options}={}){
- const result=prepareProductionSecurity(options),audit=fs.realpathSync(path.join(root,'audit-output')),out=path.resolve(outputDirectory||'');
+ const result=prepareProductionSecurity(options),out=path.resolve(outputDirectory||'');let audit;
+ try{audit=fs.realpathSync(path.join(root,'audit-output'));}catch{throw Error('NEW_OWNED_AUDIT_DIRECTORY_REQUIRED');}
  if(path.dirname(out)!==audit||fs.existsSync(out))throw Error('NEW_OWNED_AUDIT_DIRECTORY_REQUIRED');
  fs.mkdirSync(out);for(const file of result.files)fs.writeFileSync(path.join(out,file.name),file.content);fs.writeFileSync(path.join(out,'review-manifest.json'),JSON.stringify(result.manifest,null,2)+'\n');return result.manifest;
 }

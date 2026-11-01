@@ -39,3 +39,8 @@ test('generated gateway captures Production target despite conflicting caller op
 test('review writer rejects existing paths and paths outside the owned audit root',()=>{
  for(const outputDirectory of ['audit-output','ops/maintrack','audit-output/../production-review'])assert.throws(()=>writeProductionSecurityReview({projectRef,sourceSha256,outputDirectory}),/NEW_OWNED_AUDIT_DIRECTORY_REQUIRED/);
 });
+test('fresh checkout without an owned audit root returns a bounded refusal, never creates it',t=>{
+ const original=fs.realpathSync;let attempted=false;
+ t.mock.method(fs,'realpathSync',function(value,...args){if(String(value).endsWith('audit-output')){attempted=true;const e=Error('missing owned directory');e.code='ENOENT';throw e;}return original.call(this,value,...args);});
+ assert.throws(()=>writeProductionSecurityReview({projectRef,sourceSha256,outputDirectory:'audit-output/new-review'}),/NEW_OWNED_AUDIT_DIRECTORY_REQUIRED/);assert.equal(attempted,true);
+});
