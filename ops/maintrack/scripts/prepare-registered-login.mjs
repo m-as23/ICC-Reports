@@ -5,6 +5,13 @@ export function prepareRegisteredBundle(bundle){
  if(bundle?.projectRef!=='szhstrafzkxzstjdcynl'||bundle.deploy!==false||!Array.isArray(bundle.files))throw Error('OFFLINE_QA_BUNDLE_REQUIRED');
  if(bundle.registeredIdentity)throw Error('REGISTERED_BUNDLE_ALREADY_PREPARED');
  const files=bundle.files.map(x=>({...x}));if(new Set(files.map(f=>f.name)).size!==files.length)throw Error('DUPLICATE_MODULE');
+ // Refresh reviewed runtime dependencies: an immutable old review parent is not
+ // evidence that its gateway/adapter modules are the current source candidate.
+ for(const name of ['login-rate-limit.mjs','login-admission.mjs','login-gateway.mjs','login-proof.mjs']){
+  const file=files.find(f=>f.name===name);if(file)file.content=fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/'+name,import.meta.url),'utf8');
+ }
+ const adapter=files.find(f=>f.name==='qa-login-lease.mjs');if(adapter)adapter.content=fs.readFileSync(new URL('../security/qa-login-lease.mjs',import.meta.url),'utf8').replace('../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs','./login-rate-limit.mjs');
+ const guard=files.find(f=>f.name==='qa-guard.mjs');if(guard&&!guard.content.includes('@param {(request:Request)'))guard.content=guard.content.replace('export function withQaIsolation(', '/** @param {(request:Request)=>Response|Promise<Response>} handler @param {{attest?:()=>Promise<Record<string,unknown>>,activeAuthorized?:()=>boolean|Promise<boolean>}} [options] */\nexport function withQaIsolation(');
  const entry=files.find(f=>f.name==='index.ts');if(!entry||entry.content.includes('createRegisteredLogin'))throw Error('REVIEWED_CORE_REQUIRED');
  let source=typeCoreSource(entry.content.replace("async function login(b,source,admissionPolicy:{kind:'verified-gateway-v1'})","async function login(b:RequestBody,source:string|undefined,admissionPolicy:{kind:'verified-gateway-v1'})"));
  if(!files.some(f=>f.name==='core-types.ts'))files.push({name:'core-types.ts',content:fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/core-types.ts',import.meta.url),'utf8')});
