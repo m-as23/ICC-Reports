@@ -639,7 +639,10 @@
         "android/maintrack-app/native/MainTrackPasskeyPlugin.java",
         "ops/maintrack/scripts/prepare-production-security.mjs",
         "ops/maintrack/tests/production-security-bundle.test.mjs",
-        "ops/maintrack/tests/gateway-target.test.mjs"
+        "ops/maintrack/tests/gateway-target.test.mjs",
+        "android/maintrack-app/scripts/install-passkey-bridge.mjs",
+        "android/maintrack-app/scripts/harden-native.mjs",
+        "android/maintrack-app/tests/passkey-packaging.test.mjs"
       ],
       "command": [
         "node",
@@ -648,7 +651,8 @@
         "ops/maintrack/tests/registered-login-bundle.test.mjs",
         "ops/maintrack/security/registered-login-native-client.test.mjs",
         "ops/maintrack/tests/production-security-bundle.test.mjs",
-        "ops/maintrack/tests/gateway-target.test.mjs"
+        "ops/maintrack/tests/gateway-target.test.mjs",
+        "android/maintrack-app/tests/passkey-packaging.test.mjs"
       ],
       "timeout": 15
     }
