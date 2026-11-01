@@ -51,6 +51,7 @@ export function createRegisteredPasswordExecutor({pool,store,passwordWork}){
  if(!pool||!store||typeof passwordWork!=='function')throw Error('IDENTITY_EXECUTOR_CONFIGURATION');
  return (body,identity)=>withLoginBudget(pool,registeredPrincipalSource(identity.principal),body.code,async c=>{await store.assertCurrent(c,identity);return passwordWork(c,body);},{kind:'verified-gateway-v1'});
 }
+/** @param {{store?:any,rpID?:string,origin?:string,challengeSecret?:string,verifyIngress?:(req:Request,body:any)=>Promise<string>|string,verifyProvider?:(body:any,signal?:AbortSignal)=>Promise<boolean>,passwordLogin?:(body:any,identity:any)=>Promise<any>,now?:()=>number,verificationTimeoutMs?:number,androidOrigins?:string[]}} [options] */
 export function createRegisteredLogin({store,rpID,origin,challengeSecret,verifyIngress,verifyProvider,passwordLogin,now=Date.now,verificationTimeoutMs=3000,androidOrigins=[]}={}){
  if(!Array.isArray(androidOrigins)||androidOrigins.length>2||androidOrigins.some(x=>! /^android:apk-key-hash:[A-Za-z0-9_-]{43}$/.test(x))||!Number.isInteger(verificationTimeoutMs)||verificationTimeoutMs<1||verificationTimeoutMs>3000||!store||! /^[a-z0-9.-]+$/.test(rpID||'')||!(origin===`https://${rpID}`||(rpID==='localhost'&&/^http:\/\/localhost:\d+$/.test(origin||'')))||typeof challengeSecret!=='string'||challengeSecret.length<32||[verifyIngress,verifyProvider,passwordLogin].some(x=>typeof x!=='function'))throw Error('IDENTITY_CONFIGURATION');
  const mac=s=>createHmac('sha256',challengeSecret).update('registered-login-v1:'+s).digest();
