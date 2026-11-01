@@ -523,7 +523,8 @@
         "ops/maintrack/scripts/prepare-registered-login.mjs",
         "ops/maintrack/tests/registered-login.test.mjs",
         "ops/maintrack/tests/registered-login-bundle.test.mjs",
-        "ops/maintrack/tests/registered-login.integration.test.mjs"
+        "ops/maintrack/tests/registered-login.integration.test.mjs",
+        "ops/maintrack/security/registered-login.deno.lock"
       ],
       "reason": "Requires real QA Vercel overwrite/forged-header attestation, private gateway assertion, single-use provider proof, multi-instance/per-source concurrency and NAT/legitimate-account availability, provider failure/latency and Web/Android compatibility. Current candidate not activated; local provider/header simulation is never Cloud PASS. No client IP header is trusted directly in Supabase. No automatic provider configuration or Direct Transport mode. Registered-principal derivative additionally requires real authorized enrollment/recovery, restricted RPC role attestation, Web and Android RP binding, same-NAT known-principal and compromised-multiple-principal availability acceptance. Local virtual authenticators are not human or Android/cloud approval."
     },
@@ -617,7 +618,8 @@
         "ops/maintrack/tests/registered-login.test.mjs",
         "ops/maintrack/tests/registered-login-bundle.test.mjs",
         "ops/maintrack/tests/registered-login.integration.test.mjs",
-        "supabase/functions/maintrack-final-047/login-rate-limit.mjs"
+        "supabase/functions/maintrack-final-047/login-rate-limit.mjs",
+        "ops/maintrack/security/registered-login.deno.lock"
       ],
       "command": [
         "node",

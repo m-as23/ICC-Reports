@@ -28,7 +28,8 @@ admittedLogin=async(req,body)=>{try{return await registeredHandler(req,body);}ca
  source=source.replace(anchor,anchor+init);entry.content=source;
  if(source.includes("a==='login'?await login(b)"))throw Error('PASSWORD_ONLY_BYPASS');
  const module=fs.readFileSync(new URL('../security/registered-login.mjs',import.meta.url),'utf8').replace("'@simplewebauthn/server'","'npm:@simplewebauthn/server@14.0.3'").replace("'../../../supabase/functions/maintrack-final-047/login-rate-limit.mjs'","'./login-rate-limit.mjs'");
- files.push({name:'registered-login.mjs',content:module});
+ if(files.some(f=>['registered-login.mjs','deno.lock'].includes(f.name)))throw Error('REGISTERED_MODULE_COLLISION');
+ files.push({name:'registered-login.mjs',content:module},{name:'deno.lock',content:fs.readFileSync(new URL('../security/registered-login.deno.lock',import.meta.url),'utf8')});
  return {...bundle,files,deploy:false,registeredIdentity:{status:'LOCAL_DERIVATIVE_NOT_ACTIVATED',cloudAcceptance:'NOT TESTED',operatorEnrollment:'REQUIRES_OWNER_POLICY',runtimeRoles:'NOT_GRANTED',qaChannelGatewayBinding:'NOT_VERIFIED',android:'NOT_TESTED',noPasswordOnlyFallback:true,library:'@simplewebauthn/server@14.0.3'},sha256:Object.fromEntries(files.map(f=>[f.name,createHash('sha256').update(f.content).digest('hex')]))};
 }
 
@@ -42,12 +43,13 @@ export function composeRegisteredReview({baseDirectory,outputDirectory}){
  const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
  const files=fs.readdirSync(path.join(base,'qa-core')).map(name=>({name,content:fs.readFileSync(path.join(base,'qa-core',name),'utf8')}));
  const result=prepareRegisteredBundle({projectRef:old.projectRef,deploy:false,files});
+ for(const variant of ['web','native/www'])for(const relative of ['secure-assets/login-admission-bootstrap.mjs','login-admission-public.json'])if(!fs.statSync(path.join(base,variant,relative)).isFile())throw Error('CLIENT_PARENT_CONTRACT_CHANGED');
  fs.cpSync(base,out,{recursive:true,errorOnExist:true});for(const file of result.files)fs.writeFileSync(path.join(out,'qa-core',file.name),file.content);
  const client=fs.readFileSync(new URL('../security/registered-login-client.mjs',import.meta.url));
  for(const variant of ['web','native/www']){
   const dir=path.join(out,variant),assets=path.join(dir,'secure-assets');fs.writeFileSync(path.join(assets,'registered-login-client.mjs'),client);
   const boot=path.join(assets,'login-admission-bootstrap.mjs');let text=fs.readFileSync(boot,'utf8');text="import {installRegisteredClient} from './registered-login-client.mjs';\n"+text+"\ninstallRegisteredClient({scope:window,endpoint:config.gatewayUrl,allowedGatewayHost:config.gatewayHost,enabled:config.registeredIdentity?.enabled===true});\n";fs.writeFileSync(boot,text);
-  const config=path.join(assets,'login-admission-public.json'),value=JSON.parse(fs.readFileSync(config,'utf8'));value.enabled=false;value.registeredIdentity={enabled:false,enrollmentPolicyApproved:false,androidVerified:false};fs.writeFileSync(config,JSON.stringify(value,null,2)+'\n');
+  const config=path.join(dir,'login-admission-public.json'),value=JSON.parse(fs.readFileSync(config,'utf8'));value.enabled=false;value.registeredIdentity={enabled:false,enrollmentPolicyApproved:false,androidVerified:false};fs.writeFileSync(config,JSON.stringify(value,null,2)+'\n');
  }
  const entries=fs.readdirSync(out,{recursive:true}).map(p=>p.replaceAll('\\','/')).filter(p=>p!=='review-manifest.json'&&fs.statSync(path.join(out,p)).isFile()).sort().map(p=>({path:p,sha256:createHash('sha256').update(fs.readFileSync(path.join(out,p))).digest('hex')}));
  const manifest={...old,sourceCommit,sourceTreeClean:true,parentReviewSource:old.sourceCommit,deploy:false,activationBlocked:true,providerConfigured:false,gatewayIngressVerified:false,registeredIdentity:result.registeredIdentity,profile:'LOCAL_REGISTERED_QA_DERIVATIVE_NOT_OPERATIONAL_EQUIVALENT',files:entries};fs.writeFileSync(path.join(out,'review-manifest.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
