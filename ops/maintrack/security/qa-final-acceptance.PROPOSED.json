@@ -1,0 +1,88 @@
+{
+  "projectRef": "szhstrafzkxzstjdcynl",
+  "state": "BLOCKED",
+  "cloudMutationExecuted": false,
+  "sourceRuntimeReference": "73a32592b9bea66e575d05d93085245b8f05ca0c",
+  "windowFeasibility": "UNVERIFIED",
+  "automaticAdmission": false,
+  "preconditions": [
+    "Owner-approved identity/enrollment design or explicit measured residual-risk decision; current source-only profile cannot satisfy unconditional Same-NAT fairness",
+    "Trusted registration, revocation and recovery before implementing registered identity; Web RP origin and Android integration not available",
+    "QA-only gateway and Turnstile configured securely; no .example/default profile or disabled client admission",
+    "Independent SQL/Edge stop and targeted rollback proven; schema-only capture is not data/Storage/Edge rollback",
+    "Current roles/RLS/source/lease/jobs snapshot and secure existing synthetic credentials; no rotation",
+    "Independent real source egress available; forged headers do not simulate distinct trusted sources",
+    "Measured provider, deployment and recovery durations; budget approved before Arm"
+  ],
+  "syntheticActorsProposed": [
+    "90000001",
+    "90000002",
+    "90000003"
+  ],
+  "actorScopeNote": "Third actor is needed for two active targeted accounts plus an unaffected legitimate actor. Not permission to expand current two-account Lease or issue sessions. Update reviewed scope before execution.",
+  "maximumSessionsProposed": 4,
+  "cases": {
+    "SEC001": [
+      "Gateway overwritten-source attestation and signature/body binding",
+      "Unsigned direct API rejection before bcrypt",
+      "Replay rejected across instances",
+      "Provider failure denies admission without fake success",
+      "Two active principals versus third legitimate behind same actual NAT",
+      "Independent real sources under bounded local-validated concurrency",
+      "Account lockout/expiry preservation",
+      "Measure bcrypt starts, queue/429 outcomes and p50/p95/max login latency; no fabricated latency SLA"
+    ],
+    "SEC002": [
+      "Login sibling sessions then revoke current token",
+      "Core replay401 and Inventory replay401",
+      "Sibling still valid; idempotent revocation",
+      "Web and Android success/failure/persistence behavior against identical backend"
+    ],
+    "SEC003": [
+      "Actual CSP frame-ancestors and X-Frame-Options on every built HTML and alias",
+      "Browser external iframe refusal and legitimate Inventory authenticated navigation"
+    ],
+    "SEC004": [
+      "Deployed source+lock+runtime module identity yauzl3.2.1",
+      "Authenticated Inventory read-only compatibility; no new upload/parser sweep"
+    ]
+  },
+  "budgetAnalysis": {
+    "status": "UNVERIFIED_NOT_ARMABLE",
+    "countingUnit": "All external operations including failed attempts, gateway-to-Edge, Siteverify, widget resources, admin reads/writes, recovery and independent verification",
+    "preparation": "Count source/snapshot/roles/jobs/lease/credential preflight and deployment operations from final executor; not yet bounded",
+    "test": "Count each manifest HTTP exchange and each provider subrequest; widget resources must be observed, not assumed",
+    "recoveryReserve": "Mandatory distinct reserved request/time budget for token revocation, stop, targeted baseline restoration and independent verification; unavailable measurement blocks Arm",
+    "timing": "Actual provider/management/reconnect tail measurements unavailable. Prior 130-minute failure prevents using normal local timings as upper bound.",
+    "old20Minute60AttemptScope": "Not proven sufficient and not reused automatically",
+    "concurrency": "No external parallel calls or load beyond separately accepted bounded execution scope",
+    "stopCriteria": [
+      "Any wrong project/runtime/source",
+      "Unexpected non-fixture effect",
+      "Security mandatory failure",
+      "Ambiguous write: no unsafe retry",
+      "Remaining budget reaches reserved cleanup boundary",
+      "Recovery or independent verification fails"
+    ]
+  },
+  "reuse": [
+    "API36 historical scope",
+    "Android11 historical isolated APK scope",
+    "Excel/parser/Deno/isolation unaffected local evidence"
+  ],
+  "notAuthorized": [
+    "Production",
+    "Push/Merge",
+    "Signing/distribution",
+    "Password rotation",
+    "Unresolved Storage deletion",
+    "Automatic new QA window"
+  ],
+  "independentGates": [
+    "SEC001 actual accepted risk/design",
+    "SEC002 final token revocation",
+    "SEC003 hosted browser proof",
+    "SEC004 runtime provenance",
+    "SEC005 human/platform approval"
+  ]
+}

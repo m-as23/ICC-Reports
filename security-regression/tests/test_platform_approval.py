@@ -36,4 +36,65 @@ class CertificateTests(unittest.TestCase):
    self.assertEqual(verify_certificate('apksigner','candidate.apk','a'*64),'a'*64)
    with self.assertRaises(ValueError):verify_certificate('apksigner','candidate.apk','b'*64)
   with self.assertRaises(ValueError):verify_certificate('apksigner','candidate.apk',None)
+class BoundReviewTests(unittest.TestCase):
+ def setUp(self):
+  import json
+  self.subject={'sourceCommit':'a'*40,'artifactSha256':'b'*64,'certificateSha256':'c'*64,'artifactId':2,'buildRunId':3,'buildActor':'builder'}
+  self.pr={'number':28,'state':'open','draft':False,'user':{'login':'author'},'head':{'sha':'a'*40,'repo':{'full_name':'m-as23/ICC-Reports'}},'base':{'repo':{'full_name':'m-as23/ICC-Reports'}}}
+  self.review={'id':4,'state':'APPROVED','user':{'login':'reviewer','type':'User'},'commit_id':'a'*40,'submitted_at':'2026-11-01T02:00:00Z','body':json.dumps({'kind':'maintrack-artifact-review-v1',**{k:v for k,v in self.subject.items() if k!='buildActor'}})}
+  self.permissions={'reviewer':{'permission':'write','user':{'login':'reviewer'}}}
+ def result(self,reviews=None,subject=None,pr=None):
+  from platform_approval import verify_pr_artifact_review
+  return verify_pr_artifact_review(pr or self.pr,[self.review] if reviews is None else reviews,self.permissions,subject or self.subject,'2026-11-01T01:00:00Z')
+ def test_bound_review_is_only_partial_without_verified_latest_push(self):
+  x=self.result();self.assertEqual(x['reviewer'],'reviewer');self.assertEqual(x['prAuthor'],'author');self.assertIsNone(x['latestPusher']);self.assertFalse(x['signingAuthorized']);self.assertFalse(x['lastPushApprovalEnforced'])
+ def test_source_artifact_certificate_run_and_permission_are_bound(self):
+  for k,v in [('sourceCommit','d'*40),('artifactSha256','d'*64),('certificateSha256','d'*64),('buildRunId',9),('artifactId',9)]:
+   with self.subTest(field=k),self.assertRaises(ValueError):self.result(subject={**self.subject,k:v})
+  self.permissions['reviewer']['permission']='read'
+  with self.assertRaises(ValueError):self.result()
+ def test_author_builder_bot_draft_and_comment_cannot_approve(self):
+  for change in [{'user':{'login':'author','type':'User'}},{'user':{'login':'builder','type':'User'}},{'user':{'login':'reviewer','type':'Bot'}},{'state':'COMMENTED'}]:
+   with self.subTest(change=change),self.assertRaises(ValueError):self.result(reviews=[{**self.review,**change}])
+  with self.assertRaises(ValueError):self.result(pr={**self.pr,'draft':True})
+ def test_review_after_build_and_latest_vote_are_required(self):
+  with self.assertRaises(ValueError):self.result(reviews=[{**self.review,'submitted_at':'2026-11-01T00:00:00Z'}])
+  for state in ['CHANGES_REQUESTED','DISMISSED']:
+   with self.subTest(state=state),self.assertRaises(ValueError):self.result(reviews=[self.review,{**self.review,'id':5,'state':state,'submitted_at':'2026-11-01T03:00:00Z'}])
+ def test_ambiguous_json_and_unbounded_review_pages_fail_closed(self):
+  with self.assertRaises(ValueError):self.result(reviews=[{**self.review,'body':'{"kind":"maintrack-artifact-review-v1","kind":"duplicate"}'}])
+  with self.assertRaises(ValueError):self.result(reviews=[self.review]*100)
+class DebugCertificateTests(unittest.TestCase):
+ def test_known_qa_fingerprint_and_android_debug_dn_are_not_release_identity(self):
+  from unittest.mock import patch
+  with patch('platform_approval.subprocess.check_output') as call:
+   with self.assertRaises(ValueError):verify_certificate('apksigner','candidate.apk','aae0b7fe57ae5e65749c8967861918b7bb9a6ff9275ee980c96b88d4a01ca5fe')
+   call.assert_not_called()
+  with patch('platform_approval.subprocess.check_output',return_value='Signer #1 certificate DN: CN=Android Debug, O=Android, C=US\nSigner #1 certificate SHA-256 digest: '+'a'*64+'\n'):
+   with self.assertRaises(ValueError):verify_certificate('apksigner','candidate.apk','a'*64)
+
+class CollectorTests(unittest.TestCase):
+ setUp=BoundReviewTests.setUp
+ def test_draft_stops_before_artifact_download(self):
+  from unittest.mock import patch
+  from platform_approval import fetch_pr_artifact_review
+  with patch('platform_approval.api',return_value={**self.pr,'draft':True}) as api,patch('platform_approval.subprocess.check_output') as download:
+   with self.assertRaises(ValueError):fetch_pr_artifact_review(28,3,2,'a'*40,'b'*64,'candidate.apk','c'*64)
+   self.assertEqual(api.call_count,1);download.assert_not_called()
+ def test_collector_binds_real_archive_and_api_permissions(self):
+  import io
+  from unittest.mock import patch
+  from platform_approval import fetch_pr_artifact_review
+  b=io.BytesIO()
+  with zipfile.ZipFile(b,'w') as z:z.writestr('candidate.apk',b'unsigned-fixture')
+  archive=b.getvalue();digest=hashlib.sha256(b'unsigned-fixture').hexdigest()
+  import json
+  review={**self.review,'body':json.dumps({'kind':'maintrack-artifact-review-v1',**{k:(digest if k=='artifactSha256' else v) for k,v in self.subject.items() if k!='buildActor'}})}
+  replies={'pulls/28':self.pr,'actions/runs/3':{'head_sha':'a'*40,'repository':{'full_name':'m-as23/ICC-Reports'},'run_attempt':1,'status':'completed','conclusion':'success','actor':{'login':'builder'}},'actions/artifacts/2':{'size_in_bytes':len(archive),'expired':False,'workflow_run':{'id':3,'head_sha':'a'*40},'digest':'sha256:'+hashlib.sha256(archive).hexdigest()},'actions/runs/3/jobs?per_page=100':{'total_count':1,'jobs':[{'status':'completed','conclusion':'success','completed_at':'2026-11-01T01:00:00Z'}]},'pulls/28/reviews?per_page=100':[review],'collaborators/reviewer/permission':self.permissions['reviewer']}
+  with patch('platform_approval.api',side_effect=lambda route:replies[route]),patch('platform_approval.subprocess.check_output',return_value=archive):
+   result=fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64)
+   self.assertEqual(result['artifactSha256'],digest);self.assertFalse(result['signingAuthorized'])
+   replies['collaborators/reviewer/permission']={'permission':'read','user':{'login':'reviewer'}}
+   with self.assertRaises(ValueError):fetch_pr_artifact_review(28,3,2,'a'*40,digest,'candidate.apk','c'*64)
+
 if __name__=='__main__':unittest.main()

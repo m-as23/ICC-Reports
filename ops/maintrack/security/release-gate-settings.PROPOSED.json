@@ -88,5 +88,25 @@
     "submittedAt"
   ],
   "reviewReceiptPolicy": "Identities and enforcement must be derived by reviewed platform integration from authoritative GitHub data/effective protections. Candidate author fields or local test reports cannot supply authority. Reject absent author/pusher identity, self review, missing last-push approval enforcement or missing authoritative timestamps.",
-  "singleOwnerReviewPath": "Requires a real independent collaborator/reviewer and a run initiator eligible for a different authorized approver. If Owner authored/pushed/triggered the run and no independent human exists, remain BLOCKED; do not enable an unrecoverable protection configuration or synthesize approval."
+  "singleOwnerReviewPath": "Requires a real independent collaborator/reviewer and a run initiator eligible for a different authorized approver. If Owner authored/pushed/triggered the run and no independent human exists, remain BLOCKED; do not enable an unrecoverable protection configuration or synthesize approval.",
+  "activationPrerequisites": {
+    "verifiedCiSha": "73a32592b9bea66e575d05d93085245b8f05ca0c",
+    "checks": [
+      "security-local",
+      "logout-contract"
+    ],
+    "currentCollaborators": [
+      "m-as23"
+    ],
+    "rolePlan": "Owner + independent human reviewer + distinct trusted build/sign initiator under existing strict contract; sole owner cannot approve own work. Trusted automation is not a human reviewer.",
+    "requiredBeforeActivation": [
+      "Actual independent reviewer permission and availability",
+      "Trusted unsigned build artifact, run and public release certificate",
+      "Verified latest pusher and enforced last-push approval",
+      "Protected environment with authoritative ordered approval receipt",
+      "Tested recovery/admin role plan without bypassing mandatory reviews"
+    ],
+    "knownQaDebugCertificateRejected": true,
+    "collectorAuthorizesSigning": false
+  }
 }
