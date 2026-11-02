@@ -78,6 +78,14 @@ export function prepareRegisteredPermanentRuntime(bundle){
  result.sha256=Object.fromEntries(result.files.map(f=>[f.name,createHash('sha256').update(f.content).digest('hex')]));return result;
 }
 
+export function prepareRegisteredGatewayPackage(){
+ const source=fs.readFileSync(new URL('../security/vercel-login-entry.mjs',import.meta.url),'utf8');
+ const anchor='../../../supabase/functions/maintrack-final-047/login-gateway.mjs';
+ if(source.split(anchor).length!==2)throw Error('GATEWAY_API_IMPORT_CONTRACT_CHANGED');
+ return [{name:'api/login.mjs',content:source.replace(anchor,'../server/login-gateway.mjs')},
+  ...['login-gateway.mjs','login-admission.mjs','login-proof.mjs'].map(name=>({name:'server/'+name,content:fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/'+name,import.meta.url),'utf8')}))];
+}
+
 export function composeRegisteredReview({baseDirectory,outputDirectory}){
  const root=path.resolve(import.meta.dirname,'../../..'),base=fs.realpathSync(baseDirectory),out=path.resolve(outputDirectory),audit=path.join(root,'audit-output')+path.sep;
  if(!base.startsWith(audit)||!out.startsWith(audit)||fs.existsSync(out))throw Error('NEW_OWNED_REVIEW_DIRECTORY_REQUIRED');
@@ -90,6 +98,9 @@ export function composeRegisteredReview({baseDirectory,outputDirectory}){
  const result=prepareRegisteredPermanentRuntime(prepareRegisteredBundle({projectRef:old.projectRef,deploy:false,files}));
  for(const variant of ['web','native/www'])for(const relative of ['secure-assets/login-admission-bootstrap.mjs','login-admission-public.json'])if(!fs.statSync(path.join(base,variant,relative)).isFile())throw Error('CLIENT_PARENT_CONTRACT_CHANGED');
  fs.cpSync(base,out,{recursive:true,errorOnExist:true});for(const file of result.files)fs.writeFileSync(path.join(out,'qa-core',file.name),file.content);
+ for(const file of prepareRegisteredGatewayPackage()){
+  const target=path.join(out,'vercel-api',file.name);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,file.content);
+ }
  const client=fs.readFileSync(new URL('../security/registered-login-client.mjs',import.meta.url));
  for(const variant of ['web','native/www']){
   const dir=path.join(out,variant),assets=path.join(dir,'secure-assets');fs.writeFileSync(path.join(assets,'registered-login-client.mjs'),client);

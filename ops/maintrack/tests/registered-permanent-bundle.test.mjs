@@ -1,6 +1,15 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import * as builder from '../scripts/prepare-registered-login.mjs';
 import {prepareAdmissionBundle} from '../scripts/prepare-login-admission.mjs';
+
+test('registered Gateway package refreshes the actual API adapter and its server dependencies',()=>{
+ assert.equal(typeof builder.prepareRegisteredGatewayPackage,'function');
+ const files=builder.prepareRegisteredGatewayPackage(),get=n=>files.find(f=>f.name===n)?.content;
+ const canonical=fs.readFileSync(new URL('../security/vercel-login-entry.mjs',import.meta.url),'utf8');
+ assert.equal(get('api/login.mjs'),canonical.replace('../../../supabase/functions/maintrack-final-047/login-gateway.mjs','../server/login-gateway.mjs'));
+ assert.match(get('api/login.mjs'),/QA_WINDOW_CAPABILITY_REQUIRED/);
+ for(const name of ['login-gateway.mjs','login-admission.mjs','login-proof.mjs'])assert.equal(get('server/'+name),fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/'+name,import.meta.url),'utf8'));
+});
 test('registered QA composition uses permanent lease, two actors and bounded Core actions',()=>{
  assert.equal(typeof builder.prepareRegisteredPermanentRuntime,'function');
  // Source-transform contract only, never a deployable/cloud acceptance fixture.
