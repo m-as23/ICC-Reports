@@ -58,6 +58,7 @@ def pre_sign(candidate,unsigned_apk,*,platform=None,now=None,owner_approval=None
   if candidate.get('artifactSha256')!=digest:reasons.append('UNSIGNED_ARTIFACT_CHANGED')
   cert=candidate.get('certificateSha256');
   if not isinstance(cert,str) or not re.fullmatch('[a-f0-9]{64}',cert):reasons.append('REVIEWED_PUBLIC_CERTIFICATE_REQUIRED')
+  if isinstance(cert,str) and cert.lower()=='aae0b7fe57ae5e65749c8967861918b7bb9a6ff9275ee980c96b88d4a01ca5fe':reasons.append('QA_DEBUG_CERTIFICATE_NOT_RELEASE')
   build=platform.get('build',{});review=platform.get('review',{});approval=platform.get('approval',{});gate=platform.get('securityGate',{})
   single=owner_approval is not None
   if single:

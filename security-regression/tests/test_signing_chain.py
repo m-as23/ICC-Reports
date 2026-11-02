@@ -73,4 +73,11 @@ class ChainTests(unittest.TestCase):
  def test_missing_last_push_platform_enforcement_blocks(self):
   p=copy.deepcopy(self.p);p['review']['lastPushApprovalEnforced']=False
   self.assertEqual(self.result(p=p)['status'],'BLOCKED')
+ def test_known_debug_certificate_is_rejected_before_signing(self):
+  debug='aae0b7fe57ae5e65749c8967861918b7bb9a6ff9275ee980c96b88d4a01ca5fe'
+  c={**self.c,'certificateSha256':debug};p=copy.deepcopy(self.p)
+  for section in ('review','approval'):p[section]['certificateSha256']=debug
+  result=self.result(c,p)
+  self.assertEqual(result['status'],'BLOCKED')
+  self.assertIn('QA_DEBUG_CERTIFICATE_NOT_RELEASE',result['reasons'])
 if __name__=='__main__':unittest.main()
