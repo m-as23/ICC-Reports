@@ -7,6 +7,7 @@ GRANT maintrack_qa_permanent_executor TO CURRENT_USER WITH INHERIT FALSE, SET TR
 CREATE SCHEMA maintrack_qa_permanent;
 REVOKE ALL ON SCHEMA maintrack_qa_permanent FROM PUBLIC;
 CREATE TABLE maintrack_qa_permanent.windows(id uuid PRIMARY KEY,admit_until timestamptz NOT NULL,state text NOT NULL CHECK(state IN('ARMED','RECOVERING','FAILED','COMPLETE')),cap_hash text NOT NULL UNIQUE,plan_hash text NOT NULL,attempts int NOT NULL DEFAULT 0,requests int NOT NULL DEFAULT 0,last_request timestamptz,issued int NOT NULL DEFAULT 0,baseline jsonb NOT NULL,error text,started_at timestamptz NOT NULL DEFAULT clock_timestamp());
+ALTER TABLE maintrack_qa_permanent.windows ADD COLUMN fairness_used boolean NOT NULL DEFAULT false,ADD COLUMN fairness_until timestamptz,ADD COLUMN fairness_remaining int NOT NULL DEFAULT 0 CHECK(fairness_remaining BETWEEN 0 AND 2);
 CREATE UNIQUE INDEX one_pending_qa_window ON maintrack_qa_permanent.windows((true)) WHERE state<>'COMPLETE';
 CREATE TABLE maintrack_qa_permanent.sessions(window_id uuid REFERENCES maintrack_qa_permanent.windows,token_hash text PRIMARY KEY);
 CREATE TABLE maintrack_qa_permanent.events(at timestamptz DEFAULT clock_timestamp(),window_id uuid,kind text,detail text);
@@ -28,13 +29,27 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM maintrack_qa_permanent.health WHERE heartbeat>clock_timestamp()-interval '90 seconds') THEN RAISE EXCEPTION 'QA_SCHEDULER_STALE'; END IF;
  INSERT INTO maintrack_qa_permanent.windows(id,admit_until,state,cap_hash,plan_hash,baseline) VALUES(p_id,clock_timestamp()+make_interval(secs=>p_seconds),'ARMED',p_cap,p_plan,maintrack_qa_permanent.counter_state());
 END $$;
-CREATE FUNCTION maintrack_qa_permanent.admit(p_hash text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+-- A single Owner-approved QA acceptance pair. It changes only the harness gate,
+-- never the actual Login concurrency slots or principal admission controls.
+CREATE FUNCTION maintrack_qa_permanent.permit_fairness_pair(p_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE r maintrack_qa_permanent.windows;
+BEGIN
+ IF NOT pg_has_role(session_user,'maintrack_qa_cleanup_worker','MEMBER') THEN RAISE EXCEPTION 'QA_CONTROLLER_DENIED'; END IF;
+ SELECT * INTO STRICT r FROM maintrack_qa_permanent.windows WHERE id=p_id FOR UPDATE;
+ IF r.state<>'ARMED' OR clock_timestamp()>=r.admit_until OR r.fairness_used OR r.issued<>0 OR r.requests>58 THEN RAISE EXCEPTION 'QA_FAIRNESS_PAIR_DENIED'; END IF;
+ UPDATE maintrack_qa_permanent.windows SET fairness_used=true,fairness_until=least(admit_until,clock_timestamp()+interval '10 seconds'),fairness_remaining=2 WHERE id=p_id;
+END $$;
+CREATE FUNCTION maintrack_qa_permanent.admit(p_hash text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE r maintrack_qa_permanent.windows; fairness boolean:=false;
 BEGIN
  IF session_user<>'maintrack_qa_b2_runtime' OR current_setting('role') NOT IN('maintrack_qa_final_runtime','maintrack_qa_inventory_runtime') THEN RAISE EXCEPTION 'QA_CALLER_DENIED'; END IF;
  SELECT * INTO r FROM maintrack_qa_permanent.windows WHERE state='ARMED' AND clock_timestamp()<admit_until AND maintrack_qa_permanent.is_open() FOR UPDATE;
- IF r.id IS NULL OR clock_timestamp()>=r.admit_until OR p_hash IS DISTINCT FROM r.cap_hash OR r.requests>=60 OR (r.last_request IS NOT NULL AND clock_timestamp()<r.last_request+interval '2.6 seconds') THEN RETURN false; END IF;
- UPDATE maintrack_qa_permanent.windows SET requests=requests+1,last_request=clock_timestamp() WHERE id=r.id;RETURN true;
+ IF r.id IS NULL OR clock_timestamp()>=r.admit_until OR p_hash IS DISTINCT FROM r.cap_hash OR r.requests>=60 THEN RETURN false; END IF;
+ IF clock_timestamp()<r.fairness_until THEN
+  IF r.fairness_remaining<=0 THEN RETURN false; END IF;fairness:=true;
+ ELSIF r.last_request IS NOT NULL AND clock_timestamp()<r.last_request+interval '2.6 seconds' THEN RETURN false;
+ END IF;
+ UPDATE maintrack_qa_permanent.windows SET requests=requests+1,last_request=clock_timestamp(),fairness_remaining=fairness_remaining-CASE WHEN fairness THEN 1 ELSE 0 END WHERE id=r.id;RETURN true;
 END $$;
 CREATE FUNCTION maintrack_qa_permanent.mutate(p_op text,p_code text,p_hash text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE r maintrack_qa_permanent.windows; actor record;
@@ -114,6 +129,7 @@ GRANT USAGE ON SCHEMA maintrack_qa_permanent TO maintrack_qa_final_runtime,maint
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.owns_session(text),maintrack_qa_permanent.is_open(),maintrack_qa_permanent.admit(text) TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime;
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.mutate(text,text,text) TO maintrack_qa_final_runtime;
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) TO maintrack_qa_cleanup_worker;
+GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.permit_fairness_pair(uuid) TO maintrack_qa_cleanup_worker;
 -- The invoker cleanup procedure verifies restored counters through this private
 -- helper. Managed/non-superuser workers need explicit EXECUTE; Runtime does not.
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.counter_state() TO maintrack_qa_cleanup_worker;
@@ -131,6 +147,7 @@ ALTER FUNCTION maintrack_qa_permanent.is_open() OWNER TO maintrack_qa_permanent_
 ALTER FUNCTION maintrack_qa_permanent.counter_state() OWNER TO maintrack_qa_permanent_executor;
 ALTER FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) OWNER TO maintrack_qa_permanent_executor;
 ALTER FUNCTION maintrack_qa_permanent.admit(text) OWNER TO maintrack_qa_permanent_executor;
+ALTER FUNCTION maintrack_qa_permanent.permit_fairness_pair(uuid) OWNER TO maintrack_qa_permanent_executor;
 ALTER FUNCTION maintrack_qa_permanent.mutate(text,text,text) OWNER TO maintrack_qa_permanent_executor;
 REVOKE maintrack_qa_permanent_executor FROM CURRENT_USER;
 COMMIT;
