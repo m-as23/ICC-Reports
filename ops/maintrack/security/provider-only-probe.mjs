@@ -1,6 +1,7 @@
 // Temporary QA operator diagnostic. No database, login, session or enrollment path.
 // The injected verifier must return a trusted Cloudflare Siteverify verdict; a boolean
 // is not evidence of hostname, action, cData binding or challenge freshness.
+import {loginProofBinding} from '../../../supabase/functions/maintrack-final-047/login-proof.mjs';
 const REF='szhstrafzkxzstjdcynl',ORIGIN='https://maintrack-registered-isolated-qa.vercel.app';
 const HOSTNAME=new URL(ORIGIN).hostname,ACTION='maintrack_login';
 const MAX_TOKEN_AGE_MS=300000,MAX_FUTURE_SKEW_MS=30000;
@@ -27,13 +28,14 @@ export function createProviderOnlyProbe({projectRef,operatorKey,bodySha256,expir
    if(body===null||typeof body!=='object'||Array.isArray(body)||body.action!=='login'||body.code!=='90000001'||Object.keys(body).some(k=>!['action','code','admission'].includes(k)))return reply(403,{error:'PROBE_SCOPE'});
    const admission=body.admission;
    if(admission===null||typeof admission!=='object'||Array.isArray(admission)||typeof admission.token!=='string'||admission.token.length<1||admission.token.length>2048||typeof admission.requestId!=='string'||!/^[a-f0-9]{32}$/.test(admission.requestId)||Object.keys(admission).some(k=>!['token','requestId'].includes(k)))return reply(403,{error:'PROBE_SCOPE'});
+   const expectedCData=await loginProofBinding(body.code,admission.requestId);
    const start=now();
    const verifierResponse=await verify(body);
    /** @type {Record<string,unknown>} */
    const verdict=verifierResponse!==null&&typeof verifierResponse==='object'&&!Array.isArray(verifierResponse)?/** @type {Record<string,unknown>} */(verifierResponse):{};
    const solvedAt=typeof verdict.challenge_ts==='string'?Date.parse(verdict.challenge_ts):NaN;
    const age=now()-solvedAt;
-   if(verdict.success!==true||verdict.hostname!==HOSTNAME||verdict.action!==ACTION||verdict.cdata!==admission.requestId||!Number.isFinite(solvedAt)||age>MAX_TOKEN_AGE_MS||age< -MAX_FUTURE_SKEW_MS)throw Error('PROVIDER_VERDICT_MISMATCH');
+   if(verdict.success!==true||verdict.hostname!==HOSTNAME||verdict.action!==ACTION||verdict.cdata!==expectedCData||!Number.isFinite(solvedAt)||age>MAX_TOKEN_AGE_MS||age< -MAX_FUTURE_SKEW_MS)throw Error('PROVIDER_VERDICT_MISMATCH');
    return reply(200,{providerAccepted:true,validatedHostname:HOSTNAME,validatedAction:ACTION,cDataBindingVerified:true,challengeFreshnessVerified:true,serverElapsedMilliseconds:now()-start});
   }catch(e){return reply(e?.status===403?403:503,{error:e?.status===403?'PROVIDER_PROOF_REJECTED':'PROVIDER_PROOF_UNAVAILABLE'});}
  };
