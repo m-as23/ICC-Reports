@@ -8,7 +8,14 @@ test('registered Gateway package refreshes the actual API adapter and its server
  const canonical=fs.readFileSync(new URL('../security/vercel-login-entry.mjs',import.meta.url),'utf8');
  assert.equal(get('api/login.mjs'),canonical.replace('../../../supabase/functions/maintrack-final-047/login-gateway.mjs','../server/login-gateway.mjs'));
  assert.match(get('api/login.mjs'),/QA_WINDOW_CAPABILITY_REQUIRED/);
+ assert.match(get('api/core.mjs'),/kind:"core"/);assert.match(get('api/inventory.mjs'),/kind:"inventory"/);assert.match(get('server/qa-session-proxy.mjs'),/QA_ACTION_DENIED/);
  for(const name of ['login-gateway.mjs','login-admission.mjs','login-proof.mjs'])assert.equal(get('server/'+name),fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/'+name,import.meta.url),'utf8'));
+});
+
+test('QA client transport loads before application scripts without changing frame policy or exposing a capability',()=>{
+ const html='<meta http-equiv="Content-Security-Policy" content="connect-src https://qa-gw.example; frame-ancestors self"><script type="module" src="secure-assets/login-admission-bootstrap.mjs"></script><script src="secure-assets/index-inline-1.js"></script>';
+ const web=builder.prepareRegisteredTransportHtml(html),native=builder.prepareRegisteredTransportHtml(html,{native:true});
+ assert.ok(web.indexOf('qa-session-transport.js')<web.indexOf('login-admission-bootstrap.mjs'));assert.match(native,/https:\/\/maintrack-registered-isolated-qa\.vercel\.app/);assert.match(web,/frame-ancestors self/);assert.doesNotMatch(web,/MT_QA_WINDOW_CAPABILITY/);assert.throws(()=>builder.prepareRegisteredTransportHtml(web),/HTML_CONTRACT/);
 });
 test('registered QA composition uses permanent lease, two actors and bounded Core actions',()=>{
  assert.equal(typeof builder.prepareRegisteredPermanentRuntime,'function');

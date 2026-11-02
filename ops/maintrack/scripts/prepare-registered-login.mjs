@@ -83,7 +83,18 @@ export function prepareRegisteredGatewayPackage(){
  const anchor='../../../supabase/functions/maintrack-final-047/login-gateway.mjs';
  if(source.split(anchor).length!==2)throw Error('GATEWAY_API_IMPORT_CONTRACT_CHANGED');
  return [{name:'api/login.mjs',content:source.replace(anchor,'../server/login-gateway.mjs')},
+  {name:'server/qa-session-proxy.mjs',content:fs.readFileSync(new URL('../security/qa-session-proxy.mjs',import.meta.url),'utf8')},
+  ...['core','inventory'].map(kind=>({name:'api/'+kind+'.mjs',content:"import {createQaSessionProxy} from '../server/qa-session-proxy.mjs';\nexport default async function handler(req,res){try{return await createQaSessionProxy({kind:"+JSON.stringify(kind)+"})(req,res);}catch{res.statusCode=503;res.setHeader('content-type','application/json');res.end('{\"error\":\"QA_SESSION_PROXY_NOT_CONFIGURED\"}');}}\n"})),
   ...['login-gateway.mjs','login-admission.mjs','login-proof.mjs'].map(name=>({name:'server/'+name,content:fs.readFileSync(new URL('../../../supabase/functions/maintrack-final-047/'+name,import.meta.url),'utf8')}))];
+}
+
+export function prepareRegisteredTransportHtml(html,{native=false}={}){
+ const anchor='<script type="module" src="secure-assets/login-admission-bootstrap.mjs"></script>';
+ if(typeof html!=='string'||html.split(anchor).length!==2||html.includes('qa-session-transport.js'))throw Error('QA_TRANSPORT_HTML_CONTRACT');
+ const tag='<script src="secure-assets/qa-session-transport.js"></script>';
+ if(html.indexOf('Content-Security-Policy')<0||html.indexOf('Content-Security-Policy')>html.indexOf(anchor))throw Error('QA_TRANSPORT_CSP_ORDER');
+ if(native){if(!html.includes('https://qa-gw.example'))throw Error('QA_NATIVE_CSP_GATEWAY_ANCHOR');html=html.replaceAll('https://qa-gw.example','https://maintrack-registered-isolated-qa.vercel.app');}
+ return html.replace(anchor,tag+'\n'+anchor);
 }
 
 export function composeRegisteredReview({baseDirectory,outputDirectory}){
@@ -104,6 +115,8 @@ export function composeRegisteredReview({baseDirectory,outputDirectory}){
  const client=fs.readFileSync(new URL('../security/registered-login-client.mjs',import.meta.url));
  for(const variant of ['web','native/www']){
   const dir=path.join(out,variant),assets=path.join(dir,'secure-assets');fs.writeFileSync(path.join(assets,'registered-login-client.mjs'),client);
+  fs.copyFileSync(new URL('../security/qa-session-transport.js',import.meta.url),path.join(assets,'qa-session-transport.js'));
+  const htmlPath=path.join(dir,'index.html');fs.writeFileSync(htmlPath,prepareRegisteredTransportHtml(fs.readFileSync(htmlPath,'utf8'),{native:variant==='native/www'}));
   const boot=path.join(assets,'login-admission-bootstrap.mjs');let text=fs.readFileSync(boot,'utf8');
   if(variant==='native/www'){
    fs.copyFileSync(new URL('../security/registered-login-native-client.mjs',import.meta.url),path.join(assets,'registered-login-native-client.mjs'));

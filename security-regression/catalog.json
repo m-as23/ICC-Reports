@@ -646,7 +646,14 @@
         "android/maintrack-app/tests/passkey-packaging.test.mjs",
         "ops/maintrack/security/qa-permanent-adapter.mjs",
         "ops/maintrack/tests/registered-permanent-bundle.test.mjs",
-        "ops/maintrack/tests/permanent-readiness.test.mjs"
+        "ops/maintrack/tests/permanent-readiness.test.mjs",
+        "ops/maintrack/security/qa-session-proxy.mjs",
+        "ops/maintrack/security/qa-session-transport.js",
+        "ops/maintrack/tests/qa-session-proxy.test.mjs",
+        "android/maintrack-app/native/MainTrackQaResourcePolicy.java",
+        "android/maintrack-app/native/MainTrackQaWebViewClient.java",
+        "ops/maintrack/scripts/prepare-registered-native-profile.mjs",
+        "ops/maintrack/tests/qa-native-resource-policy.test.mjs"
       ],
       "command": [
         "node",
@@ -658,7 +665,9 @@
         "ops/maintrack/tests/gateway-target.test.mjs",
         "android/maintrack-app/tests/passkey-packaging.test.mjs",
         "ops/maintrack/tests/registered-permanent-bundle.test.mjs",
-        "ops/maintrack/tests/permanent-readiness.test.mjs"
+        "ops/maintrack/tests/permanent-readiness.test.mjs",
+        "ops/maintrack/tests/qa-session-proxy.test.mjs",
+        "ops/maintrack/tests/qa-native-resource-policy.test.mjs"
       ],
       "timeout": 15
     }
