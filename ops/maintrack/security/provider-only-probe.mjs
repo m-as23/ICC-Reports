@@ -1,6 +1,7 @@
 // Temporary QA operator diagnostic. No database, login, session or enrollment path.
 const REF='szhstrafzkxzstjdcynl',ORIGIN='https://maintrack-registered-isolated-qa.vercel.app';
 const hex=bytes=>[...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');
+/** @param {{projectRef?:string,operatorKey?:string,bodySha256?:string,expires?:number,verify?:(body:Record<string,unknown>)=>Promise<unknown>,now?:()=>number}} [options] */
 export function createProviderOnlyProbe({projectRef,operatorKey,bodySha256,expires,verify,now=Date.now}={}){
  if(projectRef!==REF||typeof operatorKey!=='string'||operatorKey.length<20||!/^[a-f0-9]{64}$/.test(bodySha256||'')||!Number.isFinite(expires)||typeof verify!=='function')throw Error('QA_PROVIDER_CONFIGURATION');
  let consumed=false;

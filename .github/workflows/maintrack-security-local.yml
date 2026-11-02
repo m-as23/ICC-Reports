@@ -49,6 +49,7 @@ jobs:
         run: |
           mkdir -p audit-output
           node --test ops/maintrack/security/provider-only-probe.test.mjs
+          deno check ops/maintrack/security/provider-only-probe.types.ts
           python3 -m unittest discover -s ops/maintrack/tests -p test_ci_qa_inputs.py
       - name: Strict Core typecheck and runtime domain contracts
         run: |
