@@ -20,5 +20,7 @@ test('permanent migration works for non-superuser creator and leaves no executor
   assert.equal(access.can_set,false);assert.equal(access.inherited,false);
   const owners=await c.query("SELECT pg_get_userbyid(p.proowner) owner FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='maintrack_qa_permanent' AND p.proname='mutate'");
   assert.equal(owners.rows[0].owner,'maintrack_qa_permanent_executor');
+  assert.equal((await c.query("SELECT has_function_privilege('maintrack_qa_cleanup_worker','maintrack_qa_permanent.counter_state()','EXECUTE') allowed")).rows[0].allowed,true);
+  assert.equal((await c.query("SELECT has_function_privilege('maintrack_qa_final_runtime','maintrack_qa_permanent.counter_state()','EXECUTE') allowed")).rows[0].allowed,false);
  } finally {await c.query('ROLLBACK');assert.equal((await c.query('SELECT rolsuper FROM pg_roles WHERE rolname=current_user')).rows[0].rolsuper,true);await c.end();}
 });

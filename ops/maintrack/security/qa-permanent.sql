@@ -114,6 +114,9 @@ GRANT USAGE ON SCHEMA maintrack_qa_permanent TO maintrack_qa_final_runtime,maint
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.owns_session(text),maintrack_qa_permanent.is_open(),maintrack_qa_permanent.admit(text) TO maintrack_qa_final_runtime,maintrack_qa_inventory_runtime;
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.mutate(text,text,text) TO maintrack_qa_final_runtime;
 GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.open_window(uuid,text,text,int) TO maintrack_qa_cleanup_worker;
+-- The invoker cleanup procedure verifies restored counters through this private
+-- helper. Managed/non-superuser workers need explicit EXECUTE; Runtime does not.
+GRANT EXECUTE ON FUNCTION maintrack_qa_permanent.counter_state() TO maintrack_qa_cleanup_worker;
 GRANT EXECUTE ON PROCEDURE maintrack_qa_permanent.tick() TO maintrack_qa_cleanup_worker;
 REVOKE INSERT,UPDATE,DELETE ON qa_security_final_20261025.mt_users,qa_security_final_20261025.mt_sessions,qa_security_final_20261025.mt_login_attempts FROM maintrack_qa_final_runtime;
 -- Restrictive policies compose with existing runtime policies, never replace them.
