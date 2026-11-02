@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash,createHmac} from 'node:crypto';
+import {createProviderOnlyProbe} from './provider-only-probe.mjs';
+const origin='https://maintrack-registered-isolated-qa.vercel.app',key='synthetic-operator-key-for-unit-tests',now=1800000000000,body=JSON.stringify({action:'login',code:'90000001',admission:{token:'synthetic-proof',requestId:'a'.repeat(32)}});
+function setup(extra={}){let calls=0;const handle=createProviderOnlyProbe({projectRef:'szhstrafzkxzstjdcynl',operatorKey:key,bodySha256:createHash('sha256').update(body).digest('hex'),expires:now+60000,now:()=>now,verify:async()=>{calls++;return true;},...extra});const request=(text=body,headers={})=>new Request(origin+'/probe',{method:'POST',headers:{origin,'x-probe-time':String(now),'x-probe-signature':createHmac('sha256',key).update('maintrack-provider-probe-v1\n'+now+'\n'+text).digest('hex'),...headers},body:text});return {handle,request,calls:()=>calls};}
+test('verified provider returns only sanitized proof and never a Login token',async()=>{const x=setup(),r=await x.handle(x.request());assert.equal(r.status,200);const b=await r.json();assert.equal(b.providerAccepted,true);assert.equal(b.sessionsIssued,0);assert.equal(x.calls(),1);assert.doesNotMatch(JSON.stringify(b),/synthetic-proof/);});
+test('signature forgery cannot call Provider',async()=>{const x=setup();assert.equal((await x.handle(x.request(body,{'x-probe-signature':'0'.repeat(64)}))).status,403);assert.equal(x.calls(),0);});
+test('digest rejects any substituted proof',async()=>{const x=setup();assert.equal((await x.handle(x.request(body+' '))).status,403);assert.equal(x.calls(),0);});
+test('deadline and wrong Origin fail closed',async()=>{for(const extra of [{expires:now-1},{}]){const x=setup(extra);const r=await x.handle(x.request(body,extra.expires?{}:{origin:'https://other.example'}));assert.equal(r.status,403);assert.equal(x.calls(),0);}});
+test('provider rejection and failure cannot become acceptance',async()=>{for(const verify of [async()=>{const e=Error('LOGIN_PROOF_REJECTED');e.status=403;throw e;},async()=>{throw Error('private detail not returned');}]){const x=setup({verify}),r=await x.handle(x.request());assert.ok([403,503].includes(r.status));assert.doesNotMatch(await r.text(),/private detail/);}});
+test('operator replay is rejected before another Provider call in the isolate',async()=>{const x=setup();await x.handle(x.request());assert.equal((await x.handle(x.request())).status,409);assert.equal(x.calls(),1);});
+test('a false verifier result is not success',async()=>{const x=setup({verify:async()=>false});assert.equal((await x.handle(x.request())).status,503);});
+test('non-QA target is refused',()=>{assert.throws(()=>setup({projectRef:'tdnkeskczcsukcujwinu'}),/QA_PROVIDER_CONFIGURATION/);});
