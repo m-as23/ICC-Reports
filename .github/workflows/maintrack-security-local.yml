@@ -45,6 +45,11 @@ jobs:
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5, official verified release
         with:
           deno-version: 'v2.9.8'
+      - name: Provider-only isolation and unsigned QA input contracts
+        run: |
+          mkdir -p audit-output
+          node --test ops/maintrack/security/provider-only-probe.test.mjs
+          python3 -m unittest discover -s ops/maintrack/tests -p test_ci_qa_inputs.py
       - name: Strict Core typecheck and runtime domain contracts
         run: |
           deno check --frozen --lock=ops/maintrack/security/registered-login.deno.lock supabase/functions/maintrack-final-047/index.ts

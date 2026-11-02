@@ -1,0 +1,603 @@
+{
+  "schema": 1,
+  "scope": "EXACT_REGISTERED_QA_NATIVE_BUILD_INPUTS_NOT_RELEASE",
+  "sourceApplicationCommit": "385aea3f904f4b93d9ed3798c67bcab596d82ba7",
+  "publicWebCompositionCommit": "34b290330ae56854c8b35a1fb96c089068b8b5d9",
+  "projectRef": "szhstrafzkxzstjdcynl",
+  "package": "com.icc.maintrack.qa",
+  "apkSigning": "UNSIGNED_ONLY",
+  "physicalAndroid": "DEFERRED_BY_OWNER",
+  "normalizations": [
+    "Capacitor dependency paths resolve existing npm lock under repository",
+    "Machine-specific Debug keystore path removed; no keys packaged",
+    "Gradle8.14.3 official HTTPS distribution with identical pinned SHA256 replaces local file URL"
+  ],
+  "archiveSha256": "31a19733e914e5f1de795536b0e00256b57019e2e73989659918cf967946f0bc",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "065e4a92a240fe11a0ea230491ad9dabef143f5fd5a3e6884ad6f0395666a971",
+      "bytes": 1824
+    },
+    {
+      "path": "app/.gitignore",
+      "sha256": "99c54e51ee601a60fbde8016b2cbf717483bc2e92773be86c9247d02a7fa6ea4",
+      "bytes": 26
+    },
+    {
+      "path": "app/build.gradle",
+      "sha256": "a995bf632f1b23b52ad7736f2e8698e96ab180756571317845049128f1463594",
+      "bytes": 2427
+    },
+    {
+      "path": "app/capacitor.build.gradle",
+      "sha256": "bd647fdc1ce895ad4b0c20d055fba89b3e3a30e8633eda4997d4bc75dacfed3a",
+      "bytes": 443
+    },
+    {
+      "path": "app/proguard-rules.pro",
+      "sha256": "1cf8c57e8f79c250b0af9c1a5a4edad71a5c348a79ab70243b6bae086c150ad2",
+      "bytes": 751
+    },
+    {
+      "path": "app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java",
+      "sha256": "ff50b4c110a7434312f9af54171f9e8523b015836f707c9b387b76d4c38a97f8",
+      "bytes": 774
+    },
+    {
+      "path": "app/src/main/AndroidManifest.xml",
+      "sha256": "3d8432fccf1484ad666b3ebefe827831cfdad6512e864288d7cbe43440065309",
+      "bytes": 1743
+    },
+    {
+      "path": "app/src/main/assets/capacitor.config.json",
+      "sha256": "73e97c1f420c325627c22b5290aa5b94be74df7a81b928b872030ed3b31286ea",
+      "bytes": 322
+    },
+    {
+      "path": "app/src/main/assets/capacitor.plugins.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "bytes": 2
+    },
+    {
+      "path": "app/src/main/assets/public/bd-192.png",
+      "sha256": "d017719ec38fec132b6799bafa39d808a8966bf0a0074130a6f5a92c454e1750",
+      "bytes": 3922
+    },
+    {
+      "path": "app/src/main/assets/public/bd-512.png",
+      "sha256": "35728fa4b63d05ff7a7327ea228c1219c5528d527906da8069b8f31671ddcc31",
+      "bytes": 12889
+    },
+    {
+      "path": "app/src/main/assets/public/index.html",
+      "sha256": "c1d6732a16c19c54c063baab62e52d1251681aee152a092dcf4a7c0bf997a18b",
+      "bytes": 42184
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-047.css",
+      "sha256": "5eccd7859d8d8de7c9314bbd66238053243e842971656042d1151802fafff3f8",
+      "bytes": 419
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-047.js",
+      "sha256": "c4efa8732d4619365e25cc78e64fd80a2ce71b6ba0d71401a72a0b73226984b6",
+      "bytes": 8440
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-approved.css",
+      "sha256": "83b62293448407e5ac1f5be1a3774c2695f6aec25d7e3fb369115eab1448e55d",
+      "bytes": 5094
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-approved.js",
+      "sha256": "2f5aba7ae5fcdbedfc02ec6a714b2f71b578b26a3a1a193f8a703fa9a853eb0a",
+      "bytes": 2453
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-hybrid.js",
+      "sha256": "66cccae1ec6bd56bcc8abbd1d6be7d7032561bc5e32ffbbf4e59bddd5486adca",
+      "bytes": 4678
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-preparation.js",
+      "sha256": "08ffe9581243f45e882eb5680c966d9de25fa2f5d53249265a7cba391e83a7b8",
+      "bytes": 3452
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-reference-integration.js",
+      "sha256": "ddf20bb2822db9d05464b6e67e5f79ad124d8b54cb618eed3824028b00395a15",
+      "bytes": 20733
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-reference-worker.js",
+      "sha256": "d7d77a9b8eac5da772f3e46bf841dafaa6c06f43c98dfc0eb7e00bf09776fb4d",
+      "bytes": 31863
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-reference.css",
+      "sha256": "bd59f87bb082ac8a116909ce3f60af9ecb236a6139715ba26494c541485ea9fe",
+      "bytes": 27123
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-reference.html",
+      "sha256": "2c5d7011764df3bcbf45dad77435e894ef1953599e666fc6c8f9d642ed699cd9",
+      "bytes": 13332
+    },
+    {
+      "path": "app/src/main/assets/public/inventory-reference.js",
+      "sha256": "f02610c7feb70cf303cc15fb35f64418b00fd75522f76a570f5cfc5b9dc3eeb6",
+      "bytes": 45088
+    },
+    {
+      "path": "app/src/main/assets/public/login-admission-public.json",
+      "sha256": "e3e0c5dfb5014dd0b4f763894c96a6309f18a83fddfe43dba6702a5172d65520",
+      "bytes": 386
+    },
+    {
+      "path": "app/src/main/assets/public/manifest.webmanifest",
+      "sha256": "d693ec92858c303d3afb67838ae5862bf92dd1a516dca534a97c8a157aac73dd",
+      "bytes": 461
+    },
+    {
+      "path": "app/src/main/assets/public/qa-security.html",
+      "sha256": "790f6bb233eaee09b1b63a7d5270f191b52ab52c3adfe063db5b976b182f5c0b",
+      "bytes": 2379
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/index-inline-1.css",
+      "sha256": "b827590f9d62166cb9586a5be201955931c56a6ae032f4f90b74586821a623e8",
+      "bytes": 53980
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/index-inline-1.js",
+      "sha256": "d106432c32ed494bb7544ac8db20c94b1b13c72915ef08b043cd601daf5859b6",
+      "bytes": 77753
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/index-inline-2.js",
+      "sha256": "6098157814f2732469126110ccafe71fd0139cddc571616637357e9b9b378564",
+      "bytes": 2105
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/login-admission-bootstrap.mjs",
+      "sha256": "db3c546b5cb9d0eee1aed11c048beb7d4bd7c2c86e1a8faaa6a3e48bb2fc7cbc",
+      "bytes": 2196
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/login-proof.mjs",
+      "sha256": "8b226f41b006405e0c1fe4293ae2a6f95a2e4b619a9a351bfab19e736e663d29",
+      "bytes": 1206
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/login-turnstile-client.mjs",
+      "sha256": "a60163493fe03d08649ab26f50ec54541365487635876043d8ca4454dcb6164d",
+      "bytes": 3149
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/qa-security-inline-1.css",
+      "sha256": "888fd2cfc3f7f946b31a5d31663f2b3f5e140181ccf5853821f9d185d090495c",
+      "bytes": 1607
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/qa-security-inline-1.js",
+      "sha256": "c91c5901316e5e2da3c88d149b69d13b34b55424173df2482c53a49ac9e72736",
+      "bytes": 5833
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/qa-session-transport.js",
+      "sha256": "21f100cbd2bdb723c72f8574ecdc7d7074b8e18f7d0247747e8638a061c2ec49",
+      "bytes": 1294
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/registered-login-client.mjs",
+      "sha256": "9d2977b8d07f51a6833ab974e83ef5f30733971c62e43870ac9c7b8be79c565d",
+      "bytes": 2906
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/registered-login-native-client.mjs",
+      "sha256": "4ecf8dcd76477bb004c519aee05b5c0f74f5485036da81b77786363c4e4cd08c",
+      "bytes": 3290
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/security-final-check-inline-1.css",
+      "sha256": "60506e2a7600b6f3e2bf572c646138bcba5aa66ca5853d9b9cc32cca03b6f07c",
+      "bytes": 1225
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/security-final-check-inline-1.js",
+      "sha256": "8a5ee311243202a680cee1e60f3967bb74f8bf7b43548f49b8c3ac3bde7d50ad",
+      "bytes": 6167
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/stage13-native-ready.js",
+      "sha256": "135331c2846f8247eb7b69c2713e0a9ad553887ea3308b1b8870ab0d768908b2",
+      "bytes": 19378
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/stage14-local-work.js",
+      "sha256": "dc0b9b1cbd6662fc5b059b22adb3a015cb25219a10589cd44477d63ae3c6b015",
+      "bytes": 5355
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/stage15-pilot-update.css",
+      "sha256": "344d8033eb41cff744fb3c12bef3ce2c6f154ffe64a1d568f1ef51c96782b0f9",
+      "bytes": 871
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/stage15-pilot-update.js",
+      "sha256": "0c55faee73ab9c71070a26046950672bcd1e65b99bde9fe8d9370f3fa0bd3687",
+      "bytes": 67092
+    },
+    {
+      "path": "app/src/main/assets/public/secure-assets/stage20-native-session.js",
+      "sha256": "800033d67db8bb66d5f75f26609152e99f7489016c8939853ea6ac00f6820241",
+      "bytes": 8593
+    },
+    {
+      "path": "app/src/main/assets/public/security-build-report.json",
+      "sha256": "101e67f36a5d1cacaa8eb870913833cf7b39dd93b8fbe06b993e965bfaa52f79",
+      "bytes": 1260
+    },
+    {
+      "path": "app/src/main/assets/public/security-final-check.html",
+      "sha256": "a705a632b353679359560200b9d41494e18a02f07c9df089d9837833a3cad800",
+      "bytes": 2080
+    },
+    {
+      "path": "app/src/main/assets/public/team-ledger.css",
+      "sha256": "c45716fe5b5fbdc9ba23178fd8722b99dac7791dc0d68cacf8a0aa85638b3765",
+      "bytes": 26441
+    },
+    {
+      "path": "app/src/main/assets/public/team-ledger.js",
+      "sha256": "99201cd2d6db30eb80fed38d911887c3242fa2b29524ffe4e982d536c4f8dfba",
+      "bytes": 11825
+    },
+    {
+      "path": "app/src/main/assets/public/v6-core.css",
+      "sha256": "778a0c525976420819f49fd696c89ae1406a53ed60e16077bc2573a3446e3e40",
+      "bytes": 5856
+    },
+    {
+      "path": "app/src/main/assets/public/v6-core.js",
+      "sha256": "395b492bb810b912cd8eae86af6845b36d044abd1daeed91dbf843180799f0c3",
+      "bytes": 16373
+    },
+    {
+      "path": "app/src/main/assets/public/v6.css",
+      "sha256": "6c8eb6d1233e045ac81adb1e6e94f6594cd7861ae6d479568496f09b7e705c40",
+      "bytes": 1546
+    },
+    {
+      "path": "app/src/main/assets/public/v6.js",
+      "sha256": "faea823c3001c1d76dd31adf0898ed61d327e56be3ec1d651b6e651bb5d8fdff",
+      "bytes": 7486
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/MainActivity.java",
+      "sha256": "86a9d86bea3dca9eddf6bdb2624e8b820a4fb232c783dd7fbefe5e6f46b16081",
+      "bytes": 790
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/MainTrackPasskeyPlugin.java",
+      "sha256": "c0cf776f44fa81b7749683977d60831a0748c2c461da7e5c09da9f0f27fa7ee9",
+      "bytes": 6175
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/MainTrackQaResourcePolicy.java",
+      "sha256": "3d2c7a0ce084e912d6f3aaaf175022264e7461d81c86499e3a28e5b3f248b858",
+      "bytes": 2109
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/MainTrackQaTransportPlugin.java",
+      "sha256": "f4b902c659e45afef2195e82417a40fb8d5a8a70563384a6f23fd89df4694976",
+      "bytes": 4276
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/MainTrackQaWebViewClient.java",
+      "sha256": "7efcb0ad624f568bd471489d4ce617380a1c108840ae575efed5e4908d5d5ddf",
+      "bytes": 1358
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/MainTrackSecureSessionPlugin.java",
+      "sha256": "3649eb55b8cce0dc351f2e8e71ec3ebbcb72ee16d50a86a803cab2d340640b54",
+      "bytes": 5105
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/QaDisabledHttpPlugin.java",
+      "sha256": "f828e48d920d18fd7d29f5f48c249f9eb54483603f30e9578c19ccda1d622a54",
+      "bytes": 952
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/QaNetworkPolicy.java",
+      "sha256": "41d1329dfde9f0bf059692ed52a2cfd9378acb2b7a4e60ccf34d9988c4ea5cc4",
+      "bytes": 1470
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/QaTlsProbePlugin.java",
+      "sha256": "60580b680666066a25d1c8cdd4f398a877367c51b411085dfdbad460a7020900",
+      "bytes": 1061
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/QaUpdaterPlugin.java",
+      "sha256": "d9c2b8fb7150fb09e8fd46d398129a860514e58b51695be4dad5d36b18d23d0f",
+      "bytes": 964
+    },
+    {
+      "path": "app/src/main/java/com/icc/maintrack/qa/QaWebViewClient.java",
+      "sha256": "1e8fc19db9d7d4cb32994e2690cf374c03421489539ba10ddcc6542358f3b70d",
+      "bytes": 976
+    },
+    {
+      "path": "app/src/main/res/drawable-land-hdpi/splash.png",
+      "sha256": "08cc34ad7713fe7ed58bceaa37b2387b670c53cd60264b4bd6442db3098e75dc",
+      "bytes": 7705
+    },
+    {
+      "path": "app/src/main/res/drawable-land-mdpi/splash.png",
+      "sha256": "5cf98b4451bd99b20df26f9e608a46946118be6b0ae90762f9ca1786a30c76ff",
+      "bytes": 4040
+    },
+    {
+      "path": "app/src/main/res/drawable-land-xhdpi/splash.png",
+      "sha256": "22f87e1e3bc89aa01a7dbc39c9a4db058cd0bf4ad3fe9f55712bf69eb997f4bf",
+      "bytes": 9251
+    },
+    {
+      "path": "app/src/main/res/drawable-land-xxhdpi/splash.png",
+      "sha256": "42aa26392546fcdee1b8d3ac6d4b41bfcceb41dc6a4f3a3c30c24a8a8f4db862",
+      "bytes": 13984
+    },
+    {
+      "path": "app/src/main/res/drawable-land-xxxhdpi/splash.png",
+      "sha256": "60393ce8636fd263e4e1fea3fd4ab2de948c6295e898fda9b50ac4e5283be809",
+      "bytes": 17683
+    },
+    {
+      "path": "app/src/main/res/drawable-port-hdpi/splash.png",
+      "sha256": "c5015f4ba3628392b538386c5e210f0b94f352a3160adab934fd0311972137ca",
+      "bytes": 7934
+    },
+    {
+      "path": "app/src/main/res/drawable-port-mdpi/splash.png",
+      "sha256": "07fa579e1c83e04ba7f9cbcbfcf41b68e15fe3638f2c44a04e58b809103e6b69",
+      "bytes": 4096
+    },
+    {
+      "path": "app/src/main/res/drawable-port-xhdpi/splash.png",
+      "sha256": "b73049cb37fe76d6c11b87a796766bf6af0c85483b31eb6a921657b0d764a4b9",
+      "bytes": 9875
+    },
+    {
+      "path": "app/src/main/res/drawable-port-xxhdpi/splash.png",
+      "sha256": "0c7f1212f25b7b90e9a6e1d320013e4ff3d3e03e634cbb07b7b7981cac51627f",
+      "bytes": 13346
+    },
+    {
+      "path": "app/src/main/res/drawable-port-xxxhdpi/splash.png",
+      "sha256": "3db071a03b2f8ffe0dfd4170fc59842d53cd15bba5e88af59401d58efabf7827",
+      "bytes": 17489
+    },
+    {
+      "path": "app/src/main/res/drawable-v24/ic_launcher_foreground.xml",
+      "sha256": "a8514094f754b099d3e55ce1d6e0b2de79db418b2eeacb0fc2a6bb0bfadef221",
+      "bytes": 1880
+    },
+    {
+      "path": "app/src/main/res/drawable/ic_launcher_background.xml",
+      "sha256": "718ba51adf166bb55c3e9936bb8199a0148457f7f0191aaa2f37a94f3159d6ec",
+      "bytes": 5606
+    },
+    {
+      "path": "app/src/main/res/drawable/splash.png",
+      "sha256": "5cf98b4451bd99b20df26f9e608a46946118be6b0ae90762f9ca1786a30c76ff",
+      "bytes": 4040
+    },
+    {
+      "path": "app/src/main/res/layout/activity_main.xml",
+      "sha256": "5d770feb791313b947020cbfc57e5c733c556dac5e9e49261a1190e527073253",
+      "bytes": 535
+    },
+    {
+      "path": "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "sha256": "9c3a7e0a6515c6e1a7ae834a9ae430311ebc3241f7b2e5e7f0460aa690709a7c",
+      "bytes": 265
+    },
+    {
+      "path": "app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "sha256": "9c3a7e0a6515c6e1a7ae834a9ae430311ebc3241f7b2e5e7f0460aa690709a7c",
+      "bytes": 265
+    },
+    {
+      "path": "app/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "sha256": "72b71c3581ca3b5a23b1c168d69b9d855b3f184fa079902a01f088eb4f0607d5",
+      "bytes": 2786
+    },
+    {
+      "path": "app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png",
+      "sha256": "32baa10d2632a4417454a579f992bd640e0a3cec79321423559b2c9940de58a9",
+      "bytes": 3450
+    },
+    {
+      "path": "app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+      "sha256": "bfcc1b0fa931b14bb241372c76ab4f04374b67d02363c98d9cb12edfdacdf5f3",
+      "bytes": 4341
+    },
+    {
+      "path": "app/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "sha256": "27ed3603010ebc278f64f8645741ab132ff517abb5308eb9df6c8e42a48956b2",
+      "bytes": 1869
+    },
+    {
+      "path": "app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png",
+      "sha256": "58e78a618778926b1f6d9472a6468de878de8530970934e94aab5ba4ba08cc00",
+      "bytes": 2110
+    },
+    {
+      "path": "app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+      "sha256": "0166fc333074c373fbd0ce6b5defd71552166165ac778121ca9c9dff6b83f0fc",
+      "bytes": 2725
+    },
+    {
+      "path": "app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "sha256": "d35dbfff175b83c13ef59cf924abfc810f7b6a158595d7417c5498ea8c7c7ed1",
+      "bytes": 3981
+    },
+    {
+      "path": "app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png",
+      "sha256": "6f88083b8166cc559102f7044688de7525287632ebe09ac45d001ac8bf4b3eae",
+      "bytes": 5036
+    },
+    {
+      "path": "app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+      "sha256": "40911a00922868686854a4804b93fd6e56b503664696de03f450bff690affb6d",
+      "bytes": 6593
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "sha256": "ed346eb1e3f0280f15709393705899b3ff55c20b88f4e0308006b3c33cf5fe14",
+      "bytes": 6644
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png",
+      "sha256": "4a82bc1e9923576275869998925ce0ae021a79aa18b24a0dd87ad6b61ca85053",
+      "bytes": 9793
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+      "sha256": "1ee4cd9ff371dcb2e3938097e434f6fb8731688ed7165e61fc63693ad5b2f455",
+      "bytes": 10455
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "sha256": "87cb2f2ffe992652bb4fa768c73719a37b5852ab17fbf8e170e888f7a42b0761",
+      "bytes": 9441
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
+      "sha256": "bd24fd383253bf8d43f0a81f11c071d76d1d555114376dd647cd9fb38fa0a9da",
+      "bytes": 15529
+    },
+    {
+      "path": "app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "sha256": "ab93096331e7cd8ec379f73f1e9adcaaa9ee1115c9f4ff10411a811fb9700174",
+      "bytes": 15916
+    },
+    {
+      "path": "app/src/main/res/raw/maintrack_lab_ca.crt",
+      "sha256": "0fc8bce5bf496de4a29f123e22b4e8bd828624363630b0a4e9d6fe1a673fab48",
+      "bytes": 1155
+    },
+    {
+      "path": "app/src/main/res/values/ic_launcher_background.xml",
+      "sha256": "cd40bafe618ff506f4088778b135cb4faa15f25e0c9b475e22d730c74b7be115",
+      "bytes": 120
+    },
+    {
+      "path": "app/src/main/res/values/strings.xml",
+      "sha256": "28c2b3e0b2507d701dd4e059298c67b7bcbbb9d8a28a1823f3ce97b4c6c2c040",
+      "bytes": 338
+    },
+    {
+      "path": "app/src/main/res/values/styles.xml",
+      "sha256": "18ebba36575e9461347ee67361b23caf095f158ee85dbefe1b83a4669ba5bd6c",
+      "bytes": 823
+    },
+    {
+      "path": "app/src/main/res/xml/config.xml",
+      "sha256": "e9dcda493e663c5c4db9e3cb3bd968477a6e90aa8840bcbba40d72ed54b767ce",
+      "bytes": 185
+    },
+    {
+      "path": "app/src/main/res/xml/file_paths.xml",
+      "sha256": "a46ed43ef65c90cb6778f4581decf3556e3f0055aad8f36d69dae16f9a0e99aa",
+      "bytes": 213
+    },
+    {
+      "path": "app/src/main/res/xml/maintrack_qa_system_network_security.xml",
+      "sha256": "30f0e4a81060a25105a2f36d8a3a255f4ee71955439a72868675e360ee66921b",
+      "bytes": 212
+    },
+    {
+      "path": "app/src/main/res/xml/qa_network_security.xml",
+      "sha256": "e9422508ca45118a02145b8292e35bde760dc7950a28842b8455804514d134b2",
+      "bytes": 434
+    },
+    {
+      "path": "app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java",
+      "sha256": "d4045ae8fac1f0807e6b24eb34e68409a9a235df9d1a3f896fb8c9a49424363d",
+      "bytes": 402
+    },
+    {
+      "path": "build.gradle",
+      "sha256": "e7b20cf3d23d800647a04e94b438cdf2de855dfcef264fdb65dcec71c301ac6c",
+      "bytes": 940
+    },
+    {
+      "path": "capacitor-cordova-android-plugins/build.gradle",
+      "sha256": "f23769cc00e7ef9a6aea66fb95acde7e94d79480dfe8cf5248dab3526f005ded",
+      "bytes": 1726
+    },
+    {
+      "path": "capacitor-cordova-android-plugins/cordova.variables.gradle",
+      "sha256": "92271bc5a5578f1688f0f451c42c6328cf82f80145abe787052c4e626117efe4",
+      "bytes": 318
+    },
+    {
+      "path": "capacitor-cordova-android-plugins/src/main/AndroidManifest.xml",
+      "sha256": "2e3e383475f0e6cb76f0a7b46017a546663fba8e5bd1ef2a537412afac2ee9b5",
+      "bytes": 210
+    },
+    {
+      "path": "capacitor-cordova-android-plugins/src/main/java/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "capacitor-cordova-android-plugins/src/main/res/.gitkeep",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1
+    },
+    {
+      "path": "capacitor.settings.gradle",
+      "sha256": "b892e6cbf10e2cbea0daa2d33a9a9bd00c372bcee32411d62d4b2a286164d447",
+      "bytes": 409
+    },
+    {
+      "path": "gradle.properties",
+      "sha256": "3bab15c5b8bc4c2f4b6cf525497d15ad4abca53a460e6dd2eb0f0135817d31e6",
+      "bytes": 987
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.jar",
+      "sha256": "7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172",
+      "bytes": 43764
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.properties",
+      "sha256": "9774fb5fd96e9820542434270e04a134172c545c8788ea98d0d8406a0f712da2",
+      "bytes": 342
+    },
+    {
+      "path": "gradlew",
+      "sha256": "b187b4c52e749f5760afdd6fadc31b2a98ad35fb249bf0dff03b72650f320409",
+      "bytes": 8733
+    },
+    {
+      "path": "gradlew.bat",
+      "sha256": "1d297e00bd21de3ace22b4d7f2de1f9dfa858883d66bbf7c1ccbecccec8f4f3b",
+      "bytes": 2937
+    },
+    {
+      "path": "settings.gradle",
+      "sha256": "9c6c826e55d5cd4feb1f18f49ce3ab7d19f33bf30893d8750afb2c3b45872934",
+      "bytes": 212
+    },
+    {
+      "path": "variables.gradle",
+      "sha256": "80ca02724ff4a95d1192481c68b00474cb1f8c5767eabbcea00deb28049d06dd",
+      "bytes": 513
+    }
+  ]
+}
