@@ -1,5 +1,9 @@
 // Temporary QA operator diagnostic. No database, login, session or enrollment path.
+// The injected verifier must return a trusted Cloudflare Siteverify verdict; a boolean
+// is not evidence of hostname, action, cData binding or challenge freshness.
 const REF='szhstrafzkxzstjdcynl',ORIGIN='https://maintrack-registered-isolated-qa.vercel.app';
+const HOSTNAME=new URL(ORIGIN).hostname,ACTION='maintrack_login';
+const MAX_TOKEN_AGE_MS=300000,MAX_FUTURE_SKEW_MS=30000;
 const hex=bytes=>[...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');
 /** @param {{projectRef?:string,operatorKey?:string,bodySha256?:string,expires?:number,verify?:(body:Record<string,unknown>)=>Promise<unknown>,now?:()=>number}} [options] */
 export function createProviderOnlyProbe({projectRef,operatorKey,bodySha256,expires,verify,now=Date.now}={}){
@@ -19,9 +23,18 @@ export function createProviderOnlyProbe({projectRef,operatorKey,bodySha256,expir
    const sig=Uint8Array.from(signature.match(/../g),x=>parseInt(x,16));
    if(!await crypto.subtle.verify('HMAC',key,sig,new TextEncoder().encode('maintrack-provider-probe-v1\n'+time+'\n'+raw)))return reply(403,{error:'PROBE_AUTH_REQUIRED'});
    if(consumed)return reply(409,{error:'PROBE_ALREADY_CONSUMED'});consumed=true;
-   const body=JSON.parse(raw);if(body.action!=='login'||body.code!=='90000001'||Object.keys(body).some(k=>!['action','code','admission'].includes(k)))return reply(403,{error:'PROBE_SCOPE'});
-   const start=now();if(await verify(body)!==true)throw Error('PROVIDER_VERIFICATION_REQUIRED');
-   return reply(200,{providerAccepted:true,validatedHostname:ORIGIN.slice(8),validatedAction:'maintrack_login',cDataBindingVerified:true,challengeFreshnessVerified:true,serverElapsedMilliseconds:now()-start});
+   const body=JSON.parse(raw);
+   if(body===null||typeof body!=='object'||Array.isArray(body)||body.action!=='login'||body.code!=='90000001'||Object.keys(body).some(k=>!['action','code','admission'].includes(k)))return reply(403,{error:'PROBE_SCOPE'});
+   const admission=body.admission;
+   if(admission===null||typeof admission!=='object'||Array.isArray(admission)||typeof admission.token!=='string'||admission.token.length<1||admission.token.length>2048||typeof admission.requestId!=='string'||!/^[a-f0-9]{32}$/.test(admission.requestId)||Object.keys(admission).some(k=>!['token','requestId'].includes(k)))return reply(403,{error:'PROBE_SCOPE'});
+   const start=now();
+   const verifierResponse=await verify(body);
+   /** @type {Record<string,unknown>} */
+   const verdict=verifierResponse!==null&&typeof verifierResponse==='object'&&!Array.isArray(verifierResponse)?/** @type {Record<string,unknown>} */(verifierResponse):{};
+   const solvedAt=typeof verdict.challenge_ts==='string'?Date.parse(verdict.challenge_ts):NaN;
+   const age=now()-solvedAt;
+   if(verdict.success!==true||verdict.hostname!==HOSTNAME||verdict.action!==ACTION||verdict.cdata!==admission.requestId||!Number.isFinite(solvedAt)||age>MAX_TOKEN_AGE_MS||age< -MAX_FUTURE_SKEW_MS)throw Error('PROVIDER_VERDICT_MISMATCH');
+   return reply(200,{providerAccepted:true,validatedHostname:HOSTNAME,validatedAction:ACTION,cDataBindingVerified:true,challengeFreshnessVerified:true,serverElapsedMilliseconds:now()-start});
   }catch(e){return reply(e?.status===403?403:503,{error:e?.status===403?'PROVIDER_PROOF_REJECTED':'PROVIDER_PROOF_UNAVAILABLE'});}
  };
 }
