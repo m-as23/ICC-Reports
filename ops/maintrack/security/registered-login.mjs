@@ -85,13 +85,13 @@ export function createRegisteredLogin({store,rpID,origin,challengeSecret,verifyI
   if(i.phase==='enroll-options'){
    const p=await store.invitation(i.invitation);if(body.code!==p.employee_code)reject();
    await enrollmentProvider(p);const ticket=issue('enroll',hash(i.invitation)+':'+p.epoch);
-   const options=await generateRegistrationOptions({rpName:'MainTrack',rpID,userName:p.employee_code,userID:Buffer.from(p.id),challenge:ticket,attestationType:'none',supportedAlgorithmIDs:[-7],authenticatorSelection:{residentKey:'required',userVerification:'required'}});
+   const options=await generateRegistrationOptions({rpName:'MainTrack',rpID,userName:p.employee_code,userID:Buffer.from(p.id),challenge:ticket,attestationType:'none',supportedAlgorithmIDs:[-7,-257],authenticatorSelection:{residentKey:'required',userVerification:'required'}});
    return {options,ticket};
   }
   if(i.phase==='enroll-finish'){
    const p=await store.invitation(i.invitation);if(body.code!==p.employee_code)reject();
    read(i.ticket,'enroll',hash(i.invitation)+':'+p.epoch);await enrollmentProvider(p);
-   const result=await verifyRegistrationResponse({response:i.response,expectedChallenge:Buffer.from(i.ticket).toString('base64url'),expectedOrigin:[origin,...androidOrigins],expectedRPID:rpID,requireUserVerification:true,supportedAlgorithmIDs:[-7]});if(!result.verified)reject();
+   const result=await verifyRegistrationResponse({response:i.response,expectedChallenge:Buffer.from(i.ticket).toString('base64url'),expectedOrigin:[origin,...androidOrigins],expectedRPID:rpID,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]});if(!result.verified)reject();
    await store.register(i.invitation,p.epoch,result.registrationInfo.credential);return {registered:true};
   }
   if(typeof body.code!=='string'||! /^[0-9]{1,32}$/.test(body.code)||typeof body.pw!=='string'||body.pw.length>1024)reject();
