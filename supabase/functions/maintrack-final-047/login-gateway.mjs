@@ -66,7 +66,9 @@ export function createVercelLoginGateway({secret,gatewayHostname,vercel=process.
    if(req.method!=='POST')return Response.json({error:'GATEWAY_SCOPE'},{status:405,headers:cors});
    const ip=req.headers.get('x-vercel-forwarded-for');if(!ip||address(ip)!==address(req.headers.get('x-forwarded-for')))throw Error('SOURCE');
    const body=await requestBody(req);const proof=sign(body,ip);
-   const response=await fetchImpl(target.url,{method:'POST',redirect:'error',headers:{'content-type':'application/json','x-maintrack-admission':proof},body:JSON.stringify(body),signal:AbortSignal.timeout(5000)});
+   // Leave response margin inside the client's 10s deadline. Verified QA Login
+   // can commit in Core while the former 5s network deadline loses its reply.
+   const response=await fetchImpl(target.url,{method:'POST',redirect:'error',headers:{'content-type':'application/json','x-maintrack-admission':proof},body:JSON.stringify(body),signal:AbortSignal.timeout(8000)});
    if(response.status<200||response.status>=600)throw Error('UPSTREAM');return new Response(response.body,{status:response.status,headers:{'content-type':'application/json','cache-control':'no-store',...cors}});
   }catch{return Response.json({error:'LOGIN_GATEWAY_UNAVAILABLE'},{status:503,headers:cors});}
  };

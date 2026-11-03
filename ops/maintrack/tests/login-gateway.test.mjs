@@ -2,6 +2,23 @@ import {withLoginBudget} from '../../../supabase/functions/maintrack-final-047/l
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createGatewaySigner,createGatewayVerifier,createVercelLoginGateway} from '../../../supabase/functions/maintrack-final-047/login-gateway.mjs';
 const secret='synthetic-gateway-key-for-local-tests-only-32bytes';const path='/functions/v1/maintrack-security-qa-final/api';const b={action:'login',code:'90000001',pw:'SyntheticOnly7',admission:{token:'provider-token',requestId:'a'.repeat(32)}};
+test('bounded gateway receives a successful upstream result after the observed 5.2 second transport delay',async()=>{
+ const gateway=createVercelLoginGateway({secret,gatewayHostname:'qa-gw.example',vercel:'1',ingressContractApproved:true,fetchImpl:async(_url,{signal})=>{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(resolve,5200);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason);},{once:true});});
+  return Response.json({ok:true});
+ }});
+ const response=await gateway(new Request('https://qa-gw.example/api/login',{method:'POST',headers:{'x-vercel-forwarded-for':'192.0.2.1','x-forwarded-for':'192.0.2.1'},body:JSON.stringify(b)}));
+ assert.equal(response.status,200);assert.deepEqual(await response.json(),{ok:true});
+});
+test('gateway still aborts failed transport once without retry and stays below client deadline',async()=>{
+ const original=AbortSignal.timeout;let requested,calls=0;
+ AbortSignal.timeout=ms=>{requested=ms;return original(5);};
+ try{
+  const gateway=createVercelLoginGateway({secret,gatewayHostname:'qa-gw.example',vercel:'1',ingressContractApproved:true,fetchImpl:async(_url,{signal})=>{calls++;return new Promise((resolve,reject)=>{const guard=setTimeout(()=>reject(Error('SIGNAL_NOT_HONORED')),100);signal.addEventListener('abort',()=>{clearTimeout(guard);reject(signal.reason);},{once:true});});}});
+  const result=await gateway(new Request('https://qa-gw.example/api/login',{method:'POST',headers:{'x-vercel-forwarded-for':'192.0.2.1','x-forwarded-for':'192.0.2.1'},body:JSON.stringify(b)}));
+  assert.equal(result.status,503);assert.equal(calls,1);assert.equal(requested,8000);assert.ok(requested<10000);
+ }finally{AbortSignal.timeout=original;}
+});
 test('gateway signature binds exact method/path/body/source/expiry; direct and tampered requests reject',()=>{
  const sign=createGatewaySigner({secret}),verify=createGatewayVerifier({secret,expectedPath:path});const token=sign(b,'192.0.2.1',path);const req=new Request('https://szhstrafzkxzstjdcynl.supabase.co'+path,{method:'POST',headers:{'x-maintrack-admission':token}});assert.match(verify(req,b),/^[a-f0-9]{64}$/);
  for(const [request,body] of [[new Request(req.url,{method:'POST'}),b],[req,{...b,code:'90000002'}],[new Request('https://qa.invalid/other',{method:'POST',headers:req.headers}),b],[new Request(req.url,{method:'GET',headers:req.headers}),b]])assert.throws(()=>verify(request,body));
