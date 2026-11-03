@@ -34,7 +34,7 @@ const registeredStore=new PgIdentityStore(pool);
 const registeredGateway=createGatewayVerifier({secret:Deno.env.get('MT_LOGIN_GATEWAY_SECRET')});
 const registeredProvider=createAdmissionLogin({login:async()=>true,secret:Deno.env.get('MT_LOGIN_TURNSTILE_SECRET'),allowedHostnames:(Deno.env.get('MT_LOGIN_TURNSTILE_HOSTNAMES')||'').split(',').filter(Boolean)});
 const registeredHandler=createRegisteredLogin({store:registeredStore,rpID:Deno.env.get('MT_REGISTERED_RP_ID'),origin:Deno.env.get('MT_REGISTERED_ORIGIN'),androidOrigins:(Deno.env.get('MT_REGISTERED_ANDROID_ORIGINS')||'').split(',').filter(Boolean),challengeSecret:Deno.env.get('MT_REGISTERED_CHALLENGE_SECRET'),verifyIngress:async(req,body)=>registeredGateway(req,body),verifyProvider:async body=>(await registeredProvider(body))===true,passwordLogin:(body,identity)=>login(body,registeredPrincipalSource(identity.principal),{kind:'verified-gateway-v1'},identity)});
-admittedLogin=async(req:Request,body:RequestBody)=>{try{return await registeredHandler(req,body);}catch(e){if(e instanceof AppError||e instanceof LoginRateError||e instanceof LoginAdmissionError)throw e;throw new LoginAdmissionError('REGISTERED_LOGIN_REJECTED');}};
+admittedLogin=async(req:Request,body:RequestBody)=>{try{return await registeredHandler(req,body);}catch(e){if(e instanceof AppError)throw e;if(e instanceof LoginRateError||e instanceof LoginAdmissionError)throw new AppError(e.code,e.status);throw new AppError('REGISTERED_LOGIN_REJECTED',403);}};
 `;
  const issuePattern=/return issue\(u,c\);(?=\r?\n \},admissionPolicy\);)/;
  if(!issuePattern.test(source))throw Error('SESSION_ISSUE_CONTRACT_CHANGED');
