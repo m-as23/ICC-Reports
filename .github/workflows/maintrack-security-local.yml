@@ -70,7 +70,7 @@ jobs:
       - name: Install pinned registered admission verifier without lifecycle scripts
         run: npm --prefix ops/maintrack/security ci --omit=dev --ignore-scripts --no-audit --no-fund
       - name: Windows Hello RSA registration and signature contracts
-        run: node --test ops/maintrack/tests/registered-login-rsa.test.mjs
+        run: node --test ops/maintrack/tests/registered-login-rsa.test.mjs ops/maintrack/tests/registered-login-focus.test.mjs
       - name: Create the separate owned disposable login fixture
         run: |
           createdb --no-password maintrack_auth_local
