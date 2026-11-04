@@ -1,0 +1,168 @@
+name: MainTrack security local
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: maintrack-security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  security-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      cleanup-postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mt_lab_admin
+          POSTGRES_DB: maintrack_cleanup_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --memory=256m --cpus=1
+          --health-cmd="pg_isready -U mt_lab_admin -d maintrack_cleanup_ci"
+          --health-interval=5s --health-timeout=3s --health-retries=5
+    env:
+      MAINTRACK_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: mt_lab_admin
+      PGDATABASE: maintrack_cleanup_ci
+      MAINTRACK_CLEANUP_OWNED: MAINTRACK_CLEANUP_EPHEMERAL_V2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.22.2'
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5, official verified release
+        with:
+          deno-version: 'v2.9.8'
+      - name: Provider-only isolation and unsigned QA input contracts
+        run: |
+          mkdir -p audit-output
+          node --test ops/maintrack/security/provider-only-probe.test.mjs ops/maintrack/security/provider-only-siteverify.test.mjs ops/maintrack/security/provider-only-runtime.test.mjs
+          deno check ops/maintrack/security/provider-only-probe.types.ts
+          python3 -m unittest discover -s ops/maintrack/tests -p test_ci_qa_inputs.py
+      - name: Strict Core typecheck and runtime domain contracts
+        run: |
+          deno check --frozen --lock=ops/maintrack/security/registered-login.deno.lock supabase/functions/maintrack-final-047/index.ts
+          deno test --frozen --lock=ops/maintrack/security/registered-login.deno.lock ops/maintrack/tests/core-types.test.ts
+      - name: Mark the owned disposable SQL fixture
+        env:
+          CLEANUP_CONTAINER_ID: ${{ job.services.cleanup-postgres.id }}
+        run: |
+          test "$CLEANUP_CONTAINER_ID" != ""
+          fixture_ip=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$CLEANUP_CONTAINER_ID")
+          echo "MAINTRACK_CLEANUP_SERVER_IP=$fixture_ip" >> "$GITHUB_ENV"
+          fixture_image=$(docker inspect --format '{{.Image}}' "$CLEANUP_CONTAINER_ID")
+          echo "MAINTRACK_CLEANUP_IMAGE=$fixture_image" >> "$GITHUB_ENV"
+          psql -X --no-password -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_cleanup_ci IS 'MAINTRACK_CLEANUP_EPHEMERAL_V2'"
+      - name: Install locked local parser dependencies without lifecycle scripts
+        run: npm --prefix ops/maintrack/inventory/backend ci --ignore-scripts --no-audit --no-fund
+      - name: Install pinned registered admission verifier without lifecycle scripts
+        run: npm --prefix ops/maintrack/security ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Windows Hello RSA registration and signature contracts
+        run: node --test ops/maintrack/tests/registered-login-rsa.test.mjs ops/maintrack/tests/registered-login-focus.test.mjs
+      - name: Create the separate owned disposable login fixture
+        run: |
+          createdb --no-password maintrack_auth_local
+          psql -X --no-password -d maintrack_auth_local -v ON_ERROR_STOP=1 -c "COMMENT ON DATABASE maintrack_auth_local IS 'MAINTRACK_LOGIN_LOCAL_EPHEMERAL_V1'"
+          echo "LOGIN_PG_URL=postgresql://mt_lab_admin@127.0.0.1:5432/maintrack_auth_local" >> "$GITHUB_ENV"
+      - name: Bind reuse to the runtime versions
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,subprocess,sys
+          versions={'python':sys.version,'node':subprocess.check_output(['node','--version'],text=True).strip(),'deno':subprocess.check_output(['deno','--version'],text=True).strip(),'postgresImage':os.environ['MAINTRACK_CLEANUP_IMAGE'],'runnerImage':os.environ.get('ImageVersion','unknown')}
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('MAINTRACK_CACHE_RUNTIME='+hashlib.sha256(json.dumps(versions,sort_keys=True).encode()).hexdigest()+'\n')
+          PY
+      - name: Restore same-PR component proofs
+        id: component-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            security-regression/cache.json
+            security-regression/evidence
+          key: ${{ runner.os }}-maintrack-security-v3-${{ env.MAINTRACK_CACHE_RUNTIME }}-${{ github.ref }}-${{ github.sha }}-${{ github.run_attempt }}
+          restore-keys: ${{ runner.os }}-maintrack-security-v3-${{ env.MAINTRACK_CACHE_RUNTIME }}-${{ github.ref }}-
+      - name: Run bounded local security checks
+        run: python security-regression/run.py --mode local --output security-regression/reports/ci.json
+      - name: Preserve component proofs without authorizing release
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            security-regression/cache.json
+            security-regression/evidence
+          key: ${{ steps.component-cache.outputs.cache-primary-key }}
+      - name: Retain the single run report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: maintrack-security-report
+          path: security-regression/reports/ci.json
+          retention-days: 14
+  qa-apk:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/security/maintrack-security-integration-20261028' && github.actor == 'm-as23'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.2'
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify and prepare exact QA inputs
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          mkdir -p audit-output
+          python3 -m unittest discover -s ops/maintrack/tests -p test_ci_qa_inputs.py
+          python3 ops/maintrack/scripts/prepare-ci-qa-android.py --output audit-output/registered-ci-qa
+          npm --prefix android/maintrack-app ci --no-audit --no-fund
+      - name: Compile QA unsigned APK without signing credentials
+        run: |
+          set -euo pipefail
+          MANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)
+          "$MANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+          (cd audit-output/registered-ci-qa && ./gradlew --no-daemon --max-workers=2 assembleRelease)
+          mkdir -p audit-output/registered-ci-artifact
+          cp audit-output/registered-ci-qa/app/build/outputs/apk/release/app-release-unsigned.apk audit-output/registered-ci-artifact/MainTrack-Registered-QA-UNSIGNED.apk
+      - name: Bind actual APK to source and runner identity
+        run: |
+          python3 - <<'PY'
+          import pathlib,sys,os,json,hashlib,zipfile
+          sys.path.insert(0,'security-regression')
+          from signing_chain import payload
+          out=pathlib.Path('audit-output/registered-ci-artifact')
+          apk=out/'MainTrack-Registered-QA-UNSIGNED.apk'
+          payload(apk,unsigned=True)
+          inputs=json.loads(pathlib.Path('ops/maintrack/security/qa-native-build-inputs/manifest.json').read_text())
+          with zipfile.ZipFile(apk) as z:
+              for x in inputs['files']:
+                  if x['path'].startswith('app/src/main/assets/'):
+                      name=x['path'].removeprefix('app/src/main/')
+                      assert hashlib.sha256(z.read(name)).hexdigest()==x['sha256'],name
+          record={'sourceCommit':os.environ['GITHUB_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'workflowPath':'.github/workflows/maintrack-security-local.yml','job':'qa-apk','apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'sourceArchiveSha256':inputs['archiveSha256'],'package':'com.icc.maintrack.qa','signing':'UNSIGNED','certificate':None,'signingAuthorized':False,'deploymentAuthorized':False,'physicalAcceptance':'DEFERRED_BY_OWNER'}
+          (out/'build-provenance.json').write_text(json.dumps(record,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: maintrack-registered-qa-unsigned-${{ github.sha }}
+          path: audit-output/registered-ci-artifact/
+          retention-days: 7
+          if-no-files-found: error

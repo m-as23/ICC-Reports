@@ -8,7 +8,8 @@ permissions:
   actions: read
 jobs:
   sign-proof-only:
-    if: github.ref == 'refs/heads/android/stage14-ota-native-lab'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: maintrack-android-release

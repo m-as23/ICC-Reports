@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {installPasskeyBridge} from './install-passkey-bridge.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const file=path.join(root,'android/app/src/main/AndroidManifest.xml');
 let xml=fs.readFileSync(file,'utf8');
@@ -26,4 +27,5 @@ if(!activity.includes('registerPlugin(MainTrackSecureSessionPlugin.class)')){
 fs.copyFileSync(path.join(root,'native/MainTrackSecureSessionPlugin.java'),
   path.join(nativeDir,'MainTrackSecureSessionPlugin.java'));
 
-console.log('Android manifest hardened; native session uses Android Keystore');
+const passkeyBuild=installPasskeyBridge(path.join(root,'android'),{rpId:process.env.MAINTRACK_PASSKEY_RP_ID??''});
+console.log('Android manifest hardened; native session uses Android Keystore; passkey public RP configured:',passkeyBuild.rpConfigured,'(not release approval)');

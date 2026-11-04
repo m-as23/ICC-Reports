@@ -1,0 +1,153 @@
+{
+  "applied": true,
+  "productionDeploymentAuthorized": false,
+  "targetBranches": [
+    "main",
+    "release/maintrack-047-final-20261024"
+  ],
+  "requiredChecks": [
+    "security-local",
+    "logout-contract"
+  ],
+  "requiredApprovingReviews": 0,
+  "requireCodeOwnerReview": false,
+  "requireUpToDateBranch": true,
+  "deploymentEnvironment": "maintrack-production-approval",
+  "requiredEnvironmentReviewer": "repository owner",
+  "preventSelfReview": false,
+  "cloudScheduleEnabled": false,
+  "notes": "Branch protections and Owner environment approvals applied/read back on both named operational branches. Fourteen legacy signing workflows disabled globally. Single-owner does not claim independent human review. Actual artifact-specific Owner comment and protected-environment approval remain required; no signing or deployment authorized.",
+  "requiredCheckAppId": 15368,
+  "requireLastPushApproval": false,
+  "dismissStaleReviews": true,
+  "requiredConversationResolution": true,
+  "allowForcePush": false,
+  "allowDeletion": false,
+  "adminEnforcement": true,
+  "bypassActors": [],
+  "candidateEvidenceGate": {
+    "context": "candidate-bound-security-release-evidence",
+    "implementedInCI": false,
+    "requiredForSigningAndDeployment": true,
+    "mustNotBeAddedAsRequiredPRCheckBeforeImplementation": true,
+    "status": "LIVE_CONTROL_BASELINE_APPLIED_ARTIFACT_SIGNOFF_AND_QA_PENDING"
+  },
+  "readOnlyVerification20261031": {
+    "repository": "m-as23/ICC-Reports",
+    "main": {
+      "classicProtection": "404 Branch not protected",
+      "effectiveRules": []
+    },
+    "release/maintrack-047-final-20261024": {
+      "classicProtection": "404 Branch not protected",
+      "effectiveRules": []
+    },
+    "checksObserved": {
+      "headSha": "b86ce50f83096146e2c48e0e333f4405331a7901",
+      "contexts": [
+        "security-local",
+        "logout-contract"
+      ],
+      "appId": 15368
+    },
+    "signingEnvironment": {
+      "name": "maintrack-android-release",
+      "requiredReviewersObserved": false,
+      "branchPolicyOnly": true
+    },
+    "reviewEnvironmentExists": false,
+    "pr28": {
+      "draft": true,
+      "merged": false,
+      "remoteHead": "b86ce50f83096146e2c48e0e333f4405331a7901"
+    }
+  },
+  "applicationPreconditions": [
+    "Independent qualified reviewer designated; author/last pusher cannot approve their own PR",
+    "Verify security-local and logout-contract exist and run on each actual protected target before activating required checks",
+    "Use existing protected signing environment plus separate pre-sign review environment with actual reviewers, prevent_self_review and no unapproved bypass",
+    "Wire trusted live platform/artifact/review receipts before replacing the intentionally blocked PROPOSED signing workflow",
+    "Apply only after separate Owner administration approval; read back effective rules and prove rejection without Production release"
+  ],
+  "knownWorkflowGap": {
+    "path": ".github/workflows/maintrack-final-apk-047.yml",
+    "job": "sign-final",
+    "currentChecks": "Historical check-final-047-qa helper; not the five-finding release gate",
+    "requiredChangeForReview": "Place trusted candidate-bound five-finding pre-sign gate before entry into key-bearing job/environment, and post-sign verification before publication; apply same contract to authorized OTA release path",
+    "implementedInActiveWorkflow": false
+  },
+  "trustedReviewReceiptRequiredFields": [
+    "prAuthor",
+    "latestPusher",
+    "lastPushApprovalEnforced",
+    "reviewer",
+    "sourceCommit",
+    "artifactId",
+    "artifactSha256",
+    "certificateSha256",
+    "submittedAt"
+  ],
+  "reviewReceiptPolicy": "Identities and enforcement must be derived by reviewed platform integration from authoritative GitHub data/effective protections. Candidate author fields or local test reports cannot supply authority. Reject absent author/pusher identity, self review, missing last-push approval enforcement or missing authoritative timestamps.",
+  "singleOwnerReviewPath": "Requires a real independent collaborator/reviewer and a run initiator eligible for a different authorized approver. If Owner authored/pushed/triggered the run and no independent human exists, remain BLOCKED; do not enable an unrecoverable protection configuration or synthesize approval.",
+  "activationPrerequisites": {
+    "verifiedCiSha": "73a32592b9bea66e575d05d93085245b8f05ca0c",
+    "checks": [
+      "security-local",
+      "logout-contract"
+    ],
+    "currentCollaborators": [
+      "m-as23"
+    ],
+    "rolePlan": "Owner + independent human reviewer + distinct trusted build/sign initiator under existing strict contract; sole owner cannot approve own work. Trusted automation is not a human reviewer.",
+    "requiredBeforeActivation": [
+      "Actual independent reviewer permission and availability",
+      "Trusted unsigned build artifact, run and public release certificate",
+      "Verified latest pusher and enforced last-push approval",
+      "Protected environment with authoritative ordered approval receipt",
+      "Tested recovery/admin role plan without bypassing mandatory reviews"
+    ],
+    "knownQaDebugCertificateRejected": true,
+    "collectorAuthorizesSigning": false
+  },
+  "alternateSigningPaths": {
+    "state": "BLOCKED_NOT_ENFORCED",
+    "referenceOnlyNotSecretExposure": true,
+    "workflows": [
+      ".github/workflows/maintrack-android-stage11-release.yml",
+      ".github/workflows/maintrack-background-release.yml",
+      ".github/workflows/maintrack-employee-signing-preflight.yml",
+      ".github/workflows/maintrack-final-apk-047.yml",
+      ".github/workflows/maintrack-owner-ota.yml",
+      ".github/workflows/maintrack-owner-pilot-043.yml",
+      ".github/workflows/maintrack-owner-qa-apk-044.yml",
+      ".github/workflows/maintrack-owner-qa-apk-045.yml",
+      ".github/workflows/maintrack-owner-qa-apk-046.yml",
+      ".github/workflows/maintrack-owner-qa-apk-047.yml",
+      ".github/workflows/maintrack-stage14-candidate.yml",
+      ".github/workflows/maintrack-stage22-044-owner-lab-publish.yml",
+      ".github/workflows/maintrack-stage22-owner-key-signonly.yml",
+      ".github/workflows/maintrack-unified-four-owner-key-preflight.yml"
+    ],
+    "requiredBeforeActivation": "Restrict/retire all alternate signing paths at actual secret/environment boundary; candidate-only workflow edits do not secure historical refs. Do not activate an unreviewed signer.",
+    "ownerAction": "Assign real reviewer/build actors; protect secret environment and required checks; approve reviewed trusted workflow pin and public release certificate. No key extraction/rotation performed."
+  },
+  "operationalMappingConfirmedByOwner": {
+    "supabase": "tdnkeskczcsukcujwinu",
+    "vercelProject": "prj_7l6q0Qx7vV7K5LP52MUNXjBOD3ZQ",
+    "productionDeployment": "dpl_E2sSGF9H132q19eMfpDSLc1UZ6xp",
+    "priorSignedBuildCommit": "16a0475b782a5d041f63c59a81a30e4692967e8e",
+    "priorSignedBuildRun": 40101009236,
+    "vercelSourceCommit": "UNVERIFIED",
+    "currentPhoneOrOta": "UNVERIFIED"
+  },
+  "historicalPublicCertificate": {
+    "sha256": "07a35f17c9a7a17b24b1867e839fab2043d83f998bb604701776f3f64c807d5b",
+    "debug": false,
+    "localHistoricalApkSha256": "ca125232329e384a276d0690ce6136f8c7791905217eb07f7fed83e7c630640c",
+    "freshArtifactMatch": "UNAVAILABLE_ARTIFACT_EXPIRED_OR_REMOVED",
+    "productionAuthority": "PENDING_CONFIRMATION_NOT_SELECTED_AUTOMATICALLY"
+  },
+  "codeownersActivation": "Needs actual authorized reviewer login; do not assign only PR author or use a placeholder as active CODEOWNERS",
+  "governancePolicy": "single-owner-v1",
+  "policyApproval": "Explicit Owner instruction 2026-11-01; not artifact/signing approval"
+}

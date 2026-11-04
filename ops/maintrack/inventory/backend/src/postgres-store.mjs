@@ -77,9 +77,14 @@ export class PostgresInventoryStore {
  }
  async stage({items,filename,fileSha256,buffer,actor}){
   const storageKey='inventory/imports/'+randomUUID()+'.xlsx';
-  await this.files.putObject({key:storageKey,bytes:buffer,sha256:fileSha256});
+  // Durable ownership precedes Storage. The partial unique index bounds unresolved
+  // uploads to one. Missing journal schema fails before any external write.
+  await this.pool.query("INSERT INTO inv_lab.upload_intents(storage_key,file_sha256,state,actor) VALUES($1,$2,'RESERVED',$3)",[storageKey,fileSha256,actor]);
   try{
+   await this.files.putObject({key:storageKey,bytes:buffer,sha256:fileSha256});
    return await this.transaction(async db=>{
+    const intent=await db.query('SELECT state FROM inv_lab.upload_intents WHERE storage_key=$1 FOR UPDATE',[storageKey]);
+    if(intent.rows[0]?.state!=='RESERVED')throw Error('INVENTORY_UPLOAD_FENCED');
     const live=await db.query('SELECT current_version_id::text AS id FROM inv_lab.active WHERE singleton=true');
     const baseId=live.rows[0]?.id??null;
     const v=await db.query('INSERT INTO inv_lab.versions(parent_version_id,file_sha256,filename,file_storage_key,created_by) VALUES($1,$2,$3,$4,$5) RETURNING id::text AS id',[baseId,fileSha256,filename,storageKey,actor]);
@@ -95,9 +100,34 @@ export class PostgresInventoryStore {
     }
     await db.query("INSERT INTO inv_lab.audit(event,version_id,base_version_id,actor) VALUES('STAGED',$1,$2,$3)",[draftId,baseId,actor]);
     await db.query('SELECT inv_lab.seal_version($1,$2)',[draftId,actor]);
+    await db.query("UPDATE inv_lab.upload_intents SET state='ATTACHED',version_id=$2 WHERE storage_key=$1 AND state='RESERVED'",[storageKey,draftId]);
     return {draftId,baseVersionId:baseId};
    });
-  }catch(e){await this.files.deleteObject({key:storageKey}).catch(()=>{});throw e;}
+  }catch(cause){
+   // A failed COMMIT reply is not evidence of rollback. Never remove the object
+   // here: a committed/approved/archive version may already reference it.
+   const error=Error('INVENTORY_UPLOAD_RECONCILIATION_REQUIRED',{cause});
+   error.reconciliationRequired=true;throw error;
+  }
+ }
+ async inspectUpload(storageKey){
+  // Read-only operator inspection, not cleanup authorization or an upload retry.
+  if(typeof storageKey!=='string'||!/^inventory\/imports\/[0-9a-f-]{36}\.xlsx$/.test(storageKey))throw Error('INVALID_PRIVATE_OBJECT_KEY');
+  const r=await this.pool.query('SELECT u.storage_key,u.state,u.file_sha256,u.version_id,EXISTS(SELECT 1 FROM inv_lab.versions v WHERE v.file_storage_key=u.storage_key) AS referenced FROM inv_lab.upload_intents u WHERE u.storage_key=$1',[storageKey]);
+  if(r.rows.length!==1)throw Error('OWNED_UPLOAD_INTENT_REQUIRED');return r.rows[0];
+ }
+ async quarantineUpload({storageKey,fileSha256,actor}){
+  // Independent trusted operator only; never exposed by an Inventory HTTP action.
+  if(typeof storageKey!=='string'||!/^inventory\/imports\/[0-9a-f-]{36}\.xlsx$/.test(storageKey)||!/^[a-f0-9]{64}$/.test(fileSha256||'')||typeof actor!=='string'||!actor||actor.length>128)throw Error('EXACT_UPLOAD_SCOPE_REQUIRED');
+  return this.transaction(async db=>{
+   const q=await db.query('SELECT state,file_sha256,actor,version_id::text AS version_id FROM inv_lab.upload_intents WHERE storage_key=$1 FOR UPDATE',[storageKey]);const intent=q.rows[0];
+   if(!intent||intent.file_sha256!==fileSha256||intent.actor!==actor)throw Error('UPLOAD_SCOPE_MISMATCH');
+   const refs=(await db.query('SELECT id::text AS id,file_sha256 FROM inv_lab.versions WHERE file_storage_key=$1',[storageKey])).rows;
+   if(refs.length){if(intent.state!=='ATTACHED'||!refs.some(r=>r.id===intent.version_id)||refs.some(r=>r.file_sha256!==fileSha256))throw Error('UPLOAD_REFERENCE_INCONSISTENT');return {state:'ATTACHED',referenced:true};}
+   if(intent.state==='ATTACHED')throw Error('UPLOAD_REFERENCE_INCONSISTENT');
+   if(intent.state==='RESERVED')await db.query("UPDATE inv_lab.upload_intents SET state='QUARANTINED' WHERE storage_key=$1",[storageKey]);
+   return {state:'QUARANTINED',referenced:false};
+  });
  }
  async diff(draftId){
   const r=await this.pool.query('SELECT id::text AS id,parent_version_id::text AS "baseVersionId",file_sha256 AS "fileSha256",status,item_count AS "itemCount",filename FROM inv_lab.versions WHERE id=$1',[draftId]);
