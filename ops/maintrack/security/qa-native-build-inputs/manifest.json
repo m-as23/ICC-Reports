@@ -12,7 +12,7 @@
     "Machine-specific Debug keystore path removed; no keys packaged",
     "Gradle8.14.3 official HTTPS distribution with identical pinned SHA256 replaces local file URL"
   ],
-  "archiveSha256": "31a19733e914e5f1de795536b0e00256b57019e2e73989659918cf967946f0bc",
+  "archiveSha256": "56fa4b4aa996f1dd4f2c3d4370d70a33ad40fa40fa7bf4f14da2f5794647ef32",
   "files": [
     {
       "path": ".gitignore",
@@ -191,8 +191,8 @@
     },
     {
       "path": "app/src/main/assets/public/secure-assets/registered-login-client.mjs",
-      "sha256": "9d2977b8d07f51a6833ab974e83ef5f30733971c62e43870ac9c7b8be79c565d",
-      "bytes": 2906
+      "sha256": "b8ceb9ae8131eeb9c5b840921eb2ee5367826894bc1374bb1ad4ae4b5c9352e8",
+      "bytes": 4169
     },
     {
       "path": "app/src/main/assets/public/secure-assets/registered-login-native-client.mjs",
@@ -598,6 +598,14 @@
       "path": "variables.gradle",
       "sha256": "80ca02724ff4a95d1192481c68b00474cb1f8c5767eabbcea00deb28049d06dd",
       "bytes": 513
+    }
+  ],
+  "securityOverlays": [
+    {
+      "sourceCommit": "d6c3da59832afaef303406fe2a8a600426492675",
+      "sourcePath": "ops/maintrack/security/registered-login-client.mjs",
+      "targetPath": "app/src/main/assets/public/secure-assets/registered-login-client.mjs",
+      "purpose": "Bounded foreground wait before native WebAuthn prompts"
     }
   ]
 }

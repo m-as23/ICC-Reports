@@ -22,6 +22,8 @@ def prepare(output,inputs=INPUTS):
    if len(data)!=row['bytes'] or hashlib.sha256(data).hexdigest()!=row['sha256']:raise ValueError('ENTRY_HASH_MISMATCH')
    content[entry.filename]=data
   if set(content)!=set(expected):raise ValueError('FILESET_MISMATCH')
+ current_client=(ROOT/'ops/maintrack/security/registered-login-client.mjs').read_bytes()
+ if content.get('app/src/main/assets/public/secure-assets/registered-login-client.mjs')!=current_client:raise ValueError('REGISTERED_CLIENT_SOURCE_MISMATCH')
  output.mkdir(parents=True)
  for name,data in content.items():
   p=output/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
