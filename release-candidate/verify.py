@@ -27,7 +27,9 @@ def build(kind, expected):
             data = (folder / name).read_bytes()
             if name != "PROVENANCE.json" and digest(data) != manifest["files"][name]:
                 raise ValueError(f"{kind}: member mismatch {name}")
-            output.writestr(ZipInfo(name), data)
+            entry = ZipInfo(name)
+            entry.create_system = 0
+            output.writestr(entry, data)
     result = buffer.getvalue()
     if digest(result) != expected:
         raise ValueError(f"{kind}: archive mismatch")
