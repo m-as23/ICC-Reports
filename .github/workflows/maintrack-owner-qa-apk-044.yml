@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qa-upgrade-apk:
-    if: github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: maintrack-android-release

@@ -68,7 +68,8 @@ jobs:
 
   signed-owner-lab-publish:
     needs: preflight
-    if: github.ref == 'refs/heads/release/maintrack-stage22-044-integration'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
     environment: maintrack-android-release

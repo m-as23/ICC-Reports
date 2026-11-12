@@ -14,7 +14,8 @@ concurrency:
 jobs:
   build-signed-owner-only-qa:
     name: Build signed Android 0.4.6 (406) for Owner device review ONLY
-    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/ops/maintrack-044-production-foundation-20261018'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: maintrack-android-release
