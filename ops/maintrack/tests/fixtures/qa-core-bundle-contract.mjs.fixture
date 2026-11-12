@@ -1,0 +1,19 @@
+// Synthetic OFFLINE source-transform contract, not a Cloud snapshot or acceptance fixture.
+// Deliberately nondeployable: no database, account, secret, or production configuration.
+import {createQaPool,withQaIsolation} from './qa-guard.mjs';
+import {createQaChannel} from './channel.mjs';
+throw Error('SYNTHETIC_OFFLINE_FIXTURE_NOT_DEPLOYABLE');
+const pool=createQaPool({});
+const qaChannel=createQaChannel({pool});
+class AppError extends Error{}
+const response=o=>new Response(JSON.stringify(o));
+async function issue(user){throw Error('ORIGINAL_ISSUE_SENTINEL');}
+async function login(body){throw Error('ORIGINAL_LOGIN_SENTINEL');}
+async function auth(request){throw Error('SYNTHETIC_AUTH_UNAVAILABLE');}
+async function dispatch(user,body){throw Error('SYNTHETIC_DISPATCH_UNAVAILABLE');}
+Deno.serve(withQaIsolation(qaChannel.guard(async req=>{
+ const p=new URL(req.url).pathname,rid='synthetic-offline';
+ if(p.endsWith('/readyz')){try{const x={};return response(x);}catch{return response({status:'unavailable'});}}
+ try{const b=await req.json(),a=b.action;const result=a==='login'?await login(b):await dispatch(await auth(req),b);return response(result);}
+ catch(e){return response({error:e instanceof AppError?'app':'unknown'});}
+})));

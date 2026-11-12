@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "channel": "lab",
+  "publicKeyBase64": "ROuBasW8kJ81kjDicmOMCnNdKXrgGP9tbDP9pTVwE30",
+  "manifestUrl": "https://raw.githubusercontent.com/m-as23/ICC-Reports/android/stage14-ota-native-lab/updates/android/release.json",
+  "allowedOrigins": ["https://raw.githubusercontent.com"]
+}

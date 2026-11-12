@@ -95,7 +95,8 @@ jobs:
   sign-owner-preview:
     name: Sign Owner 407 APK with original certificate (no rollout)
     needs: assemble
-    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/feature/maintrack-047-integration-20261022'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: maintrack-android-release

@@ -1,0 +1,10 @@
+import {createAdmissionLogin} from '../../../supabase/functions/maintrack-final-047/login-admission.mjs';
+import {createGatewaySigner,createGatewayAdmissionLogin} from '../../../supabase/functions/maintrack-final-047/login-gateway.mjs';
+import {loginProofBinding} from '../../../supabase/functions/maintrack-final-047/login-proof.mjs';
+let calls=0;const key='synthetic-deno-gateway-server-key-32-bytes',rid='a'.repeat(32),body={action:'login',code:'90000001',pw:'SyntheticOnly7',admission:{token:'fixture-provider-token',requestId:rid}};
+const signer=createGatewaySigner({secret:key});let used=false;
+const admission=createAdmissionLogin({secret:'synthetic-deno-provider-secret',allowedHostnames:['qa.example.test'],login:async(body,source)=>{if(!/^[a-f0-9]{64}$/.test(source))throw Error('SOURCE');calls++;return {ok:true};},fetchImpl:async()=>{if(used)return Response.json({success:false});used=true;return Response.json({success:true,hostname:'qa.example.test',action:'maintrack_login',cdata:await loginProofBinding(body.code,rid),challenge_ts:new Date().toISOString()});}});
+const handler=createGatewayAdmissionLogin({secret:key,admissionLogin:admission});const url='https://szhstrafzkxzstjdcynl.supabase.co/functions/v1/maintrack-security-qa-final/api';
+const request=()=>new Request(url,{method:'POST',headers:{'x-maintrack-admission':signer(body,'192.0.2.1')}});
+if(!(await handler(request(),body)).ok)throw Error('VALID_PROOF_FAILED');let rejected=false;try{await handler(request(),body);}catch{rejected=true;}if(!rejected||calls!==1)throw Error('REPLAY_FAILED');
+console.log(JSON.stringify({runtime:'REAL_LOCAL_DENO',version:Deno.version.deno,gatewayAndProviderContract:'PASS',replay:'PASS',networkPermission:(await Deno.permissions.query({name:'net'})).state,environmentPermission:(await Deno.permissions.query({name:'env'})).state,cloudAcceptance:'NOT TESTED'}));

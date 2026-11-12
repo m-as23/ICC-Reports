@@ -1,0 +1,210 @@
+// REVIEW-ONLY MainTrack 0.4.7; pinned upstream 07dbac0c2a63cf58336ae8a2df383cbcf9f283be; no live connection.
+// This candidate deliberately fixes upstream literal-substring search.
+// Private PostgreSQL inventory repository; never call with a browser database key.
+import {randomUUID} from 'node:crypto';
+import {inventoryTerms,matchesInventoryItem,filterConfirmedInventoryItems} from './search-normalizer.mjs';
+export class PostgresInventoryStore {
+ constructor({pool,privateFiles}){
+  if(!pool?.connect||!privateFiles?.putObject||!privateFiles?.deleteObject)
+    throw Error('PRIVATE_DATABASE_AND_FILE_STORE_REQUIRED');
+  this.pool=pool;this.files=privateFiles;
+ }
+ async transaction(run){
+  const db=await this.pool.connect();
+  try{await db.query('BEGIN');const value=await run(db);await db.query('COMMIT');return value;}
+  catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
+ }
+ async current(){
+  const r=await this.pool.query('SELECT a.current_version_id::text AS "versionId",a.generation::text AS "generation",v.approved_at AS "approvedAt",v.filename FROM qa_security_inventory_20261025.active a LEFT JOIN qa_security_inventory_20261025.versions v ON v.id=a.current_version_id WHERE a.singleton=true');
+  if(!r.rows.length)throw Error('ACTIVE_POINTER_MISSING');
+  return {...r.rows[0],generation:Number(r.rows[0].generation)};
+ }
+ async approvedRows(){
+  // Read only sealed/current approved snapshot, never pending or archived.
+  const MAX_APPROVED_ROWS=30000;
+  const r=await this.pool.query(
+   'SELECT i.code,i.description,i.quantity::text AS quantity,i.location,i.extra '+
+   'FROM qa_security_inventory_20261025.active a JOIN qa_security_inventory_20261025.versions v ON v.id=a.current_version_id '+
+   'JOIN qa_security_inventory_20261025.items i ON i.version_id=v.id '+
+   "WHERE a.singleton=true AND v.status='current' AND v.sealed=true "+
+   'ORDER BY i.code LIMIT $1',
+   [MAX_APPROVED_ROWS+1]
+  );
+  if(r.rows.length>MAX_APPROVED_ROWS)throw Error('INVENTORY_SCAN_TOO_LARGE');
+  return r.rows;
+ }
+ async snapshot(){
+  const before=await this.current();
+  const items=await this.approvedRows();
+  const after=await this.current();
+  if(before.versionId!==after.versionId||before.generation!==after.generation)
+   throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
+  return {...before,items};
+ }
+ async search(term,limit=50){
+  // Backward-compatible short list. For exhaustive counts/pages use searchPage.
+  if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
+  inventoryTerms(term);
+  const n=limit===undefined?50:Number(limit);
+  if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
+  return filterConfirmedInventoryItems(await this.approvedRows(),term,{limit:n});
+ }
+ async searchPage(term,{limit=50,offset=0,versionId}={}){
+  // Never silently hide matches: return exact total and explicit next offset.
+  if(typeof term!=='string'||!term.trim())throw Error('INVALID_QUERY');
+  const terms=inventoryTerms(term);
+  const n=limit===undefined?50:Number(limit);
+  const start=offset===undefined?0:Number(offset);
+  if(!Number.isInteger(n)||n<1||n>100)throw Error('INVALID_LIMIT');
+  if(!Number.isInteger(start)||start<0||start>30000)throw Error('INVALID_OFFSET');
+  // Pin all pages to one approved snapshot. A concurrent Owner publish must
+  // return HTTP409 rather than silently skipping or duplicating stock rows.
+  const before=await this.current();
+  if(versionId!==undefined&&versionId!==before.versionId)
+   throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
+  const rows=await this.approvedRows();
+  const after=await this.current();
+  if(before.versionId!==after.versionId||before.generation!==after.generation)
+   throw Error('INVENTORY_VERSION_CHANGED_RESTART_SEARCH');
+  const all=rows.filter(item=>matchesInventoryItem(item,terms));
+  const items=all.slice(start,start+n),hasMore=start+items.length<all.length;
+  return {items,totalMatches:all.length,offset:start,limit:n,hasMore,
+   nextOffset:hasMore?start+items.length:null,versionId:before.versionId};
+ }
+ async item(code){
+  const r=await this.pool.query('SELECT i.code,i.description,i.quantity::text AS quantity,i.location,i.extra,i.version_id::text AS "versionId" FROM qa_security_inventory_20261025.items i JOIN qa_security_inventory_20261025.active a ON a.current_version_id=i.version_id WHERE i.code=$1',[String(code).normalize('NFKC').trim().toUpperCase()]);
+  return r.rows[0]||null;
+ }
+ async stage({items,filename,fileSha256,buffer,actor}){
+  const storageKey='inventory/imports/'+randomUUID()+'.xlsx';
+  // Durable ownership precedes Storage. The partial unique index bounds unresolved
+  // uploads to one. Missing journal schema fails before any external write.
+  await this.pool.query("INSERT INTO qa_security_inventory_20261025.upload_intents(storage_key,file_sha256,state,actor) VALUES($1,$2,'RESERVED',$3)",[storageKey,fileSha256,actor]);
+  try{
+   await this.files.putObject({key:storageKey,bytes:buffer,sha256:fileSha256});
+   return await this.transaction(async db=>{
+    const intent=await db.query('SELECT state FROM qa_security_inventory_20261025.upload_intents WHERE storage_key=$1 FOR UPDATE',[storageKey]);
+    if(intent.rows[0]?.state!=='RESERVED')throw Error('INVENTORY_UPLOAD_FENCED');
+    const live=await db.query('SELECT current_version_id::text AS id FROM qa_security_inventory_20261025.active WHERE singleton=true');
+    const baseId=live.rows[0]?.id??null;
+    const v=await db.query('INSERT INTO qa_security_inventory_20261025.versions(parent_version_id,file_sha256,filename,file_storage_key,created_by) VALUES($1,$2,$3,$4,$5) RETURNING id::text AS id',[baseId,fileSha256,filename,storageKey,actor]);
+    const draftId=v.rows[0].id;
+    for(let index=0;index<items.length;index+=250){
+      const block=items.slice(index,index+250),parameters=[];
+      const placeholders=block.map((item,position)=>{
+        parameters.push(draftId,item.code,item.description,item.quantity,item.location,JSON.stringify(item.extra||{}));
+        const offset=position*6;
+        return '('+Array.from({length:6},(_,k)=>'$'+(offset+k+1)).join(',')+')';
+      });
+      await db.query('INSERT INTO qa_security_inventory_20261025.items(version_id,code,description,quantity,location,extra) VALUES '+placeholders.join(','),parameters);
+    }
+    await db.query("INSERT INTO qa_security_inventory_20261025.audit(event,version_id,base_version_id,actor) VALUES('STAGED',$1,$2,$3)",[draftId,baseId,actor]);
+    await db.query('SELECT qa_security_inventory_20261025.seal_version($1,$2)',[draftId,actor]);
+    await db.query("UPDATE qa_security_inventory_20261025.upload_intents SET state='ATTACHED',version_id=$2 WHERE storage_key=$1 AND state='RESERVED'",[storageKey,draftId]);
+    return {draftId,baseVersionId:baseId};
+   });
+  }catch(cause){
+   // A failed COMMIT reply is not evidence of rollback. Never remove the object
+   // here: a committed/approved/archive version may already reference it.
+   const error=Error('INVENTORY_UPLOAD_RECONCILIATION_REQUIRED',{cause});
+   error.reconciliationRequired=true;throw error;
+  }
+ }
+ async inspectUpload(storageKey){
+  // Read-only operator inspection, not cleanup authorization or an upload retry.
+  if(typeof storageKey!=='string'||!/^inventory\/imports\/[0-9a-f-]{36}\.xlsx$/.test(storageKey))throw Error('INVALID_PRIVATE_OBJECT_KEY');
+  const r=await this.pool.query('SELECT u.storage_key,u.state,u.file_sha256,u.version_id,EXISTS(SELECT 1 FROM qa_security_inventory_20261025.versions v WHERE v.file_storage_key=u.storage_key) AS referenced FROM qa_security_inventory_20261025.upload_intents u WHERE u.storage_key=$1',[storageKey]);
+  if(r.rows.length!==1)throw Error('OWNED_UPLOAD_INTENT_REQUIRED');return r.rows[0];
+ }
+ async quarantineUpload({storageKey,fileSha256,actor}){
+  // Independent trusted operator only; never exposed by an Inventory HTTP action.
+  if(typeof storageKey!=='string'||!/^inventory\/imports\/[0-9a-f-]{36}\.xlsx$/.test(storageKey)||!/^[a-f0-9]{64}$/.test(fileSha256||'')||typeof actor!=='string'||!actor||actor.length>128)throw Error('EXACT_UPLOAD_SCOPE_REQUIRED');
+  return this.transaction(async db=>{
+   const q=await db.query('SELECT state,file_sha256,actor,version_id::text AS version_id FROM qa_security_inventory_20261025.upload_intents WHERE storage_key=$1 FOR UPDATE',[storageKey]);const intent=q.rows[0];
+   if(!intent||intent.file_sha256!==fileSha256||intent.actor!==actor)throw Error('UPLOAD_SCOPE_MISMATCH');
+   const refs=(await db.query('SELECT id::text AS id,file_sha256 FROM qa_security_inventory_20261025.versions WHERE file_storage_key=$1',[storageKey])).rows;
+   if(refs.length){if(intent.state!=='ATTACHED'||!refs.some(r=>r.id===intent.version_id)||refs.some(r=>r.file_sha256!==fileSha256))throw Error('UPLOAD_REFERENCE_INCONSISTENT');return {state:'ATTACHED',referenced:true};}
+   if(intent.state==='ATTACHED')throw Error('UPLOAD_REFERENCE_INCONSISTENT');
+   if(intent.state==='RESERVED')await db.query("UPDATE qa_security_inventory_20261025.upload_intents SET state='QUARANTINED' WHERE storage_key=$1",[storageKey]);
+   return {state:'QUARANTINED',referenced:false};
+  });
+ }
+ async diff(draftId){
+  const r=await this.pool.query('SELECT id::text AS id,parent_version_id::text AS "baseVersionId",file_sha256 AS "fileSha256",status,item_count AS "itemCount",filename FROM qa_security_inventory_20261025.versions WHERE id=$1',[draftId]);
+  const v=r.rows[0];if(!v)throw Error('DRAFT_NOT_FOUND');
+  if(v.status!=='pending')throw Error('DRAFT_NOT_PENDING');
+  const current=await this.current();
+  const changes=await this.pool.query('SELECT * FROM qa_security_inventory_20261025.compare_version($1)',[draftId]);
+  const details=changes.rows.map(x=>({code:x.code,type:x.change_type,
+    before:x.old_description===null?null:{description:x.old_description,quantity:x.old_quantity===null?null:Number(x.old_quantity),location:x.old_location},
+    after:x.new_description===null?null:{description:x.new_description,quantity:x.new_quantity===null?null:Number(x.new_quantity),location:x.new_location}}));
+  const counts={NEW:0,CHANGED:0,ABSENT:0,UNCHANGED:0};
+  for(const x of details)counts[x.type]++;
+  const baseSize=counts.CHANGED+counts.ABSENT+counts.UNCHANGED;
+  return {draftId,baseVersionId:v.baseVersionId,currentVersionId:current.versionId,fileSha256:v.fileSha256,
+   filename:v.filename,total:Number(v.itemCount),counts,absentRatio:baseSize?counts.ABSENT/baseSize:0,
+   requiresExplicitReview:baseSize>0&&counts.ABSENT/baseSize>0.1,details};
+ }
+ async publish(draftId,baseVersionId,actor){
+  try{
+   return await this.transaction(async db=>{
+    await db.query('SELECT current_version_id FROM qa_security_inventory_20261025.active WHERE singleton=true FOR UPDATE');
+    const source=await db.query('SELECT source.excluded_at FROM qa_security_inventory_20261025.versions draft JOIN qa_security_inventory_20261025.versions source ON source.id=draft.source_version_id WHERE draft.id=$1',[draftId]);
+    if(source.rows[0]?.excluded_at)throw Error('VERSION_IS_EXCLUDED');
+    const q=await db.query('SELECT qa_security_inventory_20261025.publish_version($1,$2,$3)::text AS id',[draftId,baseVersionId,actor]);
+    return {versionId:q.rows[0].id};
+   });
+  }catch(e){if(e.code==='40001')throw Error('STALE_BASE_RECOMPARE_REQUIRED');throw e;}
+ }
+ async history(limit=100){
+  const q=await this.pool.query("SELECT id::text,parent_version_id::text AS \"parentVersionId\",source_version_id::text AS \"sourceVersionId\",filename,item_count AS \"itemCount\",status,approved_at AS \"approvedAt\",archived_at AS \"archivedAt\" FROM qa_security_inventory_20261025.versions WHERE status IN ('current','archived') ORDER BY approved_at DESC LIMIT $1",[Math.max(1,Math.min(Number(limit)||100,500))]);
+  return q.rows;
+ }
+ pageArgs({limit=50,offset=0}={}){
+  if(!Number.isInteger(limit)||limit<1||limit>100)throw Error('INVALID_LIMIT');
+  if(!Number.isInteger(offset)||offset<0||offset>100000)throw Error('INVALID_OFFSET');
+  return {limit,offset};
+ }
+ async versionsPage(input={}){
+  const {limit,offset}=this.pageArgs(input);
+  const q=await this.pool.query(`SELECT v.id::text,v.filename,v.item_count AS "itemCount",v.status,v.approved_at AS "approvedAt",v.excluded_at AS "excludedAt",COALESCE(u.name,'حساب سابق') AS "approvedBy" FROM qa_security_inventory_20261025.versions v LEFT JOIN qa_security_final_20261025.mt_users u ON u.id::text=v.approved_by WHERE v.status IN ('current','archived') AND ($1::boolean OR v.excluded_at IS NULL) ORDER BY v.approved_at DESC,v.id DESC LIMIT $2 OFFSET $3`,[input.includeExcluded===true,limit+1,offset]);
+  return {items:q.rows.slice(0,limit),hasMore:q.rows.length>limit,nextOffset:q.rows.length>limit?offset+limit:null};
+ }
+ async claimSearchBudget(actor){
+  const q=await this.pool.query('INSERT INTO qa_security_inventory_20261025.search_budget(actor,day,requests) VALUES($1,CURRENT_DATE,1) ON CONFLICT(actor,day) DO UPDATE SET requests=qa_security_inventory_20261025.search_budget.requests+1 WHERE qa_security_inventory_20261025.search_budget.requests<60 RETURNING requests',[actor]);return q.rows.length>0;
+ }
+ async activity(input={}){
+  const {limit,offset}=this.pageArgs(input);
+  const q=await this.pool.query(`SELECT a.id::text,a.event,a.version_id::text AS "versionId",a.occurred_at AS "occurredAt",COALESCE(u.name,'حساب سابق') AS "actorName",v.filename FROM qa_security_inventory_20261025.audit a LEFT JOIN qa_security_final_20261025.mt_users u ON u.id::text=a.actor LEFT JOIN qa_security_inventory_20261025.versions v ON v.id=a.version_id ORDER BY a.id DESC LIMIT $1 OFFSET $2`,[limit+1,offset]);
+  return {items:q.rows.slice(0,limit),hasMore:q.rows.length>limit,nextOffset:q.rows.length>limit?offset+limit:null};
+ }
+ async setExcluded(versionId,expectedCurrentId,actor,excluded){
+  return this.transaction(async db=>{
+   const active=await db.query('SELECT current_version_id::text AS id FROM qa_security_inventory_20261025.active WHERE singleton=true FOR UPDATE');
+   if(active.rows[0]?.id!==expectedCurrentId)throw Error('VERSION_CHANGED_RELOAD_REQUIRED');
+   if(versionId===expectedCurrentId)throw Error('CURRENT_VERSION_CANNOT_BE_EXCLUDED');
+   const v=await db.query('SELECT status,excluded_at FROM qa_security_inventory_20261025.versions WHERE id=$1 FOR UPDATE',[versionId]);
+   if(v.rows[0]?.status!=='archived')throw Error('VERSION_NOT_ARCHIVED');
+   if(Boolean(v.rows[0].excluded_at)===excluded)return {updated:false};
+   await db.query('UPDATE qa_security_inventory_20261025.versions SET excluded_at=CASE WHEN $2::boolean THEN now() ELSE NULL END,excluded_by=CASE WHEN $2::boolean THEN $3 ELSE NULL END WHERE id=$1',[versionId,excluded,actor]);
+   await db.query('INSERT INTO qa_security_inventory_20261025.audit(event,version_id,base_version_id,actor) VALUES($1,$2,$3,$4)',[excluded?'VERSION_EXCLUDED':'VERSION_REINSTATED',versionId,expectedCurrentId,actor]);
+   return {updated:true};
+  });
+ }
+ async stageRestore(sourceId,actor){
+  return this.transaction(async db=>{
+   const a=await db.query('SELECT current_version_id::text AS id FROM qa_security_inventory_20261025.active WHERE singleton=true FOR UPDATE');
+   const baseId=a.rows[0]?.id??null;
+   const s=await db.query('SELECT file_sha256,file_storage_key,status,excluded_at FROM qa_security_inventory_20261025.versions WHERE id=$1 FOR SHARE',[sourceId]);
+   if(s.rows[0]?.excluded_at)throw Error('VERSION_IS_EXCLUDED');
+   if(s.rows[0]?.status!=='archived')throw Error('ONLY_ARCHIVED_VERSION_CAN_BE_RESTORED');
+   const src=s.rows[0];
+   const v=await db.query('INSERT INTO qa_security_inventory_20261025.versions(parent_version_id,source_version_id,filename,file_sha256,file_storage_key,created_by) VALUES($1,$2,$3,$4,$5,$6) RETURNING id::text AS id',[baseId,sourceId,'restore-v'+sourceId+'.xlsx',src.file_sha256,src.file_storage_key,actor]);
+   const draftId=v.rows[0].id;
+   await db.query('INSERT INTO qa_security_inventory_20261025.items(version_id,code,description,quantity,location,extra) SELECT $1,code,description,quantity,location,extra FROM qa_security_inventory_20261025.items WHERE version_id=$2',[draftId,sourceId]);
+   await db.query("INSERT INTO qa_security_inventory_20261025.audit(event,version_id,base_version_id,actor,metadata) VALUES('RESTORE_REQUESTED',$1,$2,$3,jsonb_build_object('restoredFrom',$4::text))",[draftId,baseId,actor,sourceId]);
+   await db.query('SELECT qa_security_inventory_20261025.seal_version($1,$2)',[draftId,actor]);
+   return {draftId,baseVersionId:baseId};
+  });
+ }
+}
