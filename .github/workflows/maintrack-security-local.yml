@@ -45,6 +45,13 @@ jobs:
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5, official verified release
         with:
           deno-version: 'v2.9.8'
+      - name: Verify frozen integrated and native release inputs
+        if: ${{ hashFiles('release-candidate/inputs.json') != '' }}
+        run: |
+          python release-candidate/verify.py
+          node --test release-candidate/tests/drivefault-engine-isolation.test.mjs
+          deno check --frozen --config release-candidate/integrated/qa-core/deno.json release-candidate/integrated/qa-core/index.ts
+          deno check --frozen --config release-candidate/integrated/qa-inventory/deno.json release-candidate/integrated/qa-inventory/index.ts
       - name: Provider-only isolation and unsigned QA input contracts
         run: |
           mkdir -p audit-output

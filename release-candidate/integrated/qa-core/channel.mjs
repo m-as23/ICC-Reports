@@ -1,0 +1,1 @@
+import {permanentChannel} from './qa-login-lease.mjs';export const createQaChannel=({pool})=>{const origin=Deno.env.get('MT_REGISTERED_ORIGIN');return permanentChannel(pool,{allowedOrigins:origin?['https://localhost',origin]:['https://localhost']})};export const BUCKET='maintrack-security-qa-20261025';export function guardStorageRequest(){throw Error('QA_STORAGE_DISABLED');}

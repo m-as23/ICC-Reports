@@ -21,6 +21,22 @@ def date(value):
  if value.tzinfo is None:raise ValueError('PLATFORM_TIMEZONE_REQUIRED')
  return value
 
+def build_completed_at(run_id,attempt):
+ """Run responses lack completed_at; use the complete exact-attempt job page.
+ Never substitute updated_at, an artifact timestamp, or the local clock.
+ """
+ try:
+  if type(run_id) is not int or run_id<=0 or type(attempt) is not int or attempt!=1:raise ValueError()
+  page=api(f'actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100')
+  jobs=page['jobs']
+  if not isinstance(jobs,list) or not 0<len(jobs)<100 or type(page['total_count']) is not int or page['total_count']!=len(jobs):raise ValueError()
+  times=[]
+  for job in jobs:
+   if job['run_id']!=run_id or job['run_attempt']!=attempt or job['status']!='completed':raise ValueError()
+   times.append(date(job['completed_at']))
+  return max(times).isoformat()
+ except (KeyError,TypeError,AttributeError,ValueError) as e:raise ValueError('BUILD_JOB_TIMES_REQUIRED') from e
+
 def verify_owner(build,run,environment,reviews,comment,job,subject):
  try:
   if not re.fullmatch('[a-f0-9]{40}',subject['sourceCommit']) or any(not re.fullmatch('[a-f0-9]{64}',subject[k]) for k in ['artifactSha256','certificateSha256']):raise ValueError('OWNER_SUBJECT_REQUIRED')
@@ -60,6 +76,7 @@ def fetch_owner_approval(build_run_id,approval_run_id,artifact_id,comment_id,com
   if hashlib.sha256(raw).hexdigest()!=h:raise ValueError('OWNER_WORKFLOW_CHANGED')
  meta=api(f'actions/artifacts/{artifact_id}');archive=subprocess.check_output(['gh','api',f'repos/{REPO}/actions/artifacts/{artifact_id}/zip'],timeout=60)
  verify_artifact(meta,archive,build_run_id,commit,digest,apk_name)
+ build={**build,'completed_at':build_completed_at(build_run_id,build.get('run_attempt'))}
  jobs=api(f'actions/runs/{approval_run_id}/jobs?per_page=100')['jobs'];selected=[j for j in jobs if j['name']=='pre-sign']
  if len(jobs)>=100 or len(selected)!=1:raise ValueError('UNAMBIGUOUS_OWNER_GATE_JOB_REQUIRED')
  subject={'sourceCommit':commit,'artifactSha256':digest,'certificateSha256':certificate,'artifactId':artifact_id,'buildRunId':build_run_id}

@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "exceljs": "npm:exceljs@4.4.0",
+    "yauzl": "npm:yauzl@3.2.1"
+  },
+  "unstable": [
+    "detect-cjs"
+  ],
+  "lock": {
+    "path": "./deno.lock",
+    "frozen": true
+  },
+  "nodeModulesDir": "none"
+}

@@ -28,14 +28,16 @@ export async function withLoginBudget(pool,source,code,work,policy){
  const onConnectionError=e=>{connectionError ||= e;rejectConnection(connectionError);};
  try{c=await pool.connect();
  c.on?.('error',onConnectionError);
- if(hasSource&&!gatewayMode){
+ if(!gatewayMode){
  // Reserve in a separate bounded transaction: failed credentials still consume
  // quota, while row contention cannot hold a pooled connection indefinitely.
  await c.query('BEGIN');begun=true;
  await c.query("SET LOCAL statement_timeout='4000ms'");
  await c.query("SET LOCAL idle_in_transaction_session_timeout='5s'");
  await c.query("SET LOCAL lock_timeout='750ms'");
- const quota=await c.query(`INSERT INTO public.mt_login_rate_guard(key_hash,window_start,attempts,updated_at) VALUES($1,now(),1,now()) ON CONFLICT(key_hash) DO UPDATE SET attempts=CASE WHEN mt_login_rate_guard.window_start<=now()-interval '5 minutes' THEN 1 ELSE LEAST(mt_login_rate_guard.attempts+1,301) END,window_start=CASE WHEN mt_login_rate_guard.window_start<=now()-interval '5 minutes' THEN now() ELSE mt_login_rate_guard.window_start END,updated_at=now() RETURNING attempts`,['login-source-v1:'+source]);
+ // Keep the Production v3 counter and its current window for direct hosted login.
+ const quotaKey=hasSource?'login-source-v1:'+source:'maintrack_stage9_global_login';
+ const quota=await c.query(`INSERT INTO public.mt_login_rate_guard(key_hash,window_start,attempts,updated_at) VALUES($1,now(),1,now()) ON CONFLICT(key_hash) DO UPDATE SET attempts=CASE WHEN mt_login_rate_guard.window_start<now()-interval '5 minutes' THEN 1 ELSE LEAST(mt_login_rate_guard.attempts+1,301) END,window_start=CASE WHEN mt_login_rate_guard.window_start<now()-interval '5 minutes' THEN now() ELSE mt_login_rate_guard.window_start END,updated_at=now() RETURNING attempts`,[quotaKey]);
  await c.query('COMMIT');begun=false;
  if(Number(quota.rows[0].attempts)>300)throw new LoginRateError('RATE_LIMIT');
  }

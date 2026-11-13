@@ -14,6 +14,24 @@ const sha=(v:string)=>createHash('sha256').update(v).digest('hex');
 const response=(o:unknown,status=200,rid='')=>new Response(JSON.stringify(o),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','vary':'Origin','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'authorization,content-type,x-request-id','x-request-id':rid}});
 class AppError extends Error{constructor(public code:string,public status=400){super(code);}}
 const die:(code:string,status?:number)=>never=(code,status=400)=>{throw new AppError(code,status);};
+async function boundedJson(req:Request):Promise<unknown>{
+ const maximum=65536;
+ if(Number(req.headers.get('content-length')||0)>maximum){void req.body?.cancel().catch(()=>{});die('PAYLOAD_TOO_LARGE',413);}
+ if(!req.body)die('INVALID_PAYLOAD');
+ const reader=req.body.getReader(),chunks:Uint8Array[]=[];let size=0;
+ try{
+  while(true){
+   const {done,value}=await reader.read();if(done)break;
+   size+=value.byteLength;
+   if(size>maximum){void reader.cancel().catch(()=>{});die('PAYLOAD_TOO_LARGE',413);}
+   chunks.push(value);
+  }
+ }catch(e){if(e instanceof AppError)throw e;die('INVALID_PAYLOAD');}
+ finally{reader.releaseLock();}
+ const bytes=new Uint8Array(size);let offset=0;
+ for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+ try{return await new Response(bytes).json();}catch{die('INVALID_PAYLOAD');}
+}
 const row=async(q:string,p:unknown[]=[])=>((await pool.query(q,p)).rows[0]||null);
 const first=async(c:SqlConnection,q:string,p:unknown[]=[])=>((await c.query(q,p)).rows[0]||null);
 async function transaction<T>(fn:(c:SqlConnection)=>Promise<T>){const c=await pool.connect();try{await c.query('BEGIN');const r=await fn(c);await c.query('COMMIT');return r;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
@@ -621,7 +639,7 @@ Deno.serve(async (req)=>{
   return response({error:'NOT_FOUND'},404,rid);
  }
  if(req.method!=='POST'||!p.endsWith('/api'))return response({error:'METHOD_NOT_ALLOWED'},405,rid);
- try{if(Number(req.headers.get('content-length')||0)>65536)die('PAYLOAD_TOO_LARGE',413);const b:unknown=await req.json();if(!isRequestBody(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
+ try{const b=await boundedJson(req);if(!isRequestBody(b))die('INVALID_PAYLOAD');const a=text(b.action,1,40,'UNKNOWN_ACTION');const result=a==='login'?await login(b):a==='logout'?await revokeCurrentSession(req):await dispatch(await auth(req),b);console.info(JSON.stringify({action:a,ms:Date.now()-started,status:'ok',rid}));return response(result,200,rid);}
  catch(e){const c=(e instanceof AppError||e instanceof LoginRateError)?e.code:'INTERNAL_ERROR',s=(e instanceof AppError||e instanceof LoginRateError)?e.status:500;console.error(JSON.stringify({status:c,ms:Date.now()-started,rid}));return response({error:c},s,rid);}
 });
 
