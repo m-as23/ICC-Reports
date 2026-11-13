@@ -1,7 +1,11 @@
 // Read-only post-cutover gate: no credentials, accounts or writes.
 import assert from 'node:assert/strict';
 const base='https://tdnkeskczcsukcujwinu.supabase.co/functions/v1/';
-const origin='https://maintrack-final-security-qa.vercel.app';
+const origin=process.env.MAINTRACK_PRODUCTION_ORIGIN;
+const url=new URL(origin);
+assert.equal(url.protocol,'https:');
+assert.equal(url.origin,origin);
+assert.notEqual(url.hostname,'maintrack-final-security-qa.vercel.app');
 for(const slug of ['maintrack-final-047','maintrack-inventory-final-047']){
  const health=await fetch(base+slug+'/healthz',{headers:{Origin:origin},signal:AbortSignal.timeout(20000)});
  assert.equal(health.status,200);assert.equal((await health.json()).status,'up');
