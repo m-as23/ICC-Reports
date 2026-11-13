@@ -68,7 +68,7 @@ const qa=read('maintrack-change-qa.yml');
 // it cannot deploy/reset services or bypass the protected signing environment.
 const finalSigner=read('maintrack-final-apk-047.yml');
 assert.equal(conf.ownerApproved047FinalSigningWorkflow?.sourceBranch,'release/maintrack-047-final-20261024');
-assert(finalSigner.includes('branches: [release/maintrack-047-final-20261024]') &&
+assert((/^on:\r?\n  workflow_dispatch:\r?\npermissions:/m.test(finalSigner) && /^    if: \$\{\{ false \}\}$/m.test(finalSigner.replaceAll('\r',''))) &&
  finalSigner.includes("github.ref == 'refs/heads/release/maintrack-047-final-20261024'") &&
  finalSigner.includes('environment: maintrack-android-release'),'047_FINAL_BRANCH_ENVIRONMENT_REQUIRED');
 assert(/permissions:\s*\n\s*contents:\s*read\s*\n\s*checks:\s*read/.test(finalSigner) && !/contents:\s*write/.test(finalSigner),'047_FINAL_READ_ONLY_REQUIRED');
