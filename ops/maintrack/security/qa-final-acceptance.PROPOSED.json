@@ -1,0 +1,162 @@
+{
+  "projectRef": "szhstrafzkxzstjdcynl",
+  "state": "BLOCKED",
+  "cloudMutationExecuted": false,
+  "sourceRuntimeReference": "Resolve final reviewed clean commit; QA current v10/v9 not updated",
+  "windowFeasibility": "UNVERIFIED",
+  "automaticAdmission": false,
+  "preconditions": [
+    "Owner-approved two registered/synced passkeys and sibling-session policy; operator-controlled enrollment/recovery still requires actual identity and transport attestation.",
+    "Private RPC owner/runtime/operator grants attested; real RP origin, Android credential integration and Digital Asset Links verified before cutover",
+    "QA-only gateway and Turnstile configured securely; no .example/default profile or disabled client admission",
+    "Independent SQL/Edge stop and targeted rollback proven; schema-only capture is not data/Storage/Edge rollback",
+    "Current roles/RLS/source/lease/jobs snapshot and secure existing synthetic credentials; no rotation",
+    "Measured provider, deployment and recovery durations; budget approved before Arm",
+    "Admission provider/gateway/RP secret names were absent on QA in CLI metadata; configure only through an approved secure channel, no values in chat.",
+    "Single-owner policy is approved and platform controls are applied; artifact-specific Owner signoff is still required, not independent review."
+  ],
+  "syntheticActorsProposed": [
+    "90000001",
+    "90000002"
+  ],
+  "actorScopeNote": "Exactly the two authorized synthetic actors. One targeted principal versus the other legitimate principal; two credentials share one principal quota. Distributed/more-than-two compromised-principal claims remain local/threat-model evidence, not unapproved extra cloud actors.",
+  "maximumSessionsProposed": 4,
+  "cases": {
+    "SEC001": [
+      "Gateway overwritten-source attestation and signature/body binding",
+      "Unsigned direct API rejection before bcrypt",
+      "Replay rejected across instances",
+      "Provider failure denies admission without fake success",
+      "Two active principals versus third legitimate behind same actual NAT",
+      "Independent real sources under bounded local-validated concurrency",
+      "Account lockout/expiry preservation",
+      "Measure bcrypt starts, queue/429 outcomes and p50/p95/max login latency; no fabricated latency SLA"
+    ],
+    "SEC002": [
+      "Login sibling sessions then revoke current token",
+      "Core replay401 and Inventory replay401",
+      "Sibling still valid; idempotent revocation",
+      "Web and Android success/failure/persistence behavior against identical backend"
+    ],
+    "SEC003": [
+      "Actual CSP frame-ancestors and X-Frame-Options on every built HTML and alias",
+      "Browser external iframe refusal and legitimate Inventory authenticated navigation"
+    ],
+    "SEC004": [
+      "Deployed source+lock+runtime module identity yauzl3.2.1",
+      "Authenticated Inventory read-only compatibility; no new upload/parser sweep"
+    ]
+  },
+  "budgetAnalysis": {
+    "status": "UNVERIFIED_NOT_ARMABLE",
+    "countingUnit": "All external operations including failed attempts, gateway-to-Edge, Siteverify, widget resources, admin reads/writes, recovery and independent verification",
+    "preparation": "Count source/snapshot/roles/jobs/lease/credential preflight and deployment operations from final executor; not yet bounded",
+    "test": "Count each manifest HTTP exchange and each provider subrequest; widget resources must be observed, not assumed",
+    "recoveryReserve": "Mandatory distinct reserved request/time budget for token revocation, stop, targeted baseline restoration and independent verification; unavailable measurement blocks Arm",
+    "timing": "Actual provider/management/reconnect tail measurements unavailable. Prior 130-minute failure prevents using normal local timings as upper bound.",
+    "old20Minute60AttemptScope": "60 attempts INSUFFICIENT for proposed full manifest; 20-minute feasibility UNVERIFIED",
+    "concurrency": "No external parallel calls or load beyond separately accepted bounded execution scope",
+    "stopCriteria": [
+      "Any wrong project/runtime/source",
+      "Unexpected non-fixture effect",
+      "Security mandatory failure",
+      "Ambiguous write: no unsafe retry",
+      "Remaining budget reaches reserved cleanup boundary",
+      "Recovery or independent verification fails"
+    ],
+    "staticLowerBound": {
+      "fourSuccessfulSessionLogins": 20,
+      "twoWebAuthnEnrollmentsHttpHops": 12,
+      "eightNegativeCasesAtLeastOneAttemptEach": 8,
+      "logoutReplayCoreInventorySiblingIdempotent": 5,
+      "nineHtmlAndAliasHeaderReads": 9,
+      "oneRealExternalFramingNavigation": 2,
+      "minimumPreflightReads": 6,
+      "subtotalBeforeCleanupReserve": 62,
+      "reservedCleanupAndIndependentVerification": 20,
+      "minimumWithReserve": 82,
+      "excludedAndMustBeMeasured": [
+        "Widget resources",
+        "Deployment and SQL installation calls",
+        "Additional provider/gateway retries (no ambiguous writes retried)",
+        "Android additional requests",
+        "Other actual SQL/network roundtrips and timeout outcomes"
+      ],
+      "interpretation": "Static floor for proposed full manifest, not an observed complete cloud budget or authorization. Existing60-attempt cap is insufficient for this manifest."
+    }
+  },
+  "reuse": [
+    "API36 historical scope",
+    "Android11 historical isolated APK scope",
+    "Excel/parser/Deno/isolation unaffected local evidence"
+  ],
+  "notAuthorized": [
+    "Production",
+    "Signing/distribution",
+    "Password rotation",
+    "Unresolved Storage deletion",
+    "Automatic new QA window",
+    "Merge; Push only under separately verified standing safe-branch authorization"
+  ],
+  "independentGates": [
+    "SEC001 actual accepted risk/design",
+    "SEC002 final token revocation",
+    "SEC003 hosted browser proof",
+    "SEC004 runtime provenance",
+    "SEC005 human/platform approval"
+  ],
+  "registeredPrincipalDesign": {
+    "status": "LOCAL_IMPLEMENTED_NOT_DEPLOYED",
+    "method": "WebAuthn ES256 + required user verification; trusted operator invitation linked to existing active employee ID",
+    "hardwareBoundClaim": false,
+    "syncedPasskeys": "Supported by verifier; not claimed to be hardware-bound",
+    "credentialLimitPerPrincipal": 2,
+    "activePasswordWorkPerPrincipal": 1,
+    "globalPasswordWorkSlots": 4,
+    "actualQaPoolMaxFromRetainedSource": 2,
+    "scope": "One malicious enrolled principal cannot gain additional bcrypt slots using extra devices or NAT changes. Four compromised registered principals can occupy all global slots; two can occupy existing QA pool. Not absolute availability or DDoS protection.",
+    "operatorVerification": "Human identity check and secure invitation delivery required; verification_ref is an audit pointer, not automatic proof",
+    "recovery": "Concrete same-transaction credential->token_hash binding; recovery/revoke requires trusted scoped Core invalidation, exact true acknowledgement or rollback. Public/QA adapters preserve sibling on credential revoke and revoke all same-principal sessions on verified recovery. No legacy-unbound per-device guesses.",
+    "rollout": "Pre-enroll and verify employee device support before cutover. Remain disabled until all affected legitimate users have an approved enrollment/recovery route. No password-only parallel bypass after activation.",
+    "remaining": [
+      "Owner enrollment/operator/recovery policy",
+      "Cloud least-privilege RPC install and rollback proof",
+      "Android Credential Manager or compatible WebView/RP integration and reviewed PUBLIC cert/DAL",
+      "Bounded multi-principal threat model and measured QA service latency/availability"
+    ],
+    "providerIsolation": "Real WebAuthn/invitation capability verified before distributed one-per-principal provider reservation. 5sec expiry, exact-nonce release required before further work, no DB connection over provider wait. Global preflight cap released only after durable reservation."
+  },
+  "operationalBoundary": {
+    "projectRef": "tdnkeskczcsukcujwinu",
+    "core": "maintrack-final-047 v3",
+    "inventory": "maintrack-inventory-final-047 v1",
+    "web": "https://maintrack-final-security-qa.vercel.app/",
+    "projectNameWarning": "QA/Staging names identify OPERATIONAL resources here; never treat as disposable QA",
+    "activeUsersVerified": 2,
+    "rolesVerified": {
+      "owner": 1,
+      "engineer": 1
+    },
+    "engineerTestPurpose": "OWNER_REPORTED_NOT_INFERRED_FROM_ROLE",
+    "inventoryItemsVerified": 3674,
+    "mutationAuthorizedByThisFile": false
+  },
+  "localProgress": {
+    "canonicalCoreTypecheck": "PASS_ZERO_DIAGNOSTICS",
+    "composedCoreTypecheck": "PASS_ZERO_DIAGNOSTICS",
+    "nativeCredentialManagerCompilation": "PASS_LOCAL_QA_ONLY",
+    "cloudAndPhoneFlow": "NOT TESTED",
+    "rawSnapshotsPreserved": true
+  },
+  "approvedOwnerPolicy": {
+    "maxRegisteredPasskeys": 2,
+    "syncedAllowed": true,
+    "physicalDeviceLimit": false,
+    "independentSessions": true,
+    "logoutScope": "CURRENT_TOKEN",
+    "recoveryScope": "AFFECTED_PRINCIPAL_CREDENTIALS_AND_SESSIONS",
+    "principalQuotas": true,
+    "governance": "single-owner-v1",
+    "artifactSigningApproval": "NOT_GRANTED"
+  }
+}

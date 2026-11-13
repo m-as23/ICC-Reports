@@ -1,0 +1,21 @@
+{
+	"appId": "com.icc.maintrack",
+	"appName": "MainTrack",
+	"webDir": "www",
+	"server": {
+		"hostname": "localhost",
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": false
+	},
+	"backgroundColor": "#071521",
+	"plugins": {
+		"CapacitorUpdater": {
+			"autoUpdate": "off",
+			"autoDeleteFailed": true,
+			"autoDeletePrevious": false,
+			"resetWhenUpdate": true
+		}
+	}
+}

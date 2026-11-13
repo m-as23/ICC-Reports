@@ -10,7 +10,8 @@ permissions:
   actions: read
 jobs:
   sign-reviewed-hashes-only:
-    if: github.ref == 'refs/heads/release/maintrack-stage22-044-integration'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: maintrack-android-release

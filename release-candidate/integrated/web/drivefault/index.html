@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="simple-search.css">
+<title>أعطال الدرايفات — MainTrack</title>
+</head>
+<body>
+<main>
+ <div class="intro"><h1>البحث عن أعطال الدرايفات</h1><p>اختار موديل الدرايف، واكتب كود العطل أو اسمه. هتظهر لك التفاصيل الفنية والمراجع المرتبطة بالنتيجة.</p></div>
+ <section class="search-box" aria-label="البحث في مكتبة الأعطال">
+  <div class="search-grid">
+   <div class="field"><label for="catalog">موديل الدرايف</label><div class="select-wrap"><select id="catalog" aria-label="اختيار موديل الدرايف"><option value="">اختر موديل الدرايف...</option></select></div></div>
+   <div class="field"><label for="query">ابحث عن العطل</label><div class="input-wrap"><svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M16 16l5 5"/></svg><input id="query" type="text" autocomplete="off" spellcheck="false" placeholder="كود العطل أو اسمه بالعربي / English" aria-label="كود أو اسم العطل"/><button class="clear" id="clear" type="button" aria-label="مسح البحث" title="مسح البحث" hidden>×</button></div></div>
+  </div>
+  <div class="search-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10V5h14v14H5v-9M9 9h6m-6 4h6"/></svg><span>بحث مباشر داخل المكتبة المختارة، دون عرض الأعطال قبل البحث.</span><span class="offline"><button id="download" type="button" disabled>تنزيل الحزمة للاستخدام بدون إنترنت</button></span></div>
+ </section>
+ <p id="status" role="status" hidden></p>
+ <div class="state" id="welcome"><div class="state-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.7"/><path d="M16 16l5 5"/></svg></div><h2 id="welcomeTitle">ابحث عن العطل اللي محتاجه</h2><p id="welcomeSub">اختار الموديل أولًا، ثم اكتب كود العطل أو كلمة من اسمه.</p></div>
+ <section class="results-area" id="resultArea" aria-label="نتائج البحث" hidden><div class="results-bar"><strong>نتائج البحث</strong><span id="resultCount" aria-live="polite"></span></div><div id="results"></div><button type="button" class="show-more" id="more" hidden>عرض نتائج أخرى</button><article class="detail" id="detailPanel" aria-label="تفاصيل العطل" hidden><div id="details"></div></article></section>
+</main>
+<script src="engine.js"></script>
+<script src="module.js"></script>
+</body>
+</html>

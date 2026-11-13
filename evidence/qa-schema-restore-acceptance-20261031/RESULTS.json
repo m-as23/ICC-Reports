@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-31 Africa/Cairo",
+  "candidateSourceCommit": "9c86043f89009a29ed3b705ae05bbc9195e7bf34",
+  "baseline": "99d7695",
+  "projectRef": "szhstrafzkxzstjdcynl",
+  "runDirectory": "D:\\MainTrack-QA-Recovery\\ssl-console-2026-10-30T23-13-22-873Z-d06ec0ab",
+  "snapshotSha256": "f50d069a2e6d6a4320dc6484b85b24a795789aa208747aa99861f578e550f7de",
+  "sourceManifestSha256": "6ead2faaffedd509872bcb5af547a4c028787e566f23397d00750f16b5d2e4fc",
+  "journalSha256": "da84f3172a5a280a030e2d46bb6a8ba0bb48dc595415a621c7bdab3aa23f6d16",
+  "observationSha256": "fd45e7e7d470ef919850093da8a9cb09bdf3f14f52e2f942cbd82effe7cd10ab",
+  "sslObserved": {
+    "database": true,
+    "appliedSuccessfully": true
+  },
+  "capture": "PASS",
+  "archiveIntegrity": {
+    "pass": true,
+    "files": [
+      {
+        "path": "catalog.json",
+        "sha256": "91f0c0a97398da98a7be691775b208caec80515c86ee1953c9ada38a82c79ab0",
+        "bytes": 65870
+      },
+      {
+        "path": "schema.dump",
+        "sha256": "de8508562d96b0d2c8d7ca56da07c06b861add133ed34fc6da4c06711c7c7437",
+        "bytes": 179028
+      },
+      {
+        "path": "archive-index.txt",
+        "sha256": "087e3c09d492c1456f5a9b1454c6ee90d7265c09036f2447d2fece2fe124ede1",
+        "bytes": 32473
+      }
+    ]
+  },
+  "backendTls": {
+    "transport": "qa-session-pooler",
+    "clientVerification": "libpq sslmode=verify-full",
+    "backendSsl": true,
+    "backendProtocol": "TLSv1.3",
+    "scope": "PostgreSQL sees pooler-to-backend leg; client-to-pooler verification is separate"
+  },
+  "secretReview": {
+    "status": "LOCAL REVIEW COMPLETED; NO CREDENTIAL MATERIAL DETECTED",
+    "tableDataEntries": 0,
+    "privateKeyMarkers": 0,
+    "jwtLiterals": 0,
+    "credentialAssignments": 0,
+    "externalHttpEndpoints": 0,
+    "rawSnapshotExported": false,
+    "limits": "Static review is not a mathematical guarantee; raw snapshot remains restricted outside Git and evidence ZIP"
+  },
+  "localRestore": {
+    "projectRef": "szhstrafzkxzstjdcynl",
+    "sourceCommit": "9c86043f89009a29ed3b705ae05bbc9195e7bf34",
+    "cloudRestore": "NOT TESTED",
+    "restoreAuthorized": false,
+    "scope": "Explicitly authorized local loopback-only isolated cluster; no cloud restore permission inferred",
+    "checks": [
+      "archive_identity_hashes_PASS",
+      "loopback_identity_PASS",
+      "native_restore_with_ownership_acl_PASS_retained_from_this_run",
+      "schemas_functions_rls_acl_owners_triggers_exact_metadata_PASS",
+      "function_policy_trigger_definitions_roundtrip_PASS"
+    ],
+    "loopbackObserved": "'127.0.0.1/32'",
+    "catalogComparison": {
+      "schemas": {
+        "pass": true,
+        "count": 3
+      },
+      "functions": {
+        "pass": true,
+        "count": 14
+      },
+      "relations": {
+        "pass": true,
+        "count": 137
+      },
+      "policies": {
+        "pass": true,
+        "count": 34
+      },
+      "triggers": {
+        "pass": true,
+        "count": 187
+      }
+    },
+    "roundtripExecutableSqlEqual": true,
+    "rowsRestored": 0,
+    "localRestore": "PASS within captured scope; external dependency runtime NOT TESTED",
+    "localServerStopped": true
+  },
+  "localBoundaryTests": {
+    "tests": [
+      {
+        "id": "maintrack_qa_final_runtime_private_ledger_denied",
+        "pass": true
+      },
+      {
+        "id": "maintrack_qa_final_runtime_not_cleanup_member",
+        "pass": true
+      },
+      {
+        "id": "maintrack_qa_inventory_runtime_private_ledger_denied",
+        "pass": true
+      },
+      {
+        "id": "maintrack_qa_inventory_runtime_not_cleanup_member",
+        "pass": true
+      }
+    ],
+    "pass": true,
+    "scope": "Actual restored local schema; not Supabase runtime or full cloud role parity",
+    "serverStopped": true
+  },
+  "cloudReadOnlyReconciliation": {
+    "projectRef": "szhstrafzkxzstjdcynl",
+    "jobs": 0,
+    "activeJobs": 0,
+    "validSessions": 0,
+    "ledgerRows": 0,
+    "unclosedLeases": 0,
+    "permanentSchemaPresent": false
+  },
+  "independentRecovery": {
+    "processIndependentCapture": "PASS user executed outside Codex/MCP",
+    "localNativeRestore": "PASS",
+    "cloudSqlRestore": "NOT TESTED",
+    "cloudEdgeRestore": "NOT TESTED",
+    "independentCloudStopRecovery": "NOT PROVEN",
+    "dependence": "Same Windows machine/user/network; no demonstrated credential provider or live independent stop operator during cutover"
+  },
+  "cloudMutationsByThisRound": 0,
+  "originalManifestRestoreAuthorized": false,
+  "localRestoreAuthority": "Current explicit user instruction, loopback-only isolated new fixture; does not authorize Cloud Restore",
+  "releaseGate": "NO-GO"
+}

@@ -10,6 +10,17 @@ on:
     branches:
       - ops/maintrack-044-production-foundation-20261018
   workflow_dispatch:
+    inputs:
+      production_smoke:
+        description: Run protected Production acceptance after binding and rollback verification
+        type: boolean
+        default: false
+      reviewed_sha:
+        description: Exact approved release commit for Production acceptance
+        type: string
+      production_origin:
+        description: Exact verified Production Web HTTPS origin
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -129,6 +140,7 @@ jobs:
       - name: Browser data preservation and Web update scenarios
         run: npm --prefix android/maintrack-app/tests-browser test
   staging-backend-readonly:
+    if: github.ref != 'refs/heads/release/maintrack-047-final-20261024'
     name: Staging API — CORS, unauthenticated rejection and service health
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -150,16 +162,28 @@ jobs:
       - name: Read-only live Staging API contract smoke (no secrets or credentials)
         if: github.ref != 'refs/heads/release/maintrack-047-final-20261024'
         run: node android/maintrack-app/scripts/qa/live-api-smoke.mjs
-      - name: Read reviewed Final service smoke from actual release source
-        if: github.ref == 'refs/heads/release/maintrack-047-final-20261024'
-        uses: actions/checkout@v4
+  production-smoke:
+    name: Protected Production acceptance
+    if: github.event_name == 'workflow_dispatch' && inputs.production_smoke == true && github.ref == 'refs/heads/release/maintrack-047-final-20261024'
+    environment: maintrack-production-approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-          path: final-service-check
           persist-credentials: false
-      - name: Verify Final service health and old-client retirement
-        if: github.ref == 'refs/heads/release/maintrack-047-final-20261024'
-        run: node final-service-check/ops/maintrack/scripts/final-047-live-smoke.mjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify approved release commit and run post-cutover smoke
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_sha }}
+          MAINTRACK_PRODUCTION_ORIGIN: ${{ inputs.production_origin }}
+        run: |
+          test "$REVIEWED_SHA" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node ops/maintrack/scripts/final-047-live-smoke.mjs
   overall-qa:
     name: MainTrack Staging-only QA — required combined result
     if: always()
@@ -176,4 +200,8 @@ jobs:
           echo 'Owner approval and exact-version QA deployment remain separate; passing these checks does not authorize publication.' >> "$GITHUB_STEP_SUMMARY"
           test "$UNIT" = success
           test "$BROWSER" = success
-          test "$API" = success
+          if [ "$GITHUB_REF" = "refs/heads/release/maintrack-047-final-20261024" ]; then
+            test "$API" = skipped
+          else
+            test "$API" = success
+          fi

@@ -1,0 +1,18 @@
+{
+  "coreBaseline": {
+    "version": 7,
+    "sha256": "4549b6dc5c6efc7b8783f259d7ffc18862993f3fb2516d4ffa795a60f6e9c82f"
+  },
+  "source": {
+    "supabase/functions/maintrack-final-047/index.ts": "d8f26885caa5bcac752b62febbca8b3015570727fdf3220b6eea48f833bcf751",
+    "supabase/functions/maintrack-final-047/core-types.ts": "7583e1f4056a2137bb34701f057f1f27177911f79fa82970180f5ddb9838482d",
+    "supabase/functions/maintrack-final-047/login-gateway.mjs": "be1968b9d03b2cc1cc7ed7ca70d9f5b40ef6e7e94a048869e37499172c2cab04",
+    "ops/maintrack/security/registered-login.mjs": "a046322de682053eabd6f56f60cf4c437aee3945e1188b0d471987c7efa40fe7",
+    "ops/maintrack/security/registered-login.deno.lock": "d434138080499b6e8dcc154153ce3ffad6c8886c93ebefb87f0873e1086fbf26",
+    "ops/maintrack/security/qa-session-proxy.mjs": "b1aa83f34b95402636acb5dfce5a97d6561aeb401ffd5e19979f59c203bad16c",
+    "ops/maintrack/security/vercel-login-entry.mjs": "d9eaa490d9c9a79f93d6c5ea17e15667ef5585b165b71a484a8c74ca70a5f5f5",
+    "ops/maintrack/scripts/prepare-qa-login-rpc.mjs": "e14edaa8e823662314c1e880b31e8e21c6e0e876d5960a868dd5658154f1f18f",
+    "ops/maintrack/scripts/prepare-login-admission.mjs": "98894ef6f67ff4a1c49c7893d71321d8bbe55e3002dd4e3b80d23a1b715237cd",
+    "ops/maintrack/scripts/prepare-registered-login.mjs": "b292f46b2e340074aca5f6b77c8f94379cdf9b38606b55023380a9555521478e"
+  }
+}

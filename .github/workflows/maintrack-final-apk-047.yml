@@ -1,19 +1,5 @@
 name: MainTrack 0.4.7 Final — protected build and signing
 on:
-  push:
-    branches: [release/maintrack-047-final-20261024]
-    paths:
-      - '.github/workflows/maintrack-final-apk-047.yml'
-      - 'ops/maintrack/scripts/prepare-final-047.mjs'
-      - 'ops/maintrack/scripts/verify-native-final-407-build.py'
-      - 'ops/maintrack/security/owner-047-preview-source.json'
-      - 'ops/maintrack/tests/prepare-final-047.test.mjs'
-      - 'ops/maintrack/tests/test_047_inventory_live_ui.browser.mjs'
-      - 'android/maintrack-app/update-system/startup.mjs'
-      - 'android/maintrack-app/update-system/pilot-panel.mjs'
-      - 'android/maintrack-app/update-system/shell-readiness.mjs'
-      - 'ops/maintrack/security/final-047-ota-source.json'
-      - 'ops/maintrack/scripts/sign-final-047-ota.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -111,7 +97,8 @@ jobs:
   sign-final:
     name: Sign Final 407 with original certificate (artifact only)
     needs: assemble
-    if: github.repository == 'm-as23/ICC-Reports' && github.ref == 'refs/heads/release/maintrack-047-final-20261024'
+    # SEC-005: retired; no variable/input may re-enable legacy signing or OTA.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: maintrack-android-release

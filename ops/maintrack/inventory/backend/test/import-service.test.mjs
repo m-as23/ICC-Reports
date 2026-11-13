@@ -4,6 +4,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createReviewInventoryRuntime} from '../src/create-review-runtime.mjs';
 import {fixture} from './import-xlsx.test.mjs';
+import {createInventoryService} from '../src/inventory-service.mjs';
+import {parseInventoryXlsx} from '../src/import-xlsx.mjs';
+
+test('Real parser drafts through an in-memory store without changing an existing approved version',async()=>{
+ const approved=Object.freeze({versionId:'9',items:Object.freeze([Object.freeze({code:'OLD',quantity:7,location:'A'})])});
+ const before=JSON.stringify(approved);let pending;
+ const store={
+  snapshot:async()=>approved,
+  stage:async input=>{pending=input;return {draftId:'10',baseVersionId:'9'};},
+  diff:async()=>({draftId:'10',baseVersionId:'9',fileSha256:pending.fileSha256,total:pending.total,counts:{NEW:120},details:pending.items,requiresExplicitReview:true})
+ };
+ const service=createInventoryService({verifySession:async()=>({authenticated:true,active:true,role:'owner',userId:'synthetic-owner'}),store,parseXlsx:parseInventoryXlsx});
+ const originalFetch=globalThis.fetch;globalThis.fetch=()=>{throw Error('NETWORK_FORBIDDEN');};
+ try{
+  const draft=await service.execute({action:'inventoryDraft',bytes:await fixture(),filename:'synthetic.xlsx',session:'a'.repeat(64)});
+  assert.equal(draft.summary.total,120);assert.equal(pending.items[0].quantity,0);assert.equal(pending.items[0].location,'R-1');
+  assert.equal(await service.execute({action:'inventorySnapshot',session:'a'.repeat(64)}),approved);
+  assert.equal(JSON.stringify(approved),before);
+ }finally{globalThis.fetch=originalFetch;}
+});
 
 function environment(){
  const files=new Map(),events=[];
@@ -17,11 +37,13 @@ function environment(){
  };
  const db={async query(sql,params){
   if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK')return {rows:[]};
+  if(sql.includes('SELECT state FROM inv_lab.upload_intents'))return {rows:[{state:'RESERVED'}]};
   if(sql.includes('FROM inv_lab.active WHERE singleton=true'))return {rows:[{id:'9'}]};
   if(sql.includes('INSERT INTO inv_lab.versions')){events.push('created-pending');return {rows:[{id:'10'}]};}
   if(sql.includes('INSERT INTO inv_lab.items')){events.push('staged-items:'+String(params.length/6));return {rows:[]};}
   if(sql.includes('inv_lab.seal_version'))return {rows:[]};
   if(sql.includes('INSERT INTO inv_lab.audit'))return {rows:[]};
+  if(sql.includes('UPDATE inv_lab.upload_intents'))return {rows:[]};
   if(sql.includes('source.excluded_at')){events.push('checked-restore-source');return {rows:[]};}
   if(sql.includes('inv_lab.publish_version')){assert.ok(events.includes('checked-restore-source'));events.push('published');return {rows:[{id:'10'}]};}
   throw Error('UNEXPECTED_TRANSACTION_QUERY');
@@ -29,6 +51,7 @@ function environment(){
  const pool={
   async connect(){return db;},
   async query(sql,params){
+   if(sql.includes('INSERT INTO inv_lab.upload_intents')){events.push('reserved-upload');return {rows:[]};}
    if(sql.includes('FROM inv_lab.versions WHERE id=$1'))return {rows:[{id:'10',baseVersionId:'9',fileSha256:currentSha,filename:'sample.xlsx',status:'pending',itemCount:120}]};
    if(sql.includes('FROM inv_lab.active a LEFT JOIN inv_lab.versions'))return {rows:[{versionId:'9',generation:'3',approvedAt:null,filename:'older.xlsx'}]};
    if(sql.includes('FROM inv_lab.compare_version'))return {rows:[{code:'PART-00001',change_type:'NEW',old_description:null,old_quantity:null,old_location:null,new_description:'Parker M700 inverter 65A 90L',new_quantity:0,new_location:'R-1'}]};

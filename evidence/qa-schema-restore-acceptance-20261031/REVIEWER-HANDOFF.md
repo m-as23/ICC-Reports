@@ -1,0 +1,3 @@
+# Reviewer delta — QA native archive acceptance
+
+Review candidate source 9c86043 and evidence-only successor. Review original archived bytes only in restricted recovery directory; public RESULTS.json contains hashes/counts only. Verify scope of schema-only restore, generated RI names, exact roundtrip, omitted cron/data/role global metadata, NOLOGIN local role fixtures, and stop/rollback separation. No human or platform approval is supplied by Codex. Retained application, APK, OTA and workflow artifacts are unchanged by this evidence-only change; previous human checklist remains mandatory. Release remains NO-GO.

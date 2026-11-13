@@ -86,5 +86,14 @@
     "nativeVersionCode": 407,
     "employeeRollout": false,
     "signedArtifactOnly": true
+  },
+  "securityClosureLegacyFence": {
+    "date": "2026-11-01",
+    "policy": "Unconditional false at each legacy secret-capable job; variables and dispatch inputs cannot restore signing",
+    "scope": "CURRENT_SOURCE_ONLY_NOT_OLD_BRANCHES_OR_GITHUB_ADMINISTRATION",
+    "validator": "security-regression/legacy_signing_fence.py",
+    "futureReleasePath": "Separately reviewed trusted signing chain; no automated exception",
+    "platformEnforcement": "PENDING_PROTECTED_INTEGRATION_AND_ENVIRONMENT_CONFIGURATION",
+    "releaseAuthorized": false
   }
 }

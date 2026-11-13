@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-31 Africa/Cairo",
+  "parentCommit": "91ee959cc5d86a9f3b5f7761e249fa9b7471b11d",
+  "runDirectory": "D:\\MainTrack-QA-Recovery\\ssl-console-2026-10-30T14-01-38-929Z-215bf2cb",
+  "journalSha256": "f209f89109bfab4a6614dc9d999c498084ad5326ade005650ed7c90f78439cff",
+  "enableAttempted": false,
+  "observedConfig": {
+    "database": false,
+    "appliedSuccessfully": true
+  },
+  "lockPresent": false,
+  "cloudMutationThisReview": false,
+  "tests": {
+    "affectedAutomated": {
+      "pass": 18,
+      "fail": 0
+    },
+    "realWindowsTerminal": {
+      "psql": "native masked prompt consumed public noncredential marker; expected loopback closed-port exit 2",
+      "pg_dump": "native masked prompt consumed public noncredential marker; expected loopback closed-port exit 1",
+      "scope": "No QA connection or password. Auth rejection propagation additionally simulated, not live database authentication acceptance."
+    }
+  },
+  "cloudAcceptance": "NOT TESTED",
+  "releaseGate": "NO-GO"
+}

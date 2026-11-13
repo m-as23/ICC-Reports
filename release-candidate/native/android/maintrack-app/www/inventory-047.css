@@ -1,0 +1,5 @@
+/* The uploaded page owns its CSS in a separate document. MainTrack navigation remains outside it. */
+#inventory{padding:0;margin:0;width:100%;max-width:none;border:0;background:transparent;box-shadow:none}
+#inventory #inv47Frame{display:block;width:100%;height:calc(100dvh - 180px);min-height:320px;border:0;background:#f3f6f9}
+#inventory [hidden]{display:none!important}
+#inventory #inv47State{padding:16px;margin:0}
