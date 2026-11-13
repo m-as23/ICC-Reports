@@ -16,6 +16,8 @@ test('database ends abandoned login work, releases only its slots and permits re
  try{
   owner=await admin.connect();
   assert.equal((await owner.query("SELECT shobj_description(oid,'pg_database') marker FROM pg_database WHERE datname=current_database()")).rows[0].marker,'MAINTRACK_LOGIN_LOCAL_EPHEMERAL_V1');
+  await owner.query("CREATE TABLE IF NOT EXISTS public.mt_login_rate_guard(key_hash text PRIMARY KEY,window_start timestamptz,attempts integer,updated_at timestamptz);");
+  await owner.query("DELETE FROM public.mt_login_rate_guard WHERE key_hash=$1",['maintrack_stage9_global_login']);
   await owner.query('BEGIN');await owner.query("SET LOCAL idle_in_transaction_session_timeout='20s'");
   await owner.query("SELECT pg_advisory_xact_lock(hashtextextended('maintrack-idle-test-unrelated',0))");
   for(let i=0;i<4;i++){
@@ -26,6 +28,7 @@ test('database ends abandoned login work, releases only its slots and permits re
    });
    // Record rejections immediately: server disconnect must be contained, not unhandled.
    tasks.push(task.then(value=>({ok:true,value}),error=>({ok:false,code:error.code,status:error.status})));
+   entered[i]=Promise.race([r,tasks[i].then(result=>{throw Error('LOGIN_WORK_DID_NOT_ENTER: '+result.code);})]);
   }
   const settings=await Promise.all(entered);
   assert.ok(settings.every(s=>s.idle_timeout==='5s'&&s.statement_timeout==='4s'),'5s server idle deadline must coexist with unchanged4s statement deadline');
